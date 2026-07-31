@@ -3469,16 +3469,30 @@ const RIGS = {
   },
 
   magpie: {
-    c: ['#2b3038', '#171a20', '#0d0f13', '#12151a', '#6ea8fe', '#f2828f'],
-    back: `<path d="M88 78c16 8 24 22 22 34-11-4-21-14-27-25z" fill="#3f6fbf"/>
-           <path d="M92 76c12 6 18 16 17 25-8-3-15-10-19-19z" fill="#5b90dd"/>`,
+    // Black bird, white patches, orange beak reads as a penguin — that is
+    // exactly what this used to be. A 까치 is told apart by its tail, which
+    // is longer than the rest of it, and by a black beak on a glossy head.
+    // Muted blush: the shared face puts cheeks right where the wing patches
+    // are, and a bright blue there capped them like earmuffs. At this value
+    // it reads as more of the head's sheen.
+    c: ['#2b3038', '#171a20', '#0d0f13', '#12151a', '#41648f', '#f2828f'],
+    back: `<path d="M82 72c24 12 37 33 34 51-18-7-33-23-42-40z" fill="#2f5aa8"/>
+           <path d="M86 72c19 10 29 26 28 40-13-6-23-17-29-30z" fill="#4a86dd"/>
+           <path d="M90 73c13 7 20 18 20 28-9-4-16-12-19-21z" fill="#3fa88f" opacity=".7"/>`,
     ears: `<g class="tg-ear tg-ear-l" style="transform-origin:46px 24px"><path d="M46 24c-3-10 1-16 7-18-1 8-3 14-7 18z" fill="var(--m-fur)"/></g>
            <g class="tg-ear tg-ear-r" style="transform-origin:74px 24px"><path d="M74 24c3-10-1-16-7-18 1 8 3 14 7 18z" fill="var(--m-fur)"/></g>`,
     head: `<path d="M60 16c25 0 42 18 42 41s-18 44-42 44S18 80 18 57 35 16 60 16z" fill="var(--m-fur)"/>`,
-    marks: `<ellipse cx="30" cy="66" rx="11" ry="15" fill="#f2f5f9" opacity=".95"/>
-            <ellipse cx="90" cy="66" rx="11" ry="15" fill="#f2f5f9" opacity=".95"/>
-            <ellipse cx="60" cy="92" rx="17" ry="12" fill="#f2f5f9" opacity=".95"/>`,
-    face: `<path d="M60 64l8 8-8 10-8-10z" fill="#e8a33c"/>`
+    // The crown catches blue and green. A penguin's black is matte, and
+    // that sheen is half of what separates the two at this size.
+    marks: `<ellipse cx="56" cy="28" rx="20" ry="7" fill="#4a86dd" opacity=".15"/>
+            <ellipse cx="62" cy="22" rx="12" ry="4.5" fill="#3fa88f" opacity=".11"/>
+            <ellipse cx="33" cy="85" rx="6.4" ry="13" fill="#f2f5f9" opacity=".95" transform="rotate(-34 33 85)"/>
+            <ellipse cx="87" cy="85" rx="6.4" ry="13" fill="#f2f5f9" opacity=".95" transform="rotate(34 87 85)"/>`,
+    // A black beak on a near-black head has to be lit to read at all, so the
+    // upper facet catches light and the lower one stays in shadow. A single
+    // bright ridge line down the middle just looked like an arrow.
+    face: `<path d="M60 62l7.5 8.5-7.5 10.5-7.5-10.5z" fill="#454f5c"/>
+           <path d="M60 62l7.5 8.5-7.5 3.2-7.5-3.2z" fill="#8d9aab" opacity=".8"/>`
   },
 
   jindo: {
