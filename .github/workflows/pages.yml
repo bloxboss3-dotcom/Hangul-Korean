@@ -3,6 +3,10 @@ name: Deploy Hanbit to GitHub Pages
 on:
   push:
     branches: [main]
+  # Pull requests run the check only, so a broken app is visible before it
+  # is merged rather than after it has already gone live.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -12,19 +16,29 @@ permissions:
 
 # One deploy at a time; let an in-flight run finish rather than cancelling it.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  check:
+    name: Check the app parses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/check.mjs
+
   build:
+    name: Build the site
+    needs: check
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the app parses
-        run: node tools/check.mjs
-
-      - name: Stamp the build date into the service worker cache name
+      - name: Stamp the commit into the service worker cache name
         run: |
           sed -i "s/hanbit-v2/hanbit-v2-${GITHUB_SHA::7}/" sw.js
 
@@ -42,7 +56,9 @@ jobs:
           path: _site
 
   deploy:
+    name: Deploy to Pages
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
