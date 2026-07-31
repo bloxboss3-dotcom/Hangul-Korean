@@ -13,7 +13,7 @@
    progress lives in localStorage and is never touched here.
    ============================================================ */
 
-const VERSION = 'hanbit-v6';
+const VERSION = 'hanbit-v7';
 const CORE = [
   './',
   './index.html',
@@ -23,8 +23,14 @@ const CORE = [
   './icons/icon-maskable-512.png',
   './icons/av-jiwoo.webp',
   './icons/av-minseo.webp',
-  './icons/av-minsu.webp'
+  './icons/av-minsu.webp',
+  './audio/manifest.json'
 ];
+
+/* The recorded lines are deliberately NOT precached: 122 clips is several
+   megabytes and would make the first install crawl. The runtime handler
+   below caches each clip the first time it plays, so a conversation you
+   have listened to once works offline afterwards. */
 
 self.addEventListener('install', e => {
   e.waitUntil(

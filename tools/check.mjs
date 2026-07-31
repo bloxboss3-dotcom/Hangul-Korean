@@ -75,6 +75,28 @@ if (sandbox.CONVERSATIONS && sandbox.UNITS_A && sandbox.UNITS_B) {
   else ok(`conversations — ${lines} lines, chunk mapping reassembles every line`);
 }
 
+/* ---- 3b. recorded audio, if any, matches the conversations ---- */
+if (existsSync(root + 'audio/manifest.json') && sandbox.CONVERSATIONS) {
+  const man = JSON.parse(readFileSync(root + 'audio/manifest.json', 'utf8'));
+  const valid = new Set();
+  for (const c of sandbox.CONVERSATIONS) {
+    c.lines.forEach((_, i) => valid.add(`${c.id}-${String(i).padStart(2, '0')}`));
+  }
+  // A clip naming a line that does not exist means the dialogue was edited
+  // after recording, and that clip would now play against the wrong text.
+  const orphans = man.lines.filter(id => !valid.has(id));
+  const missingFiles = man.lines.filter(id => !existsSync(`${root}audio/lines/${id}.mp3`));
+  if (orphans.length) bad(`manifest lists ${orphans.length} clip(s) with no matching line: ${orphans.slice(0, 5).join(', ')}`);
+  else if (missingFiles.length) bad(`manifest lists ${missingFiles.length} clip(s) whose file is missing: ${missingFiles.slice(0, 5).join(', ')}`);
+  else ok(`recorded audio — ${man.lines.length}/${valid.size} lines, every clip maps to a real line`);
+
+  for (const id of man.complete || []) {
+    const c = sandbox.CONVERSATIONS.find(x => x.id === id);
+    const all = c && c.lines.every((_, i) => man.lines.includes(`${id}-${String(i).padStart(2, '0')}`));
+    if (!all) bad(`${id} is marked complete but is missing clips`);
+  }
+}
+
 /* ---- 4. the PWA plumbing is present ---- */
 for (const f of ['manifest.webmanifest', 'sw.js', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png']) {
   if (existsSync(root + f)) ok(f + ' present');

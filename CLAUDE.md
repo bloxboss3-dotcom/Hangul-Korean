@@ -3,23 +3,46 @@
 Single-file Korean trainer. `index.html` is the whole app: markup, styles,
 curriculum and scheduler, no build step. Edit it directly.
 
-## Tooling preferences
+## Tooling — Runway only
 
-**Use Runway for all generation work. Do not use Higgsfield.**
+**Runway is the only generation provider. Higgsfield is off the table
+permanently — do not call it, do not suggest it, do not price it up.**
 
-- Runway is the account with credit and is the default for anything generated —
-  images, icons, avatars, video.
-- Higgsfield is on the free plan at 0 credits. Do not route work to it, and do
-  not propose it as an option without checking `balance` first.
-- Runway's *product* does have an Audio mode (Lyria 3 Pro). The **MCP
-  connection does not expose it** — the 14 tools available are image, video,
-  upload and task tools only, so audio cannot be driven from here even though
-  it exists in the web app. Say "the tools I can call", not "Runway cannot".
-- Lyria is a **music** model in any case, so it would not produce spoken
-  Korean dialogue even if it were reachable.
-- Korean speech needs a real TTS engine. The only one wired up is Higgsfield's
-  `generate_audio` (Seed Audio / ElevenLabs / MiniMax), which is the account
-  with no credits — roughly 25 credits would cover all 122 conversation lines.
+- Use Runway for anything generated: images, icons, avatars, video.
+- The Runway MCP exposes image, video, upload and task tools. It has **no
+  audio endpoint**, even though Runway's web app has an Audio mode with Seed
+  Audio 1.0 (real TTS). So spoken Korean cannot be generated from here.
+- That is a dead end, not a problem to route around. **If Runway's tools
+  cannot do something, drop it and move on** — do not go looking for another
+  provider.
+- Consequence for the app: the Korean voice stays whatever the browser
+  provides. Rank the system voices, be honest about the iOS ceiling, and stop
+  there.
+
+## Recorded audio — built, deliberately unused
+
+There is a complete path for replacing the synthesised voice with real
+recordings, and it is switched off because the manual work to produce them was
+not worth it to the user. **Do not bring it up again unasked.**
+
+If it is ever wanted, everything is in place:
+
+1. `audio-scripts/RECORDING-SCRIPTS.md` — 25 blocks covering all 122 lines,
+   generated from the dialogue data. One block per speaker per conversation.
+   Only four voices are needed, since the characters recur.
+2. Generate each block in Runway (Audio → Seed Audio 1.0).
+3. `python3 tools/split-audio.py <clip.mp3> <block-id> --write` cuts a block
+   into per-line clips. It predicts the segment count from clause punctuation
+   rather than guessing at silence thresholds, and refuses to split when the
+   count does not match — so a mis-pasted block fails loudly instead of
+   producing silently misaligned audio.
+4. `node tools/audio-manifest.mjs` rebuilds `audio/manifest.json`.
+
+The app reads that manifest at boot and prefers a recording wherever one
+exists, falling back to synthesis per line. With zero clips it behaves exactly
+as it did before — verified. **Do not ship a partially recorded conversation:**
+alternating a native voice with a synthesised one inside one dialogue is worse
+than using the synthesiser throughout.
 
 ## Checks before pushing
 
