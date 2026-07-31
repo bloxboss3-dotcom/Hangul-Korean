@@ -1,0 +1,32 @@
+{
+  "name": "한빛 Hanbit · Learn Korean",
+  "short_name": "Hanbit",
+  "description": "An ad-free Korean trainer built on retrieval practice, FSRS spaced repetition, real conversations and speaking drills. Works offline; your progress never leaves your phone.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "lang": "en",
+  "categories": ["education"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Study today",
+      "short_name": "Study",
+      "url": "./index.html#today",
+      "description": "Everything the schedule says is due right now"
+    },
+    {
+      "name": "Conversations",
+      "short_name": "Talk",
+      "url": "./index.html#talk",
+      "description": "Work through a real dialogue and take a side"
+    }
+  ]
+}
