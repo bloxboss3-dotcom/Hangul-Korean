@@ -405,6 +405,21 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 
 #fxlayer {
   position: fixed; inset: 0; z-index: 90;
+  /* A fixed element on iOS occupies the LARGE viewport — the height with the
+     toolbar hidden — which is taller than window.innerHeight reports while
+     the toolbar is up. Sizing the canvas from innerHeight leaves the bottom
+     of that box uncovered, and when the toolbar slides away the compositor
+     stretches the short frozen layer, smearing its last row of pixels into
+     vertical streaks. 100lvh is that box; browsers without it fall back to
+     the 100% above, which is what this always did.
+     Both sides have to be stated: a canvas is a replaced element, so with
+     width auto it would take its width from the bitmap's aspect ratio
+     instead of from inset, and the box would chase its own backing store. */
+  width: 100%;
+  height: 100%;
+  height: 100lvh;
+  /* keep it on its own compositor layer so a scroll never re-rasterises it */
+  transform: translateZ(0);
   pointer-events: none;
 }
 
@@ -2949,6 +2964,9 @@ const Sfx = {
    ------------------------------------------------------------ */
 const FX = {
   canvas: null, ctx: null, parts: [], raf: null, dpr: 1,
+  w: 0, h: 0,             // bitmap size, in CSS px
+  vw: 0, vh: 0,           // viewport last seen, to gate the layout read
+  last: 0,                // timestamp of the previous frame
   level: 'full',          // 'full' | 'subtle' | 'off'
 
   mount() {
@@ -2960,15 +2978,52 @@ const FX = {
     this.ctx = c.getContext('2d');
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => this.resize());
+    // On iOS the toolbar sliding in and out changes the height the canvas
+    // is supposed to cover, and that only ever shows up on visualViewport.
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resize());
+    }
+    // A hidden tab freezes rAF wherever it happened to be and leaves that
+    // frame painted, so you come back to confetti hanging in mid-air.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.clear();
+    });
   },
 
   resize() {
     if (!this.canvas) return;
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = Math.floor(window.innerWidth * this.dpr);
-    this.canvas.height = Math.floor(window.innerHeight * this.dpr);
-    this.canvas.style.width = window.innerWidth + 'px';
-    this.canvas.style.height = window.innerHeight + 'px';
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // innerWidth/innerHeight are free to read; measuring the layer is not.
+    // Gate the layout read on the viewport having actually moved, so the
+    // frame loop can call this every frame without thrashing layout.
+    if (vw === this.vw && vh === this.vh && dpr === this.dpr) return;
+    this.vw = vw; this.vh = vh;
+    // The layer's own box is the source of truth — CSS pins it to the box a
+    // fixed element really occupies, so the bitmap covers all of it. Sizing
+    // from innerHeight instead leaves a strip at the bottom with no canvas
+    // under it whenever the browser's toolbar is up.
+    const box = this.canvas.getBoundingClientRect();
+    const w = Math.round(box.width) || Math.round(vw);
+    const h = Math.round(box.height) || Math.round(vh);
+    // Writing canvas.width wipes the bitmap, so only touch it on a real
+    // change — otherwise a viewport nudge mid-celebration blanks a frame.
+    if (w === this.w && h === this.h && dpr === this.dpr) return;
+    this.w = w; this.h = h; this.dpr = dpr;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+  },
+
+  // Clear the whole bitmap in device pixels. Clearing in CSS units leaves a
+  // strip at the bottom unwiped any time the viewport shrank after the last
+  // resize, and particles smear down it into a solid pile instead of falling
+  // off the screen.
+  wipe() {
+    if (!this.ctx || !this.canvas) return;
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   },
 
   get on() { return this.level !== 'off'; },
@@ -2982,15 +3037,31 @@ const FX = {
 
   start() {
     if (this.raf) return;
-    const step = () => {
+    this.last = 0;
+    const step = (now) => {
       this.raf = null;
       const ctx = this.ctx;
       if (!ctx) return;
-      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      // Step by real elapsed time so the field runs at one speed on a 60Hz
+      // laptop and a 120Hz phone. Capped, so a frame the browser skipped
+      // (scrolling, a heavy re-render) nudges the sim on rather than
+      // teleporting every particle past the bottom of the screen at once.
+      const dt = this.last ? Math.min(1 / 15, (now - this.last) / 1000) : 1 / 60;
+      this.last = now;
+      this.resize();
+      this.wipe();
+      const W = this.w, H = this.h;
+      // drag is per-frame decay in the source numbers; rescale it to dt once
+      // per distinct value instead of calling pow for every particle
+      const drags = new Map();
+      const dragFor = (d) => {
+        let v = drags.get(d);
+        if (v === undefined) { v = Math.pow(d, dt * 60); drags.set(d, v); }
+        return v;
+      };
       const alive = [];
       for (const p of this.parts) {
-        p.life += 1 / 60;
+        p.life += dt;
         if (p.life >= p.max) continue;
         const t = p.life / p.max;
 
@@ -3019,10 +3090,14 @@ const FX = {
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, r), 0, Math.PI * 2); ctx.fill();
         } else {
-          p.vy += p.g / 60;
-          p.vx *= p.drag; p.vy *= p.drag;
-          p.x += p.vx / 60; p.y += p.vy / 60;
-          p.rot += p.vr / 60;
+          const k = dragFor(p.drag);
+          p.vy += p.g * dt;
+          p.vx *= k; p.vy *= k;
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          p.rot += p.vr * dt;
+          // Once it has left the screen it is gone. Keeping it around costs
+          // frames and lets it keep painting somewhere we cannot see.
+          if (p.y - p.size > H + 40 || p.x + p.size < -80 || p.x - p.size > W + 80) continue;
           ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1;
           ctx.save();
           ctx.translate(p.x, p.y);
@@ -3046,16 +3121,15 @@ const FX = {
       ctx.globalAlpha = 1;
       this.parts = alive;
       if (this.parts.length) this.raf = requestAnimationFrame(step);
+      else this.wipe();
     };
     this.raf = requestAnimationFrame(step);
   },
 
   clear() {
     this.parts = [];
-    if (this.ctx) {
-      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    }
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+    this.wipe();
   },
 
   /* ---- composite effects ---- */
