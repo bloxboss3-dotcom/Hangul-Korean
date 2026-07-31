@@ -1,0 +1,227 @@
+[
+ {
+  "conv": "C1",
+  "unit": "U1",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C1-A.txt"
+ },
+ {
+  "conv": "C1",
+  "unit": "U1",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C1-B.txt"
+ },
+ {
+  "conv": "C2",
+  "unit": "U2",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 6,
+  "file": "audio-scripts/C2-A.txt"
+ },
+ {
+  "conv": "C2",
+  "unit": "U2",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 6,
+  "file": "audio-scripts/C2-B.txt"
+ },
+ {
+  "conv": "C3",
+  "unit": "U3",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C3-B.txt"
+ },
+ {
+  "conv": "C3",
+  "unit": "U3",
+  "speaker": "A",
+  "name": "민서",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C3-A.txt"
+ },
+ {
+  "conv": "C4",
+  "unit": "U4",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C4-A.txt"
+ },
+ {
+  "conv": "C4",
+  "unit": "U4",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C4-B.txt"
+ },
+ {
+  "conv": "C5",
+  "unit": "U5",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C5-B.txt"
+ },
+ {
+  "conv": "C5",
+  "unit": "U5",
+  "speaker": "A",
+  "name": "민수",
+  "isYou": false,
+  "n": 4,
+  "file": "audio-scripts/C5-A.txt"
+ },
+ {
+  "conv": "C5",
+  "unit": "U5",
+  "speaker": "C",
+  "name": "지우",
+  "isYou": false,
+  "n": 1,
+  "file": "audio-scripts/C5-C.txt"
+ },
+ {
+  "conv": "C6",
+  "unit": "U6",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C6-A.txt"
+ },
+ {
+  "conv": "C6",
+  "unit": "U6",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C6-B.txt"
+ },
+ {
+  "conv": "C7",
+  "unit": "U7",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C7-A.txt"
+ },
+ {
+  "conv": "C7",
+  "unit": "U7",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C7-B.txt"
+ },
+ {
+  "conv": "C8",
+  "unit": "U8",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C8-A.txt"
+ },
+ {
+  "conv": "C8",
+  "unit": "U8",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C8-B.txt"
+ },
+ {
+  "conv": "C9",
+  "unit": "U9",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C9-A.txt"
+ },
+ {
+  "conv": "C9",
+  "unit": "U9",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C9-B.txt"
+ },
+ {
+  "conv": "C10",
+  "unit": "U10",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C10-B.txt"
+ },
+ {
+  "conv": "C10",
+  "unit": "U10",
+  "speaker": "A",
+  "name": "민서",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C10-A.txt"
+ },
+ {
+  "conv": "C11",
+  "unit": "U11",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C11-B.txt"
+ },
+ {
+  "conv": "C11",
+  "unit": "U11",
+  "speaker": "A",
+  "name": "민서",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C11-A.txt"
+ },
+ {
+  "conv": "C12",
+  "unit": "U12",
+  "speaker": "A",
+  "name": "지우",
+  "isYou": false,
+  "n": 5,
+  "file": "audio-scripts/C12-A.txt"
+ },
+ {
+  "conv": "C12",
+  "unit": "U12",
+  "speaker": "B",
+  "name": "나",
+  "isYou": true,
+  "n": 5,
+  "file": "audio-scripts/C12-B.txt"
+ }
+]
