@@ -40,7 +40,7 @@ jobs:
 
       - name: Stamp the commit into the service worker cache name
         run: |
-          sed -i "s/hanbit-v2/hanbit-v2-${GITHUB_SHA::7}/" sw.js
+          sed -i "s/hanbit-v3/hanbit-v3-${GITHUB_SHA::7}/" sw.js
 
       - uses: actions/configure-pages@v5
 
