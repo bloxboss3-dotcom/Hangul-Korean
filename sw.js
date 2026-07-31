@@ -6,20 +6,24 @@
      · make the app open instantly and work with no signal
      · pick up a new version without ever showing a broken page
    Strategy is stale-while-revalidate: serve the cached copy
-   immediately, fetch a fresh one in the background, and tell the
-   page when a newer version is ready so the user can choose when
-   to take it. Study progress lives in localStorage and is never
-   touched here.
+   immediately and fetch a fresh one in the background. The page
+   decides when to swap — it applies an update on its own as soon
+   as you are idle, and holds off while you are mid-session so a
+   reload can never eat the card you were halfway through. Study
+   progress lives in localStorage and is never touched here.
    ============================================================ */
 
-const VERSION = 'hanbit-v2';
+const VERSION = 'hanbit-v3';
 const CORE = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon-maskable-512.png'
+  './icons/icon-maskable-512.png',
+  './icons/av-jiwoo.webp',
+  './icons/av-minseo.webp',
+  './icons/av-minsu.webp'
 ];
 
 self.addEventListener('install', e => {

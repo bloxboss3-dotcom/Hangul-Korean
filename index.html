@@ -70,6 +70,13 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* The three things that most give an installed PWA away as a web page:
+   the grey flash on tap, the double-tap-to-zoom delay, and the rubber-band
+   overscroll past the top of a list. */
+html { -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+button, a, .chunk, .conv-card, .opt, .tile, .kb-key {
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
 body {
   background: var(--bg);
   color: var(--tx);
@@ -134,9 +141,15 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
   background: var(--bg-raise); border: 1px solid var(--line);
 }
 .btn:hover { border-color: var(--tx-faint); }
-.btn.primary { background: var(--accent); color: #0b1220; border-color: transparent; }
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--good));
+  color: #0b1220; border-color: transparent;
+  box-shadow: 0 2px 14px -4px var(--accent);
+}
 :root.light .btn.primary { color: #fff; }
-.btn.primary:hover { filter: brightness(1.08); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn:active { transform: scale(.975); }
+.btn { transition: transform .1s ease, filter .15s ease; }
 .btn.big { width: 100%; padding: 15px; font-size: 16px; }
 .btn.ghost { background: transparent; }
 .btn:disabled { opacity: .45; cursor: default; }
@@ -149,7 +162,15 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .grid.four { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 
 /* ---------- today ---------- */
-.hero { text-align: left; }
+.hero {
+  text-align: left; position: relative; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%),
+    var(--bg-card);
+}
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+  .hero { background: var(--bg-card); }
+}
 .hero .plan { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 18px; }
 .chip {
   padding: 6px 11px; border-radius: 999px; background: var(--bg-raise);
@@ -160,7 +181,7 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .chip.accent { border-color: var(--accent-dim); }
 
 .stat { background: var(--bg-raise); border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: 13px; }
-.stat .n { font-size: 25px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stat .n { font-size: 27px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .stat .l { font-size: 11.5px; color: var(--tx-faint); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
 .stat .h { font-size: 11.5px; color: var(--tx-faint); margin-top: 6px; line-height: 1.4; }
 
@@ -689,8 +710,18 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
   flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
   font-family: var(--ko); font-size: 14px; font-weight: 650;
   background: var(--bg-raise); border: 1px solid var(--line); color: var(--tx-dim);
+  object-fit: cover;
 }
-.line.you .who { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.line.you .who.me { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+img.who { padding: 0; }
+
+.conv-card .cc-n { position: relative; overflow: visible; padding: 0; }
+.conv-card .cc-n img { width: 38px; height: 38px; border-radius: 11px; object-fit: cover; display: block; }
+.conv-card .cc-tick {
+  position: absolute; right: -5px; bottom: -5px; width: 17px; height: 17px; border-radius: 50%;
+  background: var(--good); color: #0b1220; font-size: 11px; font-style: normal; font-weight: 800;
+  display: grid; place-items: center; border: 2px solid var(--bg-card);
+}
 .line .lbody { flex: 1; min-width: 0; }
 .line .lname { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase;
   color: var(--tx-faint); font-weight: 650; margin-bottom: 3px; }
@@ -4136,7 +4167,10 @@ const DEFAULTS = {
     sessionMinutes: 25,
     showRomanization: true,
     typingMode: true,
-    ttsRate: 0.85,
+    // 0.85 stretches the waveform enough to make any voice sound synthetic.
+    // Near-normal speed sounds far more human; there is a slow-replay button
+    // for the moments you actually need it drawn out.
+    ttsRate: 0.95,
     ttsVoice: '',
     theme: 'dark',
     skipHangul: false,
@@ -4610,6 +4644,7 @@ function checkMilestones(key, before, after) {
 }
 
 function finishSession() {
+  setTimeout(maybeAutoUpdate, 1500);
   if (!sess) { view = 'today'; render(); return; }
   const acc = sess.answered ? sess.correct / sess.answered : 0;
   sess.perfect = sess.answered >= 8 && sess.correct === sess.answered;
@@ -4888,17 +4923,102 @@ function checkText(ex, input) {
 
 /* ---------------------------------------------------------------
    7. SPEECH
+   ------------------------------------------------------------
+   Every browser ships more than one Korean voice and they are not
+   remotely equal. iOS installs a small "compact" Yuna by default and
+   keeps the good one behind a download; Chrome has a flat local voice
+   alongside Google's much better network one. Picking voices[0], which
+   is what this used to do, lands on the worst of them about half the
+   time — which is the entire reason speech here sounded robotic.
+
+   So: rank them, take the best by default, and when the best available
+   is still a poor one, say so and give the exact steps to fix it
+   instead of leaving the learner to assume Korean sounds like that.
    --------------------------------------------------------------- */
 let voices = [];
-let voiceWarned = false;
+
+/* Markers that reliably separate the good voices from the bad ones,
+   in English and in Korean since the names are localised. */
+const V_BEST = /premium|프리미엄/i;
+const V_GOOD = /enhanced|neural|natural|wavenet|향상된|고품질/i;
+
+function voiceScore(v) {
+  let s = 0;
+  const n = v.name || '';
+  if (V_BEST.test(n)) s += 100;
+  else if (V_GOOD.test(n)) s += 80;
+  if (/siri/i.test(n)) s += 55;
+  if (/^google/i.test(n)) s += 45;
+  // A non-local voice is synthesised server-side and is nearly always the
+  // better-sounding one. It also needs a connection, hence the modest weight.
+  if (v.localService === false) s += 25;
+  if (/compact|espeak|저품질/i.test(n)) s -= 70;
+  if (/^ko-KR$/i.test(v.lang)) s += 10;
+  return s;
+}
 
 function refreshVoices() {
   if (!('speechSynthesis' in window)) return;
-  voices = window.speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang));
+  voices = window.speechSynthesis.getVoices()
+    .filter(v => /^ko/i.test(v.lang))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
 }
 if ('speechSynthesis' in window) {
   refreshVoices();
-  window.speechSynthesis.onvoiceschanged = () => { refreshVoices(); if (view === 'settings') render(); };
+  window.speechSynthesis.onvoiceschanged = () => {
+    refreshVoices();
+    // A voice downloaded while the app is open should be picked up without
+    // a reload, and Settings should stop showing the "it sounds robotic" note.
+    if (view === 'settings') render();
+  };
+}
+
+/* Deliberately not remembered as a name unless the learner picks one:
+   leaving it on "best available" means the day they download the premium
+   voice, Hanbit starts using it on its own. */
+function chosenVoice() {
+  if (!voices.length) return null;
+  if (S.settings.ttsVoice) {
+    const pick = voices.find(v => v.name === S.settings.ttsVoice);
+    if (pick) return pick;
+  }
+  return voices[0];
+}
+
+function voiceTier(v) {
+  if (!v) return 'none';
+  const s = voiceScore(v);
+  if (s >= 80) return 'premium';
+  if (s >= 25) return 'good';
+  return 'basic';
+}
+
+const VOICE_TIER_LABEL = { premium: 'high quality', good: 'decent', basic: 'basic — this is the robotic one', none: 'none' };
+/* The dropdown already has the name in front of it, so it wants the bare
+   grade rather than the sentence the status pill carries. */
+const VOICE_TIER_SHORT = { premium: 'high quality', good: 'decent', basic: 'basic', none: '—' };
+
+/* Per-platform, because the fix is completely different on each and a
+   generic "install a better voice" helps nobody. */
+function voiceFixSteps() {
+  const ua = navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (iOS) return {
+    where: 'iPhone / iPad',
+    steps: ['Open the iOS <b>Settings</b> app', 'Accessibility → Spoken Content → <b>Voices</b>', 'Korean → <b>유나 (Yuna)</b>', 'Tap the download arrow next to <b>Premium</b> (or Enhanced)', 'Come back here and pick it in the list above']
+  };
+  if (/Macintosh|Mac OS X/.test(ua)) return {
+    where: 'Mac',
+    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', 'Korean → <b>Yuna (Premium)</b> → download', 'Come back here and pick it in the list above']
+  };
+  if (/Android/.test(ua)) return {
+    where: 'Android',
+    steps: ['Settings → System → Languages &amp; input', '<b>Text-to-speech output</b>', 'Preferred engine → <b>Google Speech Services</b>', 'Install voice data → <b>Korean</b>', 'Reload this page']
+  };
+  return {
+    where: 'Windows',
+    steps: ['Settings → Time &amp; language → <b>Speech</b>', 'Manage voices → <b>Add voices</b> → Korean', 'Or use Chrome, which has a good Korean voice built in', 'Reload this page']
+  };
 }
 
 function speak(text, btn) {
@@ -4911,18 +5031,35 @@ function speak(text, btn) {
       btn.classList.add('playing');
       const off = () => btn.classList.remove('playing');
       u.onend = off; u.onerror = off;
-      setTimeout(off, 4000);
+      setTimeout(off, 6000);
     }
     u.lang = 'ko-KR';
     u.rate = S.settings.ttsRate;
-    const chosen = voices.find(v => v.name === S.settings.ttsVoice) || voices[0];
+    const chosen = chosenVoice();
     if (chosen) u.voice = chosen;
     window.speechSynthesis.speak(u);
-    if (!chosen && !voiceWarned) {
-      voiceWarned = true;
-      showToast('No Korean voice found in this browser — see Settings for how to add one.');
-    }
   } catch (e) { /* speech is a bonus, never a blocker */ }
+}
+
+/* Play the same line through one specific voice, so the voices can be
+   compared by ear rather than by guessing from their names. */
+function sampleVoice(name, btn) {
+  if (!('speechSynthesis' in window)) return;
+  const v = voices.find(x => x.name === name);
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('안녕하세요. 한국어 공부는 재미있어요.');
+    u.lang = 'ko-KR';
+    u.rate = S.settings.ttsRate;
+    if (v) u.voice = v;
+    if (btn) {
+      btn.classList.add('playing');
+      const off = () => btn.classList.remove('playing');
+      u.onend = off; u.onerror = off;
+      setTimeout(off, 8000);
+    }
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
 }
 
 /* ---------------------------------------------------------------
@@ -6020,6 +6157,28 @@ function renderProgress() {
 const CONV_BY_ID = {};
 CONVERSATIONS.forEach(c => CONV_BY_ID[c.id] = c);
 
+const LOCK_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+
+/* Illustrated faces for the people you talk to. The learner deliberately
+   does NOT get one — assigning them a face would be a guess about who they
+   are, and the accent-coloured 나 reads as "you" more clearly anyway. */
+const AVATARS = { '지우': 'jiwoo', '민서': 'minseo', '민수': 'minsu' };
+
+function avatarFor(c, who) {
+  const name = c.cast[who];
+  const file = AVATARS[name];
+  if (who === c.you || !file) {
+    return `<div class="who ko${who === c.you ? ' me' : ''}">${esc((name || '?').charAt(0))}</div>`;
+  }
+  return `<img class="who" src="./icons/av-${file}.webp" width="34" height="34" alt="" loading="lazy">`;
+}
+
+/* Whoever the learner is talking to, for the card in the list. */
+function partnerAvatar(c) {
+  const other = Object.keys(c.cast).find(k => k !== c.you && AVATARS[c.cast[k]]);
+  return other ? `./icons/av-${AVATARS[c.cast[other]]}.webp` : null;
+}
+
 let convo = null;   // { id, mode: 'read' | 'role', pos, lit, hidden, done }
 
 function convRec(id) {
@@ -6065,8 +6224,11 @@ function renderTalk() {
     const sub = open
       ? (done ? `Roleplayed · best ${Math.round((rec.best || 0) * 100)}%` : (rec && rec.read ? 'Read — try taking a side' : c.en))
       : `Opens once ${c.unit} is 60% seen — you are at ${Math.round(r.pct * 100)}%`;
+    const face = partnerAvatar(c);
     return `<button class="conv-card ${done ? 'done' : ''}" ${open ? `data-conv="${c.id}"` : 'disabled'}>
-      <span class="cc-n">${open ? (done ? '✓' : i + 1) : '🔒'}</span>
+      <span class="cc-n">${open && face
+      ? `<img src="${face}" width="38" height="38" alt="" loading="lazy">${done ? '<i class="cc-tick">✓</i>' : ''}`
+      : (open ? (done ? '✓' : i + 1) : LOCK_SVG)}</span>
       <span style="flex:1;min-width:0">
         <span class="cc-t ko">${esc(c.title)}</span>
         <span class="cc-s">${esc(sub)}</span>
@@ -6181,7 +6343,7 @@ function renderRead(c) {
     const name = you ? 'You' : (c.castEn[l.w] || c.cast[l.w]);
     const open = expanded['ln' + c.id + i];
     return `<div class="line ${you ? 'you' : ''} ${hidden && !open ? 'hidden' : ''}">
-      <div class="who ko">${esc(c.cast[l.w].charAt(0))}</div>
+      ${avatarFor(c, l.w)}
       <div class="lbody">
         <div class="lname">${esc(name)}</div>
         <div class="lko">${chunkSpans(l, i, 'ko')}</div>
@@ -6245,7 +6407,7 @@ function renderRoleplay(c) {
   const mine = l.w === c.you;
   const history = lines.slice(Math.max(0, pos - 3), pos).map(p => `
     <div class="line ${p.w === c.you ? 'you' : ''}" style="opacity:.55;padding:8px 0">
-      <div class="who ko">${esc(c.cast[p.w].charAt(0))}</div>
+      ${avatarFor(c, p.w)}
       <div class="lbody"><div class="lko" style="font-size:16px">${esc(p.ko)}</div>
       <div class="len" style="font-size:12.5px">${esc(p.en)}</div></div>
     </div>`).join('');
@@ -6539,10 +6701,64 @@ function renderMethod() {
   </div></div>`;
 }
 
+/* The voice panel earns its own function because the useful thing it does
+   is diagnose: it names the voice actually in use, rates it honestly, and
+   when the best one available is poor it says so and gives the fix rather
+   than letting the learner conclude that Korean sounds like a robot. */
+function renderVoiceCard() {
+  const cur = chosenVoice();
+  const tier = voiceTier(cur);
+  const fix = voiceFixSteps();
+  const better = voices.some(v => voiceTier(v) === 'premium' || voiceTier(v) === 'good');
+
+  return `
+  <div class="card">
+    <h2>Korean voice</h2>
+    <p class="sub">Browsers ship several Korean voices and they are not equally good. Hanbit picks the best one it can
+    find, but the best one is often behind a download the operating system never mentions.</p>
+
+    ${!voices.length ? `<div class="notice">
+      <b>No Korean voice is installed at all</b>, so nothing will play.
+      <div style="margin-top:10px"><b>${esc(fix.where)}</b></div>
+      <ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>
+    </div>` : `
+    <div class="field"><div class="lab">In use
+      <small>${esc(cur.name)}${cur.localService === false ? ' · synthesised online' : ' · on-device'}</small></div>
+      <div class="ctl"><span class="pill ${tier === 'premium' ? 'mature' : tier === 'good' ? 'young' : 'learn'}">${VOICE_TIER_LABEL[tier]}</span></div></div>
+
+    <div class="field"><div class="lab">Which voice
+      <small>Listed best-first. Tap a name to hear the same sentence through it — picking by ear beats picking by name.</small></div>
+      <div class="ctl"><select data-set="ttsVoice">
+        <option value="" ${S.settings.ttsVoice === '' ? 'selected' : ''}>Best available (recommended)</option>
+        ${voices.map(v => `<option value="${esc(v.name)}" ${S.settings.ttsVoice === v.name ? 'selected' : ''}>${esc(v.name)} — ${VOICE_TIER_SHORT[voiceTier(v)]}</option>`).join('')}
+      </select></div></div>
+
+    <div style="margin:4px 0 2px" class="row wrap">
+      ${voices.slice(0, 6).map(v => `<button class="btn ghost" style="padding:8px 13px;font-size:13px" data-sample="${esc(v.name)}">${SPEAKER_SVG} ${esc(v.name.length > 22 ? v.name.slice(0, 22) + '…' : v.name)}</button>`).join('')}
+    </div>
+
+    <div class="field"><div class="lab">Speech rate
+      <small>Anything much under 1.0 stretches the audio and is a large part of why synthesised speech sounds mechanical. Near-normal speed sounds more human and is the speed you actually have to understand.</small></div>
+      <div class="ctl"><input type="range" min="0.6" max="1.2" step="0.05" value="${S.settings.ttsRate}" data-set="ttsRate">
+      <span class="faint" style="font-size:12px;margin-left:8px">${Number(S.settings.ttsRate).toFixed(2)}×</span></div></div>
+    `}
+
+    ${tier === 'basic' && !better ? `<div class="notice" style="margin-top:12px">
+      <b>This is the robotic one.</b> Your device only has the small, low-quality Korean voice installed — the good one is a
+      free download the operating system does not prompt you for. It takes a minute and the difference is not subtle.
+      <div style="margin-top:10px"><b>${esc(fix.where)}</b></div>
+      <ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>
+    </div>` : ''}
+    ${tier === 'basic' && better ? `<div class="notice" style="margin-top:12px">
+      <b>A better voice is installed but not selected.</b> Set the dropdown back to "Best available", or pick the one
+      marked high quality.
+    </div>` : ''}
+  </div>`;
+}
+
 /* ---------- Settings ---------- */
 function renderSettings() {
   const st = stats();
-  const koVoices = voices;
   return `
   <div class="card">
     <h2>Study settings</h2>
@@ -6572,18 +6788,7 @@ function renderSettings() {
       <div class="ctl"><button class="switch ${S.settings.skipHangul ? 'on' : ''}" data-toggle="skipHangul"><i></i></button></div></div>
   </div>
 
-  <div class="card">
-    <h2>Sound</h2>
-    <div class="field"><div class="lab">Korean voice
-      <small>${koVoices.length ? koVoices.length + ' Korean voice(s) available in this browser.' : 'No Korean voice found. Chrome and Edge usually have one built in; on Windows add Korean under Settings → Time &amp; language → Language, and on macOS under System Settings → Accessibility → Spoken Content → System Voice → Manage Voices.'}</small></div>
-      <div class="ctl">${koVoices.length ? `<select data-set="ttsVoice">${koVoices.map(v =>
-      `<option value="${esc(v.name)}" ${S.settings.ttsVoice === v.name ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : '<span class="faint">unavailable</span>'}</div></div>
-    <div class="field"><div class="lab">Speech rate
-      <small>Slightly slow is right while you are learning. Push it toward 1.0 once words are sticking — native speed is the actual target.</small></div>
-      <div class="ctl"><input type="range" min="0.5" max="1.2" step="0.05" value="${S.settings.ttsRate}" data-set="ttsRate">
-      <span class="faint" style="font-size:12px;margin-left:8px">${Number(S.settings.ttsRate).toFixed(2)}×</span></div></div>
-    <div class="field"><div class="lab">Test it</div><div class="ctl"><button class="btn" data-speak="안녕하세요, 한국어 공부는 재미있어요.">Play a sample</button></div></div>
-  </div>
+  ${renderVoiceCard()}
 
   <div class="card">
     <h2>Speaking</h2>
@@ -6769,10 +6974,11 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample]');
   if (!t) return;
 
   Sfx.resume();
+  if (t.dataset.sample) { sampleVoice(t.dataset.sample, t); return; }
   if (t.dataset.speak && !t.dataset.act) { speak(t.dataset.speak, t); return; }
   if (t.dataset.jamo) Sfx.play('key');
   else if (t.dataset.pickt != null || t.dataset.unpick != null) Sfx.play('pop');
@@ -7310,8 +7516,11 @@ function playThrough() {
     const u = new SpeechSynthesisUtterance(l.ko);
     u.lang = 'ko-KR';
     u.rate = S.settings.ttsRate;
-    const chosen = voices.find(v => v.name === S.settings.ttsVoice) || voices[0];
+    const chosen = chosenVoice();
     if (chosen) u.voice = chosen;
+    // Nudge the two speakers apart in pitch so a dialogue sounds like two
+    // people rather than one person reading a script to themselves.
+    u.pitch = l.w === c.you ? 0.92 : 1.08;
     // A gap between turns; without one it runs together into a monologue.
     u.onend = () => { playTimer = setTimeout(next, 550); };
     u.onerror = () => { playTimer = setTimeout(next, 550); };
@@ -7475,6 +7684,28 @@ function applyUpdate() {
   navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
 }
 
+/* Updates should arrive on their own. The only thing that must never be
+   interrupted is a session in progress — reloading mid-answer would throw
+   away the card you were halfway through — so a waiting update applies
+   immediately when you are idle, and otherwise holds until you finish. */
+function maybeAutoUpdate() {
+  if (!swWaiting) return;
+  const busy = view === 'session' || (view === 'convo' && convo && convo.mode === 'role') || sayRec.phase === 'rec';
+  if (busy) return;
+  showToast('Updating Hanbit…');
+  setTimeout(applyUpdate, 700);
+}
+
+/* Check for a new version whenever the app is brought back to the
+   foreground — an installed PWA can sit for days without a page load,
+   which is exactly when it would otherwise go stale. */
+function checkForUpdate() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.getRegistration()
+    .then(r => r && r.update())
+    .catch(() => {});
+}
+
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
@@ -7490,7 +7721,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
             // otherwise this is simply the first install finishing.
             if (navigator.serviceWorker.controller) {
               swWaiting = nw;
-              showToast('A new version of Hanbit is ready — reload when convenient.');
+              maybeAutoUpdate();
             }
             if (view === 'settings') render();
           }
@@ -7532,7 +7763,13 @@ window.addEventListener('beforeunload', () => { try { localStorage.setItem(STORE
 // Leaving the tab with the mic open is the kind of thing that gets an app
 // distrusted, so the stream goes the moment the page is hidden.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && Voice.recording) { Voice.cancel(); sayRec.phase = 'idle'; render(); }
+  if (document.hidden) {
+    if (Voice.recording) { Voice.cancel(); sayRec.phase = 'idle'; render(); }
+    return;
+  }
+  // Back in the foreground: pick up anything that shipped while it was away.
+  checkForUpdate();
+  maybeAutoUpdate();
 });
 
 </script>
