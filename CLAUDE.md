@@ -81,6 +81,29 @@ reach the public internet from the sandbox, so test against a local server.
   pronunciation checking, which is opt-in, off by default, and labelled as
   sending audio to the browser's speech service.
 
+## The FX canvas — four rules learned the hard way
+
+`#fxlayer` is a full-screen canvas that a bug made pile confetti along the
+bottom edge of the phone. Each of these was independently enough to cause it:
+
+- **Clear the whole backing store, in device pixels.** `clearRect` in CSS units
+  against a live `window.innerHeight` leaves the strip past it unwiped whenever
+  the viewport has moved since the bitmap was sized, and particles crossing it
+  paint on top of the previous frame forever.
+- **Size the layer from its own box, not from `innerHeight`.** A fixed element
+  on iOS occupies the *large* viewport — the height with the toolbar hidden —
+  which `innerHeight` under-reports while the toolbar is up. CSS pins the layer
+  with `100lvh`; JS measures the layer and matches the bitmap to it.
+- **A canvas is a replaced element.** With `width: auto` it takes its width from
+  the bitmap's aspect ratio instead of from `inset`, so the box chases its own
+  backing store. Both dimensions must be stated in CSS.
+- **Step by elapsed time, never per frame.** `+= 1/60` runs at double speed on a
+  120Hz phone. Cap the step (1/15s) so a skipped frame nudges the simulation on
+  instead of teleporting the whole field.
+
+Off-screen particles get culled, and hiding the tab clears the field — a
+backgrounded phone must not come back to confetti frozen in mid-air.
+
 ## Known platform ceiling
 
 iOS Safari exposes only the voices that shipped with the system to

@@ -405,6 +405,21 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 
 #fxlayer {
   position: fixed; inset: 0; z-index: 90;
+  /* A fixed element on iOS occupies the LARGE viewport — the height with the
+     toolbar hidden — which is taller than window.innerHeight reports while
+     the toolbar is up. Sizing the canvas from innerHeight leaves the bottom
+     of that box uncovered, and when the toolbar slides away the compositor
+     stretches the short frozen layer, smearing its last row of pixels into
+     vertical streaks. 100lvh is that box; browsers without it fall back to
+     the 100% above, which is what this always did.
+     Both sides have to be stated: a canvas is a replaced element, so with
+     width auto it would take its width from the bitmap's aspect ratio
+     instead of from inset, and the box would chase its own backing store. */
+  width: 100%;
+  height: 100%;
+  height: 100lvh;
+  /* keep it on its own compositor layer so a scroll never re-rasterises it */
+  transform: translateZ(0);
   pointer-events: none;
 }
 
@@ -844,12 +859,8 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 .charcard.r-legendary:not(.locked) .cf img { box-shadow: 0 0 0 2px #ffb457, 0 0 20px -2px #ffb457; }
 .charcard.r-mythical:not(.locked) .cf img { box-shadow: 0 0 0 2px #7ee8c0, 0 0 26px -1px #7ee8c0; }
 
-/* the mascot frame, when it is holding a portrait rather than the tiger SVG */
+/* the mascot frame — every character is drawn, never a photo */
 #mascot .m-art { width: 100%; height: 100%; }
-#mascot.m-photo .m-art img {
-  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-  border: 2px solid var(--accent); box-shadow: 0 4px 18px rgba(0,0,0,.4);
-}
 
 /* ============================================================
    CONVERSATIONS
@@ -2953,6 +2964,9 @@ const Sfx = {
    ------------------------------------------------------------ */
 const FX = {
   canvas: null, ctx: null, parts: [], raf: null, dpr: 1,
+  w: 0, h: 0,             // bitmap size, in CSS px
+  vw: 0, vh: 0,           // viewport last seen, to gate the layout read
+  last: 0,                // timestamp of the previous frame
   level: 'full',          // 'full' | 'subtle' | 'off'
 
   mount() {
@@ -2964,15 +2978,52 @@ const FX = {
     this.ctx = c.getContext('2d');
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => this.resize());
+    // On iOS the toolbar sliding in and out changes the height the canvas
+    // is supposed to cover, and that only ever shows up on visualViewport.
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resize());
+    }
+    // A hidden tab freezes rAF wherever it happened to be and leaves that
+    // frame painted, so you come back to confetti hanging in mid-air.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.clear();
+    });
   },
 
   resize() {
     if (!this.canvas) return;
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = Math.floor(window.innerWidth * this.dpr);
-    this.canvas.height = Math.floor(window.innerHeight * this.dpr);
-    this.canvas.style.width = window.innerWidth + 'px';
-    this.canvas.style.height = window.innerHeight + 'px';
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // innerWidth/innerHeight are free to read; measuring the layer is not.
+    // Gate the layout read on the viewport having actually moved, so the
+    // frame loop can call this every frame without thrashing layout.
+    if (vw === this.vw && vh === this.vh && dpr === this.dpr) return;
+    this.vw = vw; this.vh = vh;
+    // The layer's own box is the source of truth — CSS pins it to the box a
+    // fixed element really occupies, so the bitmap covers all of it. Sizing
+    // from innerHeight instead leaves a strip at the bottom with no canvas
+    // under it whenever the browser's toolbar is up.
+    const box = this.canvas.getBoundingClientRect();
+    const w = Math.round(box.width) || Math.round(vw);
+    const h = Math.round(box.height) || Math.round(vh);
+    // Writing canvas.width wipes the bitmap, so only touch it on a real
+    // change — otherwise a viewport nudge mid-celebration blanks a frame.
+    if (w === this.w && h === this.h && dpr === this.dpr) return;
+    this.w = w; this.h = h; this.dpr = dpr;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+  },
+
+  // Clear the whole bitmap in device pixels. Clearing in CSS units leaves a
+  // strip at the bottom unwiped any time the viewport shrank after the last
+  // resize, and particles smear down it into a solid pile instead of falling
+  // off the screen.
+  wipe() {
+    if (!this.ctx || !this.canvas) return;
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   },
 
   get on() { return this.level !== 'off'; },
@@ -2986,15 +3037,31 @@ const FX = {
 
   start() {
     if (this.raf) return;
-    const step = () => {
+    this.last = 0;
+    const step = (now) => {
       this.raf = null;
       const ctx = this.ctx;
       if (!ctx) return;
-      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      // Step by real elapsed time so the field runs at one speed on a 60Hz
+      // laptop and a 120Hz phone. Capped, so a frame the browser skipped
+      // (scrolling, a heavy re-render) nudges the sim on rather than
+      // teleporting every particle past the bottom of the screen at once.
+      const dt = this.last ? Math.min(1 / 15, (now - this.last) / 1000) : 1 / 60;
+      this.last = now;
+      this.resize();
+      this.wipe();
+      const W = this.w, H = this.h;
+      // drag is per-frame decay in the source numbers; rescale it to dt once
+      // per distinct value instead of calling pow for every particle
+      const drags = new Map();
+      const dragFor = (d) => {
+        let v = drags.get(d);
+        if (v === undefined) { v = Math.pow(d, dt * 60); drags.set(d, v); }
+        return v;
+      };
       const alive = [];
       for (const p of this.parts) {
-        p.life += 1 / 60;
+        p.life += dt;
         if (p.life >= p.max) continue;
         const t = p.life / p.max;
 
@@ -3023,10 +3090,14 @@ const FX = {
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, r), 0, Math.PI * 2); ctx.fill();
         } else {
-          p.vy += p.g / 60;
-          p.vx *= p.drag; p.vy *= p.drag;
-          p.x += p.vx / 60; p.y += p.vy / 60;
-          p.rot += p.vr / 60;
+          const k = dragFor(p.drag);
+          p.vy += p.g * dt;
+          p.vx *= k; p.vy *= k;
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          p.rot += p.vr * dt;
+          // Once it has left the screen it is gone. Keeping it around costs
+          // frames and lets it keep painting somewhere we cannot see.
+          if (p.y - p.size > H + 40 || p.x + p.size < -80 || p.x - p.size > W + 80) continue;
           ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1;
           ctx.save();
           ctx.translate(p.x, p.y);
@@ -3050,16 +3121,15 @@ const FX = {
       ctx.globalAlpha = 1;
       this.parts = alive;
       if (this.parts.length) this.raf = requestAnimationFrame(step);
+      else this.wipe();
     };
     this.raf = requestAnimationFrame(step);
   },
 
   clear() {
     this.parts = [];
-    if (this.ctx) {
-      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    }
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+    this.wipe();
   },
 
   /* ---- composite effects ---- */
@@ -3294,128 +3364,306 @@ function clearBanners() {
    Expressions are pure CSS class swaps.
    ============================================================ */
 
-const MASCOT_SVG = `
-<svg viewBox="0 0 120 124" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <defs>
-    <radialGradient id="furG" cx="42%" cy="34%" r="72%">
-      <stop offset="0" stop-color="#ffc384"/>
-      <stop offset="1" stop-color="#ef9a4e"/>
-    </radialGradient>
-    <linearGradient id="muzG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff6ea"/>
-      <stop offset="1" stop-color="#ffe6c9"/>
-    </linearGradient>
-  </defs>
+/* ============================================================
+   THE MASCOT RIG
+   ------------------------------------------------------------
+   Every collected character lives in the corner as real artwork
+   rather than a flat portrait: they blink, their ears flick when
+   you nail something, and their expression changes with the mood.
 
-  <g class="tg-body">
-    <!-- ears -->
-    <g class="tg-ear tg-ear-l">
-      <circle cx="26" cy="30" r="15" fill="url(#furG)"/>
-      <circle cx="26" cy="31" r="7.5" fill="#e8757f"/>
-    </g>
-    <g class="tg-ear tg-ear-r">
-      <circle cx="94" cy="30" r="15" fill="url(#furG)"/>
-      <circle cx="94" cy="31" r="7.5" fill="#e8757f"/>
-    </g>
+   That is affordable because the face is shared. The eye and mouth
+   sets were already drawn at fixed coordinates, so they are lifted
+   out verbatim and reused by everyone; a character only supplies
+   its head, its ears and four colours. Roughly twenty lines each,
+   and blinking comes free.
 
-    <!-- head -->
-    <path d="M60 16c26 0 43 18 43 41s-19 44-43 44S17 80 17 57 34 16 60 16z" fill="url(#furG)"/>
+   Colours travel as CSS custom properties on the <svg>, so the same
+   eye geometry reads correctly on white fur, green skin or scales.
+   ============================================================ */
 
-    <!-- forehead stripes: the 王 mark of a Korean folk tiger -->
-    <g stroke="#4a2c17" stroke-width="4.6" stroke-linecap="round" opacity=".9">
-      <path d="M60 24v13"/>
-      <path d="M45 30l4 10"/>
-      <path d="M75 30l-4 10"/>
-    </g>
-    <g stroke="#4a2c17" stroke-width="4" stroke-linecap="round" opacity=".75">
-      <path d="M20 52c5-2 9-2 13 0"/>
-      <path d="M100 52c-5-2-9-2-13 0"/>
-      <path d="M19 64c5-2 9-2 13 0"/>
-      <path d="M101 64c-5-2-9-2-13 0"/>
-    </g>
+/* The shared face. Positioned for a head centred near (60, 58) with
+   eyes at x=43 and x=77 — every head below is built to that frame. */
+const FACE = `
+  <ellipse class="tg-blush" cx="31" cy="72" rx="8" ry="5.5" fill="var(--m-blush)" opacity=".5"/>
+  <ellipse class="tg-blush" cx="89" cy="72" rx="8" ry="5.5" fill="var(--m-blush)" opacity=".5"/>
 
-    <!-- muzzle -->
-    <ellipse cx="60" cy="76" rx="27" ry="21" fill="url(#muzG)"/>
-    <ellipse class="tg-blush" cx="31" cy="72" rx="8" ry="5.5" fill="#f79fae" opacity=".55"/>
-    <ellipse class="tg-blush" cx="89" cy="72" rx="8" ry="5.5" fill="#f79fae" opacity=".55"/>
-
-    <!-- eyes -->
-    <g class="tg-eyes tg-e-open">
-      <ellipse cx="43" cy="57" rx="6.6" ry="7.6" fill="#33210f"/>
-      <ellipse cx="77" cy="57" rx="6.6" ry="7.6" fill="#33210f"/>
-      <circle cx="45.4" cy="54" r="2.4" fill="#fff"/>
-      <circle cx="79.4" cy="54" r="2.4" fill="#fff"/>
-    </g>
-    <g class="tg-eyes tg-e-happy" stroke="#33210f" stroke-width="4.4" stroke-linecap="round" fill="none">
-      <path d="M36 59c3.5-6 10.5-6 14 0"/>
-      <path d="M70 59c3.5-6 10.5-6 14 0"/>
-    </g>
-    <g class="tg-eyes tg-e-wow">
-      <ellipse cx="43" cy="56" rx="8.6" ry="9.8" fill="#33210f"/>
-      <ellipse cx="77" cy="56" rx="8.6" ry="9.8" fill="#33210f"/>
-      <circle cx="46" cy="52" r="3.4" fill="#fff"/>
-      <circle cx="80" cy="52" r="3.4" fill="#fff"/>
-      <circle cx="40" cy="60" r="1.7" fill="#fff" opacity=".85"/>
-      <circle cx="74" cy="60" r="1.7" fill="#fff" opacity=".85"/>
-    </g>
-    <g class="tg-eyes tg-e-oops">
-      <ellipse cx="43" cy="58" rx="6.2" ry="6.6" fill="#33210f"/>
-      <ellipse cx="77" cy="58" rx="6.2" ry="6.6" fill="#33210f"/>
-      <circle cx="45" cy="56" r="2.1" fill="#fff"/>
-      <circle cx="79" cy="56" r="2.1" fill="#fff"/>
-      <!-- inner ends raised: concerned, not disapproving. A wrong answer is
-           information, and the tiger should not look like it minds. -->
-      <g stroke="#4a2c17" stroke-width="3.6" stroke-linecap="round">
-        <path d="M34 48q8-5 16-2"/>
-        <path d="M86 48q-8-5-16-2"/>
-      </g>
-    </g>
-    <g class="tg-eyes tg-e-think">
-      <ellipse cx="45" cy="55" rx="6.4" ry="7.2" fill="#33210f"/>
-      <ellipse cx="79" cy="55" rx="6.4" ry="7.2" fill="#33210f"/>
-      <circle cx="47" cy="51" r="2.3" fill="#fff"/>
-      <circle cx="81" cy="51" r="2.3" fill="#fff"/>
-    </g>
-    <g class="tg-eyes tg-e-blink" stroke="#33210f" stroke-width="4.2" stroke-linecap="round">
-      <path d="M36 58h13"/>
-      <path d="M71 58h13"/>
-    </g>
-
-    <!-- nose -->
-    <path d="M60 66c4.4 0 7 2.4 7 4.8 0 2.6-3.2 4.4-7 4.4s-7-1.8-7-4.4c0-2.4 2.6-4.8 7-4.8z" fill="#e8757f"/>
-
-    <!-- mouths -->
-    <g class="tg-mouth tg-m-smile" stroke="#5a3a20" stroke-width="3.4" stroke-linecap="round" fill="none">
-      <path d="M60 76v5"/>
-      <path d="M48 82c5 5 9 5 12 0"/>
-      <path d="M72 82c-5 5-9 5-12 0"/>
-    </g>
-    <g class="tg-mouth tg-m-grin">
-      <path d="M60 76v4" stroke="#5a3a20" stroke-width="3.4" stroke-linecap="round" fill="none"/>
-      <path d="M45 81c3 11 27 11 30 0z" fill="#5a3a20"/>
-      <path d="M53 88c3 6 11 6 14 0z" fill="#f2828f"/>
-    </g>
-    <g class="tg-mouth tg-m-wow">
-      <path d="M60 76v3" stroke="#5a3a20" stroke-width="3.4" stroke-linecap="round" fill="none"/>
-      <ellipse cx="60" cy="87" rx="11" ry="9.5" fill="#5a3a20"/>
-      <ellipse cx="60" cy="92" rx="6.5" ry="4.5" fill="#f2828f"/>
-    </g>
-    <g class="tg-mouth tg-m-oops" stroke="#5a3a20" stroke-width="3.4" stroke-linecap="round" fill="none">
-      <path d="M60 76v5"/>
-      <path d="M50 86c3-3 6 1 9-1s6 2 9-1"/>
-    </g>
-    <g class="tg-mouth tg-m-o" stroke="#5a3a20" stroke-width="3.4" stroke-linecap="round" fill="none">
-      <path d="M60 76v4"/>
-      <ellipse cx="60" cy="86" rx="4.5" ry="4" fill="#5a3a20" stroke="none"/>
-    </g>
-
-    <!-- whiskers -->
-    <g stroke="#8a6845" stroke-width="2" stroke-linecap="round" opacity=".6">
-      <path d="M30 74h12"/><path d="M31 81l11-3"/>
-      <path d="M90 74H78"/><path d="M89 81l-11-3"/>
+  <g class="tg-eyes tg-e-open">
+    <ellipse cx="43" cy="57" rx="6.6" ry="7.6" fill="var(--m-eye)"/>
+    <ellipse cx="77" cy="57" rx="6.6" ry="7.6" fill="var(--m-eye)"/>
+    <circle cx="45.4" cy="54" r="2.4" fill="#fff"/>
+    <circle cx="79.4" cy="54" r="2.4" fill="#fff"/>
+  </g>
+  <g class="tg-eyes tg-e-happy" stroke="var(--m-eye)" stroke-width="4.4" stroke-linecap="round" fill="none">
+    <path d="M36 59c3.5-6 10.5-6 14 0"/>
+    <path d="M70 59c3.5-6 10.5-6 14 0"/>
+  </g>
+  <g class="tg-eyes tg-e-wow">
+    <ellipse cx="43" cy="56" rx="8.6" ry="9.8" fill="var(--m-eye)"/>
+    <ellipse cx="77" cy="56" rx="8.6" ry="9.8" fill="var(--m-eye)"/>
+    <circle cx="46" cy="52" r="3.4" fill="#fff"/>
+    <circle cx="80" cy="52" r="3.4" fill="#fff"/>
+    <circle cx="40" cy="60" r="1.7" fill="#fff" opacity=".85"/>
+    <circle cx="74" cy="60" r="1.7" fill="#fff" opacity=".85"/>
+  </g>
+  <g class="tg-eyes tg-e-oops">
+    <ellipse cx="43" cy="58" rx="6.2" ry="6.6" fill="var(--m-eye)"/>
+    <ellipse cx="77" cy="58" rx="6.2" ry="6.6" fill="var(--m-eye)"/>
+    <circle cx="45" cy="56" r="2.1" fill="#fff"/>
+    <circle cx="79" cy="56" r="2.1" fill="#fff"/>
+    <!-- inner ends raised: concerned, not disapproving. A wrong answer is
+         information, and nobody in the corner should look like they mind. -->
+    <g stroke="var(--m-ink)" stroke-width="3.6" stroke-linecap="round">
+      <path d="M34 48q8-5 16-2"/>
+      <path d="M86 48q-8-5-16-2"/>
     </g>
   </g>
+  <g class="tg-eyes tg-e-think">
+    <ellipse cx="45" cy="55" rx="6.4" ry="7.2" fill="var(--m-eye)"/>
+    <ellipse cx="79" cy="55" rx="6.4" ry="7.2" fill="var(--m-eye)"/>
+    <circle cx="47" cy="51" r="2.3" fill="#fff"/>
+    <circle cx="81" cy="51" r="2.3" fill="#fff"/>
+  </g>
+  <g class="tg-eyes tg-e-blink" stroke="var(--m-eye)" stroke-width="4.2" stroke-linecap="round">
+    <path d="M36 58h13"/>
+    <path d="M71 58h13"/>
+  </g>
+
+  <g class="tg-mouth tg-m-smile" stroke="var(--m-ink)" stroke-width="3.4" stroke-linecap="round" fill="none">
+    <path d="M60 76v5"/>
+    <path d="M48 82c5 5 9 5 12 0"/>
+    <path d="M72 82c-5 5-9 5-12 0"/>
+  </g>
+  <g class="tg-mouth tg-m-grin">
+    <path d="M60 76v4" stroke="var(--m-ink)" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <path d="M45 81c3 11 27 11 30 0z" fill="var(--m-ink)"/>
+    <path d="M53 88c3 6 11 6 14 0z" fill="var(--m-tongue)"/>
+  </g>
+  <g class="tg-mouth tg-m-wow">
+    <path d="M60 76v3" stroke="var(--m-ink)" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <ellipse cx="60" cy="87" rx="11" ry="9.5" fill="var(--m-ink)"/>
+    <ellipse cx="60" cy="92" rx="6.5" ry="4.5" fill="var(--m-tongue)"/>
+  </g>
+  <g class="tg-mouth tg-m-oops" stroke="var(--m-ink)" stroke-width="3.4" stroke-linecap="round" fill="none">
+    <path d="M60 76v5"/>
+    <path d="M50 86c3-3 6 1 9-1s6 2 9-1"/>
+  </g>
+  <g class="tg-mouth tg-m-o" stroke="var(--m-ink)" stroke-width="3.4" stroke-linecap="round" fill="none">
+    <path d="M60 76v4"/>
+    <ellipse cx="60" cy="86" rx="4.5" ry="4" fill="var(--m-ink)" stroke="none"/>
+  </g>`;
+
+/* Per-character shapes. `back` draws behind the head (tails, plumes, auras),
+   `ears` must keep the tg-ear-l / tg-ear-r classes to inherit the flick, and
+   `face` is whatever sits under the eyes — a muzzle, a beak, a beard. */
+const RIGS = {
+  tiger: {
+    c: ['#ffc384', '#ef9a4e', '#4a2c17', '#33210f', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l"><circle cx="26" cy="30" r="15" fill="var(--m-fur)"/><circle cx="26" cy="31" r="7.5" fill="#e8757f"/></g>
+           <g class="tg-ear tg-ear-r"><circle cx="94" cy="30" r="15" fill="var(--m-fur)"/><circle cx="94" cy="31" r="7.5" fill="#e8757f"/></g>`,
+    head: `<path d="M60 16c26 0 43 18 43 41s-19 44-43 44S17 80 17 57 34 16 60 16z" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="var(--m-ink)" stroke-width="4.6" stroke-linecap="round" opacity=".9"><path d="M60 24v13"/><path d="M45 30l4 10"/><path d="M75 30l-4 10"/></g>
+            <g stroke="var(--m-ink)" stroke-width="4" stroke-linecap="round" opacity=".75"><path d="M20 52c5-2 9-2 13 0"/><path d="M100 52c-5-2-9-2-13 0"/><path d="M19 64c5-2 9-2 13 0"/><path d="M101 64c-5-2-9-2-13 0"/></g>`,
+    face: `<ellipse cx="60" cy="76" rx="27" ry="21" fill="var(--m-muz)"/>
+           <path d="M60 66c4.4 0 7 2.4 7 4.8 0 2.6-3.2 4.4-7 4.4s-7-1.8-7-4.4c0-2.4 2.6-4.8 7-4.8z" fill="#e8757f"/>`,
+    extra: `<g stroke="#8a6845" stroke-width="2" stroke-linecap="round" opacity=".6"><path d="M30 74h12"/><path d="M31 81l11-3"/><path d="M90 74H78"/><path d="M89 81l-11-3"/></g>`
+  },
+
+  magpie: {
+    c: ['#2b3038', '#171a20', '#0d0f13', '#12151a', '#6ea8fe', '#f2828f'],
+    back: `<path d="M88 78c16 8 24 22 22 34-11-4-21-14-27-25z" fill="#3f6fbf"/>
+           <path d="M92 76c12 6 18 16 17 25-8-3-15-10-19-19z" fill="#5b90dd"/>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:46px 24px"><path d="M46 24c-3-10 1-16 7-18-1 8-3 14-7 18z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:74px 24px"><path d="M74 24c3-10-1-16-7-18 1 8 3 14 7 18z" fill="var(--m-fur)"/></g>`,
+    head: `<path d="M60 16c25 0 42 18 42 41s-18 44-42 44S18 80 18 57 35 16 60 16z" fill="var(--m-fur)"/>`,
+    marks: `<ellipse cx="30" cy="66" rx="11" ry="15" fill="#f2f5f9" opacity=".95"/>
+            <ellipse cx="90" cy="66" rx="11" ry="15" fill="#f2f5f9" opacity=".95"/>
+            <ellipse cx="60" cy="92" rx="17" ry="12" fill="#f2f5f9" opacity=".95"/>`,
+    face: `<path d="M60 64l8 8-8 10-8-10z" fill="#e8a33c"/>`
+  },
+
+  jindo: {
+    c: ['#f2d9a8', '#d8b071', '#7a5527', '#3d2a12', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l"><path d="M26 44L20 12l26 15z" fill="var(--m-fur)"/><path d="M28 40l-3-18 14 9z" fill="#e8a08c"/></g>
+           <g class="tg-ear tg-ear-r"><path d="M94 44l6-32-26 15z" fill="var(--m-fur)"/><path d="M92 40l3-18-14 9z" fill="#e8a08c"/></g>`,
+    head: `<path d="M60 18c25 0 41 17 41 40s-18 43-41 43-41-20-41-43 16-40 41-40z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M60 26v10" stroke="var(--m-ink)" stroke-width="3.6" stroke-linecap="round" opacity=".5"/>`,
+    face: `<ellipse cx="60" cy="78" rx="24" ry="19" fill="var(--m-muz)"/>
+           <ellipse cx="60" cy="70" rx="7" ry="5.4" fill="#3d2a12"/>`
+  },
+
+  rabbit: {
+    c: ['#f4f6fa', '#dfe4ec', '#9aa3b2', '#3a4150', '#f7b9c6', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:40px 40px"><ellipse cx="38" cy="14" rx="9" ry="26" fill="var(--m-fur)"/><ellipse cx="38" cy="15" rx="4.4" ry="19" fill="#f7b9c6"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:80px 40px"><ellipse cx="82" cy="14" rx="9" ry="26" fill="var(--m-fur)"/><ellipse cx="82" cy="15" rx="4.4" ry="19" fill="#f7b9c6"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="41" ry="40" fill="var(--m-fur)"/>`,
+    face: `<ellipse cx="60" cy="77" rx="23" ry="18" fill="var(--m-muz)"/>
+           <path d="M60 68c3.6 0 6 2 6 4s-2.6 3.6-6 3.6-6-1.6-6-3.6 2.4-4 6-4z" fill="#e8757f"/>`,
+    extra: `<g stroke="#b9c2d0" stroke-width="1.8" stroke-linecap="round" opacity=".7"><path d="M32 74h11"/><path d="M88 74H77"/></g>`
+  },
+
+  crane: {
+    c: ['#f6f8fb', '#e2e7ee', '#8e97a6', '#2a2f38', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:38px 30px"><path d="M38 30c-7-6-9-14-6-20 6 5 8 13 6 20z" fill="#f6f8fb"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:82px 30px"><path d="M82 30c7-6 9-14 6-20-6 5-8 13-6 20z" fill="#f6f8fb"/></g>`,
+    head: `<ellipse cx="60" cy="58" rx="39" ry="41" fill="var(--m-fur)"/>`,
+    marks: `<ellipse cx="60" cy="26" rx="13" ry="8" fill="#e0483f"/>
+            <path d="M28 82c8 12 19 18 32 18s24-6 32-18c-6 16-18 22-32 22s-26-6-32-22z" fill="#2a2f38" opacity=".55"/>`,
+    face: `<path d="M60 68l7 8-7 15-7-15z" fill="#3a4048"/>`
+  },
+
+  bear: {
+    c: ['#a97c56', '#7d5738', '#4a3520', '#2e2013', '#d99a8a', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l"><circle cx="24" cy="26" r="14" fill="var(--m-fur)"/><circle cx="24" cy="27" r="7" fill="#8a5f3d"/></g>
+           <g class="tg-ear tg-ear-r"><circle cx="96" cy="26" r="14" fill="var(--m-fur)"/><circle cx="96" cy="27" r="7" fill="#8a5f3d"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="42" ry="40" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="#6f8f52" stroke-width="2.6" stroke-linecap="round" opacity=".9"><path d="M88 22c6-6 12-8 16-7"/><path d="M92 20l3-6"/><path d="M97 21l4-5"/></g>`,
+    face: `<ellipse cx="60" cy="78" rx="25" ry="19" fill="var(--m-muz)"/>
+           <ellipse cx="60" cy="70" rx="7.5" ry="5.6" fill="#2e2013"/>`
+  },
+
+  carp: {
+    c: ['#ffa64d', '#e8761f', '#8a3d0a', '#3a2008', '#ffd0a0', '#f2828f'],
+    back: `<path d="M16 58c-10-8-12-20-8-30 10 6 16 16 18 26z" fill="#ffc98a" opacity=".9"/>
+           <path d="M104 58c10-8 12-20 8-30-10 6-16 16-18 26z" fill="#ffc98a" opacity=".9"/>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:24px 62px"><path d="M24 62c-11 2-17 10-17 19 10-2 16-9 19-16z" fill="#ffc98a"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:96px 62px"><path d="M96 62c11 2 17 10 17 19-10-2-16-9-19-16z" fill="#ffc98a"/></g>`,
+    head: `<ellipse cx="60" cy="58" rx="40" ry="40" fill="var(--m-fur)"/>`,
+    marks: `<path d="M60 20c9 0 15 6 15 13s-7 11-15 11-15-4-15-11 6-13 15-13z" fill="#fff3e2" opacity=".95"/>`,
+    face: `<ellipse cx="60" cy="78" rx="22" ry="16" fill="var(--m-muz)"/>`,
+    extra: `<g stroke="#c9600f" stroke-width="2.6" stroke-linecap="round" opacity=".85"><path d="M40 84c-8 6-10 14-8 22"/><path d="M80 84c8 6 10 14 8 22"/></g>`
+  },
+
+  gumiho: {
+    c: ['#f5b942', '#d98f18', '#7a4a06', '#3d2600', '#ffd9a0', '#f2828f'],
+    back: `<g fill="#fbe3b0"><path d="M14 66C2 58-2 44 4 32c10 8 14 22 10 34z"/><path d="M106 66c12-8 16-22 10-34-10 8-14 22-10 34z"/><path d="M28 34c-8-12-6-26 4-34 6 12 4 26-4 34z"/><path d="M92 34c8-12 6-26-4-34-6 12-4 26 4 34z"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l"><path d="M24 46L16 10l30 18z" fill="var(--m-fur)"/><path d="M27 41l-4-22 17 11z" fill="#fbe3b0"/></g>
+           <g class="tg-ear tg-ear-r"><path d="M96 46l8-36-30 18z" fill="var(--m-fur)"/><path d="M93 41l4-22-17 11z" fill="#fbe3b0"/></g>`,
+    head: `<path d="M60 20c24 0 40 16 40 38 0 24-18 44-40 44S20 82 20 58c0-22 16-38 40-38z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M34 48q10-8 20-3" stroke="#fff3d6" stroke-width="3" stroke-linecap="round" fill="none" opacity=".8"/>
+            <path d="M86 48q-10-8-20-3" stroke="#fff3d6" stroke-width="3" stroke-linecap="round" fill="none" opacity=".8"/>`,
+    face: `<path d="M60 62c15 0 24 8 24 18 0 11-11 20-24 20s-24-9-24-20c0-10 9-18 24-18z" fill="var(--m-muz)"/>
+           <path d="M60 68c4 0 6.5 2.2 6.5 4.4 0 2.4-3 4-6.5 4s-6.5-1.6-6.5-4c0-2.2 2.5-4.4 6.5-4.4z" fill="#3d2600"/>`
+  },
+
+  dokkaebi: {
+    c: ['#6fbf9a', '#3f8f6e', '#1d4a36', '#12301f', '#f2a09a', '#f2828f'],
+    back: `<g fill="#1f2a26"><path d="M30 26c-6-12-4-22 2-28 4 10 4 20-2 28z"/><path d="M90 26c6-12 4-22-2-28-4 10-4 20 2 28z"/><path d="M60 10c-4-10-2-16 0-20 2 4 4 10 0 20z"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:34px 30px"><path d="M34 30c-4-14 0-22 6-24 2 10 0 18-6 24z" fill="#e8c37a"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:86px 30px"><path d="M86 30c4-14 0-22-6-24-2 10 0 18 6 24z" fill="#e8c37a"/></g>`,
+    head: `<path d="M60 20c24 0 40 15 40 36s-16 44-40 44-40-23-40-44 16-36 40-36z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M24 34c8-6 16-8 22-6" stroke="#1f2a26" stroke-width="5" stroke-linecap="round" fill="none"/>
+            <path d="M96 34c-8-6-16-8-22-6" stroke="#1f2a26" stroke-width="5" stroke-linecap="round" fill="none"/>`,
+    face: `<ellipse cx="60" cy="78" rx="23" ry="17" fill="var(--m-muz)"/>`
+  },
+
+  haetae: {
+    c: ['#93a7c2', '#63799a', '#2b3a4d', '#1a2434', '#d0a0a0', '#f2828f'],
+    back: `<g fill="#7a8ca8"><circle cx="20" cy="44" r="13"/><circle cx="100" cy="44" r="13"/><circle cx="24" cy="70" r="12"/><circle cx="96" cy="70" r="12"/><circle cx="30" cy="90" r="10"/><circle cx="90" cy="90" r="10"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:60px 26px"><path d="M56 24L60 0l4 24z" fill="#e8c37a"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:36px 34px"><circle cx="36" cy="34" r="0.1" fill="none"/></g>`,
+    head: `<path d="M60 20c23 0 39 16 39 38s-17 44-39 44-39-22-39-44 16-38 39-38z" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="#2b3a4d" stroke-width="3.4" stroke-linecap="round" opacity=".7"><path d="M30 44q8-6 15-4"/><path d="M90 44q-8-6-15-4"/></g>`,
+    face: `<ellipse cx="60" cy="78" rx="24" ry="18" fill="var(--m-muz)"/>
+           <ellipse cx="60" cy="70" rx="7" ry="5" fill="#1a2434"/>`,
+    extra: `<circle cx="60" cy="106" r="7" fill="#e8c37a"/><circle cx="60" cy="106" r="3" fill="#8a6a24"/>`
+  },
+
+  dragon: {
+    c: ['#3fb8b8', '#1d7f8c', '#0d4650', '#062b33', '#8fe0d8', '#f2828f'],
+    back: `<g fill="#bfe9ef" opacity=".55"><circle cx="20" cy="30" r="14"/><circle cx="34" cy="20" r="11"/><circle cx="100" cy="30" r="14"/><circle cx="86" cy="20" r="11"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l"><path d="M30 32L18 4l24 18z" fill="#e8c05a"/></g>
+           <g class="tg-ear tg-ear-r"><path d="M90 32l12-28-24 18z" fill="#e8c05a"/></g>`,
+    head: `<path d="M60 20c23 0 39 15 39 37s-17 45-39 45-39-23-39-45 16-37 39-37z" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="#0d4650" stroke-width="3.2" stroke-linecap="round" opacity=".55"><path d="M32 44q9-7 17-4"/><path d="M88 44q-9-7-17-4"/></g>
+            <ellipse cx="60" cy="30" rx="11" ry="6" fill="#bfe9ef" opacity=".6"/>`,
+    face: `<ellipse cx="60" cy="78" rx="23" ry="17" fill="var(--m-muz)"/>
+           <ellipse cx="60" cy="70" rx="7" ry="4.6" fill="#062b33"/>`,
+    extra: `<g stroke="#8fe0d8" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M34 76c-12 2-18 10-18 20"/><path d="M86 76c12 2 18 10 18 20"/></g>`
+  },
+
+  jujak: {
+    c: ['#ff6a3d', '#d93a1a', '#7a1c06', '#3d0f00', '#ffc08a', '#f2828f'],
+    back: `<g fill="#ffb038"><path d="M60 2c6 12 4 22-2 28-4-10-4-20 2-28z"/><path d="M34 12c8 10 10 20 6 27-8-8-10-18-6-27z"/><path d="M86 12c-8 10-10 20-6 27 8-8 10-18 6-27z"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:44px 26px"><path d="M44 26c-4-16 0-24 6-26 2 12 0 20-6 26z" fill="#ffd166"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:76px 26px"><path d="M76 26c4-16 0-24-6-26-2 12 0 20 6 26z" fill="#ffd166"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="40" ry="40" fill="var(--m-fur)"/>`,
+    marks: `<g fill="#ffb038" opacity=".8"><path d="M26 50c8-4 14-4 18 0-6 4-12 4-18 0z"/><path d="M94 50c-8-4-14-4-18 0 6 4 12 4 18 0z"/></g>`,
+    face: `<path d="M60 66l11 10-11 16-11-16z" fill="#f2b13a"/>`
+  },
+
+  baekho: {
+    c: ['#f2f5fa', '#dbe3ee', '#1e2530', '#12161d', '#cfe4ff', '#f2828f'],
+    back: `<circle cx="60" cy="58" r="52" fill="#cfe4ff" opacity=".28"/>`,
+    ears: `<g class="tg-ear tg-ear-l"><circle cx="26" cy="30" r="15" fill="var(--m-fur)"/><circle cx="26" cy="31" r="7.5" fill="#b8cde8"/></g>
+           <g class="tg-ear tg-ear-r"><circle cx="94" cy="30" r="15" fill="var(--m-fur)"/><circle cx="94" cy="31" r="7.5" fill="#b8cde8"/></g>`,
+    head: `<path d="M60 16c26 0 43 18 43 41s-19 44-43 44S17 80 17 57 34 16 60 16z" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="var(--m-ink)" stroke-width="4.6" stroke-linecap="round" opacity=".92"><path d="M60 24v13"/><path d="M45 30l4 10"/><path d="M75 30l-4 10"/></g>
+            <g stroke="var(--m-ink)" stroke-width="4" stroke-linecap="round" opacity=".8"><path d="M20 52c5-2 9-2 13 0"/><path d="M100 52c-5-2-9-2-13 0"/><path d="M19 64c5-2 9-2 13 0"/><path d="M101 64c-5-2-9-2-13 0"/></g>`,
+    face: `<ellipse cx="60" cy="76" rx="27" ry="21" fill="var(--m-muz)"/>
+           <path d="M60 66c4.4 0 7 2.4 7 4.8 0 2.6-3.2 4.4-7 4.4s-7-1.8-7-4.4c0-2.4 2.6-4.8 7-4.8z" fill="#8fa8c8"/>`,
+    extra: `<g stroke="#a8bdd6" stroke-width="2" stroke-linecap="round" opacity=".8"><path d="M30 74h12"/><path d="M90 74H78"/></g>`
+  },
+
+  sage: {
+    c: ['#f0cba8', '#dcb08a', '#6b5417', '#3a2c18', '#e8a89a', '#f2828f'],
+    back: `<circle cx="60" cy="54" r="50" fill="none" stroke="#ffe08a" stroke-width="3" opacity=".55"/>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:60px 22px"><ellipse cx="60" cy="14" rx="11" ry="9" fill="#eef1f5"/><rect x="56" y="18" width="8" height="8" rx="3" fill="#d8dee6"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:20px 62px"><circle cx="20" cy="62" r="0.1" fill="none"/></g>`,
+    head: `<ellipse cx="60" cy="58" rx="36" ry="39" fill="var(--m-fur)"/>`,
+    marks: `<path d="M24 40c8-8 20-11 36-11s28 3 36 11c-4-16-18-25-36-25S28 24 24 40z" fill="#eef1f5"/>
+            <g stroke="#eef1f5" stroke-width="5" stroke-linecap="round"><path d="M34 46q9-6 16-3"/><path d="M86 46q-9-6-16-3"/></g>`,
+    face: `<path d="M60 72c14 0 22 10 22 24 0 16-10 28-22 28s-22-12-22-28c0-14 8-24 22-24z" fill="#eef1f5"/>`
+  },
+
+  bonghwang: {
+    c: ['#c88fe8', '#8f5cc4', '#4a2b6b', '#2b1740', '#9fe8d8', '#f2828f'],
+    back: `<g><path d="M60 4c5 12 3 22-3 28-4-10-3-20 3-28z" fill="#ffd166"/>
+           <path d="M30 12c9 10 12 20 8 28-9-8-12-18-8-28z" fill="#7ee8c0"/>
+           <path d="M90 12c-9 10-12 20-8 28 9-8 12-18 8-28z" fill="#7ee8c0"/>
+           <path d="M10 40c12 4 19 12 20 21-12-2-19-10-20-21z" fill="#8fd3ff"/>
+           <path d="M110 40c-12 4-19 12-20 21 12-2 19-10 20-21z" fill="#8fd3ff"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:46px 24px"><path d="M46 24c-4-16 0-24 6-26 2 12 0 20-6 26z" fill="#ffd166"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:74px 24px"><path d="M74 24c4-16 0-24-6-26-2 12 0 20 6 26z" fill="#ffd166"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="39" ry="39" fill="var(--m-fur)"/>`,
+    marks: `<g fill="#9fe8d8" opacity=".7"><path d="M26 50c8-4 14-4 18 0-6 4-12 4-18 0z"/><path d="M94 50c-8-4-14-4-18 0 6 4 12 4 18 0z"/></g>
+            <ellipse cx="60" cy="30" rx="10" ry="6" fill="#ffd166" opacity=".85"/>`,
+    face: `<path d="M60 66l10 10-10 16-10-16z" fill="#ffd166"/>`
+  }
+};
+
+/* Assemble one character. Colours ride as custom properties so the shared
+   face reads correctly on fur, scales, green skin or an old man's cheeks. */
+function mascotSvg(id) {
+  const r = RIGS[id] || RIGS.tiger;
+  const [fur, fur2, ink, eye, blush, tongue] = r.c;
+  // Gradient ids are namespaced per character: two rigs on one page — the
+  // corner and a preview, say — would otherwise share the first definition
+  // and the second would silently wear the first one's colours.
+  const g = 'fur-' + (RIGS[id] ? id : 'tiger'), m = 'muz-' + (RIGS[id] ? id : 'tiger');
+  return `
+<svg viewBox="0 0 120 124" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
+     style="--m-fur:url(#${g});--m-muz:url(#${m});--m-ink:${ink};--m-eye:${eye};--m-blush:${blush};--m-tongue:${tongue}">
+  <defs>
+    <radialGradient id="${g}" cx="42%" cy="34%" r="72%">
+      <stop offset="0" stop-color="${fur}"/><stop offset="1" stop-color="${fur2}"/>
+    </radialGradient>
+    <linearGradient id="${m}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6ea"/><stop offset="1" stop-color="#ffe6c9"/>
+    </linearGradient>
+  </defs>
+  <g class="tg-body">
+    ${r.back || ''}
+    ${r.ears || ''}
+    ${r.head || ''}
+    ${r.marks || ''}
+    ${r.face || ''}
+    ${FACE}
+    ${r.extra || ''}
+  </g>
 </svg>`;
+}
+
+const MASCOT_SVG = mascotSvg('tiger');
 
 const Mascot = {
   el: null,
@@ -3434,23 +3682,18 @@ const Mascot = {
     this.scheduleBlink();
   },
 
-  /* Swap in the equipped character. The tiger keeps its hand-built SVG —
-     it blinks, its ears move, and no flat portrait would match that — while
-     everyone else is a portrait inside the same frame. The bounce, pop and
-     tilt animations live on the container, so they apply to both. */
+  /* Swap in the equipped character. Everyone is drawn from the shared rig,
+     so every character blinks, flicks its ears on a good answer and pulls
+     the same five expressions — nobody is a static portrait in the corner.
+     The portraits are still used, but in the collection and the egg reveal,
+     where detail matters more than being alive. */
   dress() {
     if (!this.el) return;
     const c = equippedChar();
     if (this.wearing === c.id) return;
     this.wearing = c.id;
     const art = this.el.querySelector('.m-art');
-    if (c.id === 'tiger') {
-      art.innerHTML = MASCOT_SVG;
-      this.el.classList.remove('m-photo');
-    } else {
-      art.innerHTML = `<img src="./icons/chars/${c.id}.webp" alt="${esc(c.en)}" width="76" height="76">`;
-      this.el.classList.add('m-photo');
-    }
+    art.innerHTML = mascotSvg(c.id);
   },
 
   show(on) {
