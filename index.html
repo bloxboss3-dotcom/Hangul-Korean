@@ -35,6 +35,7 @@
   --tx-faint: #6b7484;
   --accent: #6ea8fe;
   --accent-dim: #2b4d80;
+  --accent2: #4ec9a5;     /* second stop of the brand gradient, themeable */
   --good: #4ec9a5;
   --good-dim: #1e4f42;
   --warn: #e8b84b;
@@ -60,6 +61,7 @@
   --tx-faint: #8b95a5;
   --accent: #2563eb;
   --accent-dim: #c7dbff;
+  --accent2: #0e8f6e;
   --good: #0e8f6e;
   --good-dim: #cdeee4;
   --warn: #9a6b00;
@@ -74,6 +76,16 @@ html, body { margin: 0; padding: 0; }
    the grey flash on tap, the double-tap-to-zoom delay, and the rubber-band
    overscroll past the top of a list. */
 html { -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+/* Installed to a home screen the page runs under the status bar and the
+   Dynamic Island, because the viewport is viewport-fit=cover and the status
+   bar is translucent. Every top-level bit of chrome has to inset itself or it
+   ends up physically unreachable under the island. */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
 button, a, .chunk, .conv-card, .opt, .tile, .kb-key {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
@@ -91,11 +103,15 @@ input { font: inherit; color: inherit; }
 a { color: var(--accent); }
 
 /* ---------- shell ---------- */
-#app { max-width: 780px; margin: 0 auto; padding: 0 16px 120px; }
+#app {
+  max-width: 780px; margin: 0 auto; padding: 0 16px 120px;
+  padding-left: max(16px, var(--sal));
+  padding-right: max(16px, var(--sar));
+}
 
 header.top {
   display: flex; align-items: center; gap: 12px;
-  padding: 18px 0 14px; position: sticky; top: 0; z-index: 30;
+  padding: max(18px, var(--sat)) 0 14px; position: sticky; top: 0; z-index: 30;
   background: linear-gradient(var(--bg) 70%, transparent);
 }
 .brand { display: flex; align-items: baseline; gap: 9px; font-weight: 650; letter-spacing: -.01em; }
@@ -142,7 +158,7 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 }
 .btn:hover { border-color: var(--tx-faint); }
 .btn.primary {
-  background: linear-gradient(135deg, var(--accent), var(--good));
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   color: #0b1220; border-color: transparent;
   box-shadow: 0 2px 14px -4px var(--accent);
 }
@@ -190,8 +206,11 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .bar > i.good { background: var(--good); }
 
 /* ---------- session ---------- */
-.session-wrap { padding-top: 4px; }
-.sess-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.session-wrap { padding-top: max(4px, var(--sat)); }
+.sess-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; min-height: 44px; }
+/* 44px is the smallest target a thumb reliably hits; the glyph stays the
+   same size, the hit area grows around it. */
+.sess-head .iconbtn { width: 44px; height: 44px; font-size: 17px; }
 .sess-head .bar { flex: 1; }
 .sess-head .count { font-size: 12px; color: var(--tx-faint); font-variant-numeric: tabular-nums; }
 
@@ -376,7 +395,7 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
   .q-sentence { font-size: 21px; }
   .grid.four { grid-template-columns: 1fr 1fr; }
   .kb-key { height: 40px; font-size: 15px; }
-  #app { padding: 0 12px 120px; }
+  #app { padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar)); }
 }
 
 /* ============================================================
@@ -669,6 +688,67 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 .btn > svg { width: 17px; height: 17px; flex: none; }
 
 /* ============================================================
+   COINS, THE SHOP, AND THE ONE POWER-UP
+   ============================================================ */
+.coin {
+  display: inline-block; width: 13px; height: 13px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, #ffd166 55%, #e0a020);
+  box-shadow: inset 0 -1px 2px rgba(120,70,0,.45);
+  vertical-align: -1px;
+}
+.coin.lg { width: 20px; height: 20px; }
+
+.wallet {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 6px 12px 6px 10px; border-radius: 999px; font-size: 13.5px;
+  background: var(--bg-card); border: 1px solid var(--line-soft); color: var(--tx-dim);
+}
+.wallet b { color: var(--tx); font-variant-numeric: tabular-nums; }
+.wallet:hover { border-color: var(--line); color: var(--tx); }
+.wallet.bump { animation: walletBump .5s cubic-bezier(.2,1.6,.35,1); }
+@keyframes walletBump {
+  0%,100% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+}
+
+.bigcoin { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 800;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums; flex: none; }
+
+.themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.themecard {
+  display: grid; gap: 3px; justify-items: start; text-align: left;
+  padding: 12px; border-radius: var(--radius-sm);
+  background: var(--bg-raise); border: 1px solid var(--line-soft);
+  transition: border-color .15s, transform .12s;
+}
+.themecard:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--line); }
+.themecard.on { border-color: var(--accent); }
+.themecard:disabled { opacity: .45; cursor: default; }
+.themecard .sw { width: 100%; height: 26px; border-radius: 7px; margin-bottom: 5px; }
+.themecard .tc-n { font-size: 13.5px; font-weight: 600; }
+.themecard .tc-k { font-size: 12px; color: var(--tx-faint); }
+.themecard .tc-c { font-size: 11.5px; color: var(--tx-faint); display: flex; align-items: center; gap: 4px; margin-top: 3px; }
+.themecard.on .tc-c { color: var(--accent); }
+
+.redeem {
+  margin-top: 13px; padding: 13px 15px; border-radius: var(--radius-sm);
+  background: var(--bg-raise); border: 1px solid var(--warn);
+}
+.redeem .rd-t { font-size: 13.5px; font-weight: 600; margin-bottom: 5px; }
+.redeem .rd-t s { color: var(--bad); text-decoration-thickness: 2px; }
+.redeem .rd-t .rd-mono { font-family: var(--mono); }
+.redeem .rd-t .ko { font-family: var(--ko); font-size: 17px; }
+.redeem .rd-b { font-size: 12.5px; color: var(--tx-dim); line-height: 1.55; margin-bottom: 11px; }
+
+.earned {
+  display: flex; align-items: center; justify-content: center; gap: 9px; flex-wrap: wrap;
+  margin: 4px 0 14px; padding: 11px 14px; border-radius: var(--radius-sm);
+  background: var(--bg-raise); border: 1px solid var(--line-soft);
+}
+.earned b { font-size: 21px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.earned .ea-b { font-size: 12.5px; color: var(--tx-faint); }
+
+/* ============================================================
    CONVERSATIONS
    A dialogue is presented whole, then taken apart chunk by chunk.
    The colours are the point: the same colour on a Korean chunk and
@@ -838,14 +918,13 @@ img.who { padding: 0; }
 
 @media (max-width: 720px) {
   nav.tabs { display: none; }
-  #app { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
-  header.top { padding-top: max(18px, env(safe-area-inset-top)); }
+  #app { padding-bottom: calc(86px + var(--sab)); }
 
   .tabbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     background: var(--bg-soft); border-top: 1px solid var(--line-soft);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    padding: 6px max(4px, var(--sal)) calc(6px + var(--sab)) max(4px, var(--sar));
     backdrop-filter: saturate(1.4) blur(12px);
   }
   .tabbar button {
@@ -3453,6 +3532,7 @@ function celebrateWrong(ctx) {
 const WORD_MILESTONES = [10, 25, 50, 100, 150, 200, 300, 400, 500];
 
 function celebrateMilestone(m) {
+  earn(m.big ? 30 : 15, 'milestone');
   Sfx.play(m.big ? 'levelup' : 'milestone');
   if (m.big) {
     FX.rain({ count: 90, avoidCenter: true });
@@ -4157,6 +4237,87 @@ const SKILL_LABEL = {
 };
 
 /* ---------------------------------------------------------------
+   1b. COINS, COSMETICS, AND THE ONE POWER-UP
+   ------------------------------------------------------------
+   The rest of this app refuses to gamify, and for a reason: hearts,
+   lives and timers all punish difficulty, and difficulty is the
+   active ingredient. Coins are the one game mechanic that does not
+   fall into that trap, because they are purely additive. You cannot
+   lose them, running out costs you nothing, and nothing you can buy
+   makes the course easier to get through — the palettes are paint,
+   and the near-miss redemption still schedules the card as a card
+   you got wrong.
+
+   That last point matters. Buying back a near miss gives you the
+   answer, the combo and the session credit; it does NOT tell the
+   scheduler you knew it. The card comes back tomorrow either way.
+   A power-up that quietly corrupted the forgetting curve would be
+   buying yourself worse Korean.
+   --------------------------------------------------------------- */
+
+const NEAR_MISS_COST = 25;
+
+/* Palettes recolour the accent only. --good and --bad stay put in every
+   theme, because "correct" and "wrong" must never change colour. */
+const THEMES = [
+  { id: 'default', name: 'Hanbit Blue', ko: '한빛', cost: 0,
+    dark: ['#6ea8fe', '#2b4d80', '#4ec9a5'], light: ['#2563eb', '#c7dbff', '#0e8f6e'] },
+  { id: 'celadon', name: 'Celadon', ko: '청자', cost: 150,
+    dark: ['#5fd3b2', '#1e5346', '#8fe8d0'], light: ['#0e8f6e', '#cdeee4', '#0f7a63'] },
+  { id: 'sunrise', name: 'Sunrise', ko: '해돋이', cost: 350,
+    dark: ['#ffb457', '#6b4517', '#f78fb3'], light: ['#b8600a', '#ffe0bf', '#b03a68'] },
+  { id: 'hanji', name: 'Hanji', ko: '한지', cost: 550,
+    dark: ['#ffd166', '#6b5417', '#ffb457'], light: ['#8a6100', '#fff0c4', '#8f5000'] },
+  { id: 'mugunghwa', name: 'Mugunghwa', ko: '무궁화', cost: 800,
+    dark: ['#f78fb3', '#5c2a3d', '#b39ddb'], light: ['#b03a68', '#ffd9e5', '#5f43a6'] },
+  { id: 'neon', name: 'Neon', ko: '네온', cost: 1200,
+    dark: ['#8fd3ff', '#1b4a63', '#e59cff'], light: ['#175f8c', '#cfeaff', '#7a3ca8'] }
+];
+
+const themeById = id => THEMES.find(t => t.id === id) || THEMES[0];
+const ownsTheme = id => (S.unlocked || []).includes(id);
+
+function applyAccent() {
+  const t = themeById(S.accent);
+  const [a, dim, a2] = S.settings.theme === 'light' ? t.light : t.dark;
+  const r = document.documentElement.style;
+  r.setProperty('--accent', a);
+  r.setProperty('--accent-dim', dim);
+  r.setProperty('--accent2', a2);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', S.settings.theme === 'light' ? '#f6f7f9' : '#0f1115');
+}
+
+/* Coins arrive for finishing things, never for individual answers — a
+   per-answer trickle would quietly reward speed over thought. */
+function earn(n, why) {
+  n = Math.max(0, Math.round(n));
+  if (!n) return 0;
+  S.coins += n;
+  S.coinsEarned += n;
+  if (sess) sess.earned = (sess.earned || 0) + n;
+  coinFx(n, why);
+  return n;
+}
+
+function spend(n) {
+  if ((S.coins || 0) < n) return false;
+  S.coins -= n;
+  save();
+  return true;
+}
+
+function coinFx(n, why) {
+  const el = document.querySelector('.wallet');
+  if (!el) return;
+  el.classList.remove('bump');
+  void el.offsetWidth;                    // restart the animation
+  el.classList.add('bump');
+  const r = el.getBoundingClientRect();
+  floatText('+' + n, r.left + r.width / 2, r.top + r.height / 2, { color: 'var(--warn)' });
+}
+
+/* ---------------------------------------------------------------
    2. STATE
    --------------------------------------------------------------- */
 const DEFAULTS = {
@@ -4185,6 +4346,11 @@ const DEFAULTS = {
     litDefault: false,      // open a conversation on the literal reading
     hideEnglish: false      // conversation lines start covered, for a listening pass
   },
+  coins: 0,                // spendable; earned only, never lost
+  coinsEarned: 0,          // lifetime total, for the stat
+  redeemed: 0,             // near misses bought back
+  accent: 'default',       // active cosmetic palette
+  unlocked: ['default'],   // palettes owned
   milestones: {},          // which one-time celebrations have already fired
   cards: {},          // "itemId|skill" -> card
   confusions: {},      // "idA~idB" -> { a, b, n, last }
@@ -4226,6 +4392,13 @@ function normalizeSettings() {
   if (!S.confusions || typeof S.confusions !== 'object') S.confusions = {};
   if (!S.weakLog || typeof S.weakLog !== 'object') S.weakLog = {};
   if (!S.convo || typeof S.convo !== 'object') S.convo = {};
+  ['coins', 'coinsEarned', 'redeemed'].forEach(k => {
+    const n = Number(S[k]);
+    S[k] = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+  });
+  if (!Array.isArray(S.unlocked)) S.unlocked = ['default'];
+  if (!S.unlocked.includes('default')) S.unlocked.push('default');
+  if (!THEMES.some(t => t.id === S.accent && S.unlocked.includes(t.id))) S.accent = 'default';
   S.settings.consolidateFirst = S.settings.consolidateFirst !== false;
   const sl = Number(S.settings.shakyLimit);
   S.settings.shakyLimit = Number.isFinite(sl) ? Math.min(200, Math.max(5, sl)) : 30;
@@ -4233,6 +4406,7 @@ function normalizeSettings() {
 
 /* Push the effect settings down into the FX and audio layers. */
 function applyFxSettings() {
+  applyAccent();
   FX.level = S.settings.fxLevel;
   Sfx.enabled = !!S.settings.sound && S.settings.fxLevel !== 'off';
   Sfx.volume = S.settings.volume;
@@ -4529,7 +4703,7 @@ function advance() {
   sess.build = [];
   composer.reset();
   kbShift = false;
-  if (!currentStep()) { finishSession(); return; }
+  if (!currentStep()) { finishSession('complete'); return; }
   if (!sess.overtime && Date.now() - sess.started > sess.budgetMs) {
     sess.askStop = true;
   }
@@ -4643,12 +4817,42 @@ function checkMilestones(key, before, after) {
   }
 }
 
-function finishSession() {
+/* How a session ended matters, and it used to be ignored.
+   ------------------------------------------------------------
+   Walking out four cards in with those four right is not a flawless
+   session, and calling it one — fireworks, "완벽", a coin bonus — pays
+   out the reward for finishing to somebody who did not finish. Worse,
+   it makes quitting early the cheapest way to farm a perfect record.
+
+   So an abandoned run gets no perfect, no celebration and no bonus.
+   What it does keep is the individual answers: those were real
+   retrievals, they were graded as they happened, and they belong in
+   the schedule. Throwing away genuine review data to punish a quit
+   would cost the learner actual memory, which is a real price for a
+   cosmetic point. The reward is withheld; the learning is not. */
+function finishSession(reason) {
   setTimeout(maybeAutoUpdate, 1500);
   if (!sess) { view = 'today'; render(); return; }
+  const remaining = Math.max(0, sess.queue.length - sess.pos);
+  sess.reason = reason || (remaining ? 'abandoned' : 'complete');
+  sess.remaining = remaining;
+  const abandoned = sess.reason === 'abandoned';
   const acc = sess.answered ? sess.correct / sess.answered : 0;
-  sess.perfect = sess.answered >= 8 && sess.correct === sess.answered;
-  sess.doneFx = sess.perfect ? 'perfect' : acc >= 0.9 ? 'great' : 'ok';
+  sess.perfect = !abandoned && sess.answered >= 8 && sess.correct === sess.answered;
+  sess.doneFx = abandoned ? null : sess.perfect ? 'perfect' : acc >= 0.9 ? 'great' : 'ok';
+
+  /* Paid for finishing, not for being right — otherwise the incentive is to
+     take easy sessions, which is the opposite of what builds memory. The
+     accuracy bonus is small enough that it never outweighs simply showing up. */
+  if (!abandoned && sess.answered >= 5) {
+    let n = 10;
+    if (acc >= 0.9) n += 8;
+    if (sess.perfect) n += 12;
+    if (sess.bestCombo >= 10) n += 5;
+    sess.coinBreakdown = { base: 10, accuracy: acc >= 0.9 ? 8 : 0, perfect: sess.perfect ? 12 : 0, combo: sess.bestCombo >= 10 ? 5 : 0 };
+    S.coins += n; S.coinsEarned += n;
+    sess.earned = (sess.earned || 0) + n;
+  }
   save();
   view = 'done';
   render();
@@ -4905,20 +5109,64 @@ function levenshtein(a, b) {
   return prev[n];
 }
 
+/* Grading is deliberately strict, and it did not used to be.
+   ------------------------------------------------------------
+   The old rule forgave any answer within one edit. That sounds
+   generous and is actively harmful: in a romanisation the single
+   character IS the content being tested, so typing "ga gi" for 고기
+   differs from "gogi" by one edit and by one entire vowel — ㅏ against
+   ㅗ, which is the exact discrimination the exercise exists to train.
+   Being told that is correct teaches the wrong sound.
+
+   The same holds in Korean. 밥 and 밤 are one jamo and two different
+   words; so are 고기 and 가기. Nothing here is a spelling slip.
+
+   So an off-by-one answer is now its own verdict — `near`. It grades
+   as a miss, but the feedback names exactly which character went wrong
+   instead of shrugging, and it is the one thing a near-miss token can
+   redeem. `close` survives only for a real linguistic equivalence:
+   giving the dictionary form where the conjugated one was wanted. */
 function checkText(ex, input) {
   if (ex.romInput) {
     const a = normRom(input), b = normRom(ex.answer);
     if (a === b) return 'right';
-    if (a && levenshtein(a, b) <= 1) return 'close';
+    if (a && levenshtein(a, b) === 1) return 'near';
     return 'wrong';
   }
   const a = normKo(input), b = normKo(ex.answer);
   if (a === b) return 'right';
-  // accept the bare stem where a conjugated form was expected, and vice versa
+  // The bare stem where a conjugated form was expected is a real partial
+  // answer — you knew the word, not the ending — so it still counts.
   const alt = [ex.item.conj, ex.item.ko, ex.item.mod].filter(Boolean).map(normKo);
   if (alt.includes(a) && ex.skill === 'recall') return 'close';
-  if (a && levenshtein(a, b) === 1 && b.length >= 3) return 'close';
+  if (a && levenshtein(a, b) === 1) return 'near';
   return 'wrong';
+}
+
+/* Character-level diff of what was typed against what was wanted, so a
+   near miss can point at the offending letter rather than just saying no. */
+function diffChars(target, typed) {
+  const a = [...String(target)], b = [...String(typed)];
+  const n = a.length, m = b.length;
+  const d = Array.from({ length: n + 1 }, (_, i) => [i, ...Array(m).fill(0)]);
+  for (let j = 0; j <= m; j++) d[0][j] = j;
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+  }
+  const out = [];
+  let i = n, j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)) {
+      out.unshift({ ch: b[j - 1], ok: a[i - 1] === b[j - 1] }); i--; j--;
+    } else if (j > 0 && d[i][j] === d[i][j - 1] + 1) {
+      out.unshift({ ch: b[j - 1], ok: false }); j--;
+    } else {
+      out.unshift({ ch: a[i - 1], ok: false, missing: true }); i--;
+    }
+  }
+  return out;
 }
 
 /* ---------------------------------------------------------------
@@ -4998,18 +5246,33 @@ const VOICE_TIER_LABEL = { premium: 'high quality', good: 'decent', basic: 'basi
    grade rather than the sentence the status pill carries. */
 const VOICE_TIER_SHORT = { premium: 'high quality', good: 'decent', basic: 'basic', none: '—' };
 
-/* Per-platform, because the fix is completely different on each and a
-   generic "install a better voice" helps nobody. */
+const IS_IOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+/* Per-platform, because the fix is completely different on each — and on
+   one of them there is no fix at all, which is the more useful thing to
+   say than a set of steps that will not work.
+
+   iOS is that one. Safari hands a web page only the voices that shipped
+   with the system: the Enhanced and Premium voices you can download in
+   Settings are visible to VoiceOver and to Apple's own apps, and are
+   simply absent from speechSynthesis.getVoices(). Sending someone to go
+   and download one would have them hunting for a setting that cannot
+   help them, which is worse than admitting the ceiling. */
 function voiceFixSteps() {
   const ua = navigator.userAgent;
-  const iOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (iOS) return {
+  if (IS_IOS()) return {
     where: 'iPhone / iPad',
-    steps: ['Open the iOS <b>Settings</b> app', 'Accessibility → Spoken Content → <b>Voices</b>', 'Korean → <b>유나 (Yuna)</b>', 'Tap the download arrow next to <b>Premium</b> (or Enhanced)', 'Come back here and pick it in the list above']
+    futile: true,
+    steps: [
+      'Safari only lets a web page use the Korean voice that came with iOS.',
+      'The Enhanced and Premium versions of 유나 (Yuna) that you can download under <b>Settings → Accessibility → Spoken Content → Voices</b> do work in Apple\'s own apps — but Safari never exposes them to a web page, so Hanbit cannot reach them. This is a WebKit limitation and every iPhone browser shares it, because they are all Safari underneath.',
+      'Nothing you can install will change this. If you want better audio, the same app on a computer or an Android phone will sound noticeably better; on iPhone the speech rate in this panel is the only lever that helps.'
+    ]
   };
   if (/Macintosh|Mac OS X/.test(ua)) return {
     where: 'Mac',
-    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', 'Korean → <b>Yuna (Premium)</b> → download', 'Come back here and pick it in the list above']
+    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', 'Korean → <b>Yuna (Premium)</b> → download', 'Reload this page, then pick it in the list above']
   };
   if (/Android/.test(ua)) return {
     where: 'Android',
@@ -5454,6 +5717,9 @@ function shell(body) {
   <header class="top">
     <div class="brand"><span class="mark ko">한</span><span>Hanbit<br><small>Korean, on a forgetting curve</small></span></div>
     <div class="spacer"></div>
+    <button class="wallet" data-view="progress" title="Coins — spend them in Progress">
+      <span class="coin"></span><b>${S.coins || 0}</b>
+    </button>
     <button class="iconbtn" data-act="theme" title="Light / dark">${S.settings.theme === 'dark' ? '☀' : '☾'}</button>
   </header>
   <nav class="tabs">${tabs.map(([k, l]) => `<button data-view="${k}" class="${navHere === k ? 'on' : ''}">${l}</button>`).join('')}</nav>
@@ -5990,11 +6256,24 @@ function renderFeedback(ex) {
   if (item.ex && ex.skill !== 'cloze') extra.push(`<div class="why ko" style="font-size:15px">${esc(item.ex.ko)} <span class="faint" style="font-family:inherit;font-size:12.5px">— ${esc(item.ex.en)}</span></div>`);
 
   const verdict = r.result === 'right' ? 'Correct'
-    : r.result === 'close' ? 'Almost — spelling slipped'
+    : r.result === 'close' ? 'The word, not the ending — that counts'
+      : r.result === 'near' ? 'One character off, which is one whole sound off'
       : r.result === 'shown' ? 'Here it is' : 'Not quite';
   const mark = good
     ? '<svg class="verdict-mark" viewBox="0 0 26 26"><path d="M4 14l6 6L22 6"/></svg>'
     : '<svg class="verdict-mark" viewBox="0 0 26 26"><path d="M5 13h16"/></svg>';
+
+  /* A near miss is the only thing a coin can buy back, and only after you
+     have already seen that it was wrong and what the right answer was. */
+  const redeem = (r.result === 'near' && !r.redeemed) ? `<div class="redeem">
+    <div class="rd-t">One character off${r.raw ? ' — you wrote ' + `<span class="${ex.romInput ? 'rd-mono' : 'ko'}">${diffChars(ex.answer, r.raw).map(d => d.ok ? esc(d.ch) : `<s>${esc(d.ch)}</s>`).join('')}</span>` : ''}</div>
+    <div class="rd-b">That is a different sound, so the card is coming back. You can buy this one back —
+      it keeps your streak and the session credit, but the schedule still treats it as a miss.</div>
+    <button class="btn ${(S.coins || 0) >= NEAR_MISS_COST ? 'primary' : ''}" data-act="redeem"
+      ${(S.coins || 0) >= NEAR_MISS_COST ? '' : 'disabled'}>
+      <span class="coin"></span> Buy it back — ${NEAR_MISS_COST}${(S.coins || 0) >= NEAR_MISS_COST ? '' : ` (you have ${S.coins || 0})`}
+    </button>
+  </div>` : '';
 
   const adjust = good ? `<div class="gradebar">
       <button data-grade="2">Felt hard<b>sooner</b></button>
@@ -6017,6 +6296,7 @@ function renderFeedback(ex) {
       <button class="btn primary" data-act="next">Continue <span class="faint" style="font-weight:400;font-size:11.5px">↵</span></button>
       ${good ? '<span class="faint" style="font-size:12px">Say it out loud once more.</span>' : ''}
     </div>
+    ${redeem}
     ${adjust}
   </div>`;
 }
@@ -6029,13 +6309,20 @@ function renderDone() {
   const missed = sess ? Array.from(sess.againKeys) : [];
   const best = sess ? sess.bestCombo : 0;
   const CIRC = 351.86;                                  // 2πr for r = 56
-  const headline = sess && sess.perfect ? '완벽!' : acc >= 0.9 ? '잘했어요!' : acc >= 0.7 ? '좋아요!' : '수고했어요!';
-  const headSub = sess && sess.perfect ? 'a flawless session'
-    : acc >= 0.9 ? 'that was a strong round'
-      : acc >= 0.7 ? 'right in the productive band'
-        : 'the hard sessions are the ones that build memory';
+  const abandoned = sess && sess.reason === 'abandoned';
+  const headline = abandoned ? '중단했어요'
+    : sess && sess.perfect ? '완벽!' : acc >= 0.9 ? '잘했어요!' : acc >= 0.7 ? '좋아요!' : '수고했어요!';
+  const headSub = abandoned ? 'session abandoned'
+    : sess && sess.perfect ? 'a flawless session'
+      : acc >= 0.9 ? 'that was a strong round'
+        : acc >= 0.7 ? 'right in the productive band'
+          : 'the hard sessions are the ones that build memory';
 
-  const tip = acc > 0.95
+  const tip = abandoned
+    ? `You stopped with ${sess.remaining} card${sess.remaining === 1 ? '' : 's'} still queued, so this does not count as a finished session — no bonus, and accuracy on a run you walked out of is not a record of anything.
+       The ${sess.answered} answer${sess.answered === 1 ? '' : 's'} you did give still count: those were real retrievals and they have already gone into the schedule.
+       The rest are simply waiting, not lost.`
+    : acc > 0.95
     ? 'Your accuracy was very high, which usually means the schedule is being too cautious. Nudging target retention down to 0.87 in Settings would get you more new material for the same minutes.'
     : acc < 0.7
       ? 'Accuracy under 70% means new items are arriving faster than they are sticking. Drop the daily new count for a week and let the backlog settle — the schedule will catch up on its own.'
@@ -6046,14 +6333,25 @@ function renderDone() {
       <div class="ringwrap">
         <svg viewBox="0 0 132 132">
           <circle class="trk" cx="66" cy="66" r="56"></circle>
-          <circle class="val" cx="66" cy="66" r="56" style="stroke-dashoffset:${(CIRC * (1 - acc)).toFixed(1)}"></circle>
+          ${abandoned ? '' : `<circle class="val" cx="66" cy="66" r="56" style="stroke-dashoffset:${(CIRC * (1 - acc)).toFixed(1)}"></circle>`}
         </svg>
-        <div class="pctxt">${pct(acc)}</div>
+        <div class="pctxt${abandoned ? ' faint' : ''}">${abandoned ? sess.answered + '/' + sess.queue.length : pct(acc)}</div>
       </div>
       <div class="dh-num ko">${headline}</div>
       <div class="dh-lab">${esc(headSub)}</div>
     </div>
     <p class="sub" style="text-align:center;margin-top:14px">${Math.round(mins)} min · ${sess ? sess.answered : 0} answers${sess && sess.newSeen ? ` · ${sess.newSeen} new` : ''}${best >= 3 ? ` · best streak ${best}` : ''}</p>
+    ${sess && sess.earned ? `<div class="earned">
+      <span class="coin lg"></span><b>+${sess.earned}</b>
+      <span class="ea-b">${(() => {
+      const k = sess.coinBreakdown || {};
+      const parts = ['finished a session'];
+      if (k.accuracy) parts.push('accuracy above 90%');
+      if (k.perfect) parts.push('a flawless round');
+      if (k.combo) parts.push('a ten-answer streak');
+      return esc(parts.join(' · '));
+    })()}</span>
+    </div>` : ''}
     <div class="grid four" style="margin-top:6px">
       <div class="stat"><div class="n">${st.wordsKnown}</div><div class="l">Words holding</div></div>
       <div class="stat"><div class="n">${best}</div><div class="l">Best streak</div></div>
@@ -6075,6 +6373,55 @@ function renderDone() {
 }
 
 /* ---------- Progress ---------- */
+/* The shop. Two things are for sale and neither makes the course easier:
+   paint, and the right to keep your streak after a near miss. */
+function renderShop() {
+  const owned = THEMES.filter(t => ownsTheme(t.id));
+  const next = THEMES.filter(t => !ownsTheme(t.id)).sort((a, b) => a.cost - b.cost);
+
+  const swatch = t => {
+    const [a, dim, a2] = S.settings.theme === 'light' ? t.light : t.dark;
+    return `<span class="sw" style="background:linear-gradient(135deg,${a},${a2})"></span>`;
+  };
+
+  return `
+  <div class="card shopcard">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h2 style="margin-bottom:2px">Coins</h2>
+        <p class="sub" style="margin:0">Earned by finishing sessions, hitting milestones and running conversations.
+        You can never lose them, and nothing here makes the Korean easier.</p>
+      </div>
+      <div class="bigcoin"><span class="coin lg"></span><b>${S.coins || 0}</b></div>
+    </div>
+
+    <h3>Near-miss redemption</h3>
+    <div class="prose" style="font-size:13.5px;margin-bottom:10px">
+      <p style="margin:0">When you are off by exactly one character, you can buy the answer back for
+      <b>${NEAR_MISS_COST}</b> coins. It restores your streak and the session credit — but the card is still
+      scheduled as one you missed, because a power-up that lied to the forgetting curve would just be selling you
+      worse Korean. ${S.redeemed ? `You have used it <b>${S.redeemed}</b> time${S.redeemed === 1 ? '' : 's'}.` : ''}</p>
+    </div>
+
+    <h3>Palettes</h3>
+    <div class="themegrid">
+      ${owned.map(t => `<button class="themecard ${S.accent === t.id ? 'on' : ''}" data-settheme="${t.id}">
+        ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ko">${esc(t.ko)}</span>
+        <span class="tc-c">${S.accent === t.id ? 'in use' : 'owned'}</span>
+      </button>`).join('')}
+      ${next.map(t => {
+    const can = (S.coins || 0) >= t.cost;
+    return `<button class="themecard locked ${can ? 'can' : ''}" data-buytheme="${t.id}" ${can ? '' : 'disabled'}>
+        ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ko">${esc(t.ko)}</span>
+        <span class="tc-c"><span class="coin"></span>${t.cost}</span>
+      </button>`;
+  }).join('')}
+    </div>
+    <p class="sub" style="margin:12px 0 0;font-size:12.5px">Lifetime earned: ${S.coinsEarned || 0}.
+    Palettes only recolour the accent — right and wrong keep their own colours in every theme, on purpose.</p>
+  </div>`;
+}
+
 function renderProgress() {
   const st = stats();
   const max = Math.max(1, ...st.forecast);
@@ -6097,6 +6444,7 @@ function renderProgress() {
   const weak = rows.slice().sort((a, b) => (a.c.S || 0) - (b.c.S || 0)).slice(0, 12);
 
   return `
+  ${renderShop()}
   <div class="grid four">
     <div class="stat"><div class="n">${pct(st.predictedR)}</div><div class="l">Predicted recall</div><div class="h">Average across every scheduled card, from its forgetting curve</div></div>
     <div class="stat"><div class="n">${st.reviewsAll ? pct(st.measuredR) : '—'}</div><div class="l">Measured retention</div><div class="h">${st.reviewsAll} real reviews graded so far</div></div>
@@ -6690,6 +7038,24 @@ function renderMethod() {
     <h4>Fireworks, but no hearts</h4>
     <p>The celebration layer is deliberately one-sided. A correct answer escalates: sparks, then confetti, then rays and a screen bloom, then actual fireworks once you are twelve in a row. A wrong answer gets a shrug, a soft tone, and a note that the card is coming back sooner. That asymmetry is the whole point — reward feedback is legitimate and makes practice pleasant, whereas hearts, lives and countdown timers teach you to avoid the hard items, which is precisely backwards. If you would rather have none of it, Settings turns the effects down or off without touching the scheduling.</p>
 
+    <h4>Why speech sounds worse on an iPhone, and why that is not fixable here</h4>
+    <p>Hanbit ranks the Korean voices your browser offers and uses the best one. On a Mac, on Android and on Windows that is enough — the high-quality voices are a free download away and the browser hands them to a web page like any other.</p>
+    <p>Safari does not. iOS exposes only the voices that shipped with the system to <code>speechSynthesis</code>; the Enhanced and Premium versions of 유나 that you can download under Accessibility work in VoiceOver and in Apple's own apps and are simply invisible to a web page. Every browser on iPhone is Safari underneath, so no browser choice changes it, and there is no setting Hanbit can offer that would. The Voice panel in Settings lists exactly what your browser reports so you can see this for yourself rather than hunting for something that is not there.</p>
+    <p>The honest workarounds are small: the speech rate helps, and the same app on a laptop or an Android phone sounds noticeably better. Shipping recorded native audio would solve it outright and is the obvious next step if this ever matters enough to pay for.</p>
+
+    <h4>Coins, and the one game mechanic that is not a trap</h4>
+    <p>Hearts, lives and countdown timers all do the same thing: they attach a cost to getting something wrong, which teaches you to avoid the hard items. That is precisely backwards, because the hard items are where the learning is. So this app has none of them.</p>
+    <p>Coins are the exception, and they are safe for a specific reason — they are purely additive. You earn them for finishing a session, for hitting a milestone and for running a conversation; you cannot lose them, running out costs you nothing, and none of the things they buy make the course easier to get through. The palettes are paint. The one power-up buys back a near miss.</p>
+    <p>That power-up is worth being precise about, because it is exactly the sort of thing that usually corrupts an app like this. When you are off by <em>one character</em>, you can spend coins to keep your streak and your session credit. What you cannot buy is a lie to the scheduler: the card is still graded as one you got wrong, and it still comes back tomorrow. A redemption that quietly told the forgetting curve you knew the word would be selling you worse Korean in exchange for a nicer number.</p>
+
+    <h4>Leaving early</h4>
+    <p>Quitting a session part-way used to be treated as finishing it, which meant walking out four cards in with those four correct produced fireworks, a "완벽" and a coin bonus. That paid the reward for finishing to somebody who did not finish, and made quitting early the cheapest route to a flawless record.</p>
+    <p>An abandoned run now gets none of that — no perfect, no celebration, no bonus. What it keeps is the answers themselves. Those were real retrievals, they were graded as they happened, and deleting them to make a point would cost you actual memory in exchange for a cosmetic one. Stopping when the app itself suggests it, at the time budget, is a finished session; that prompt exists because stopping there is the right call.</p>
+
+    <h4>Why the grading is strict</h4>
+    <p>It did not used to be, and that was a real bug. The old rule forgave any answer within one edit, which meant typing <span class="ko">ga gi</span> for <span class="ko">고기</span> — <code>gogi</code> — was marked correct. One edit, but one entire vowel: ㅏ against ㅗ, which is the exact discrimination the exercise exists to train. The same held in Korean, where <span class="ko">밥</span> and <span class="ko">밤</span> are one jamo and two different words.</p>
+    <p>Now an off-by-one answer is its own verdict. It counts as a miss, and the feedback points at the character that went wrong instead of shrugging. The only grace left is a genuine linguistic one: giving the dictionary form where the conjugated form was wanted still counts, because you knew the word and not the ending, and those are different failures.</p>
+
     <h4>A session that ends</h4>
     <p>The daily plan is capped and tells you when you are done. Retention per minute falls off inside a long session, and the second most common way to fail at a language is burning out in month two. The most common is stopping in week one, which is why the daily target is deliberately small.</p>
 
@@ -6744,15 +7110,35 @@ function renderVoiceCard() {
     `}
 
     ${tier === 'basic' && !better ? `<div class="notice" style="margin-top:12px">
-      <b>This is the robotic one.</b> Your device only has the small, low-quality Korean voice installed — the good one is a
-      free download the operating system does not prompt you for. It takes a minute and the difference is not subtle.
+      ${fix.futile
+      ? `<b>This is as good as it gets on this device, and that is not your fault.</b>`
+      : `<b>This is the robotic one.</b> Your device only has the small, low-quality Korean voice installed — the good one is a
+         free download the operating system does not prompt you for. It takes a minute and the difference is not subtle.`}
       <div style="margin-top:10px"><b>${esc(fix.where)}</b></div>
-      <ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>
+      ${fix.futile
+      ? fix.steps.map(x => `<p style="margin:6px 0 0;line-height:1.6">${x}</p>`).join('')
+      : `<ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>`}
     </div>` : ''}
     ${tier === 'basic' && better ? `<div class="notice" style="margin-top:12px">
       <b>A better voice is installed but not selected.</b> Set the dropdown back to "Best available", or pick the one
       marked high quality.
     </div>` : ''}
+
+    <details style="margin-top:12px">
+      <summary class="faint" style="cursor:pointer;font-size:12.5px">What this browser actually reports</summary>
+      <div class="prose" style="font-size:12.5px;margin-top:8px">
+        <p style="margin:0 0 6px">If you went looking for a voice in your system settings and could not find it here, this is
+        why — the list below is everything the browser is willing to hand a web page, and Hanbit cannot use anything that is
+        not on it.</p>
+        ${voices.length
+      ? `<ul style="margin:0;padding-left:18px;line-height:1.7">${voices.map(v =>
+        `<li><code>${esc(v.name)}</code> · ${esc(v.lang)} · ${v.localService === false ? 'online' : 'on-device'} · ${VOICE_TIER_SHORT[voiceTier(v)]}</li>`).join('')}</ul>`
+      : '<p style="margin:0"><em>None. The browser reports no Korean voice at all.</em></p>'}
+        <p style="margin:8px 0 0" class="faint">${('speechSynthesis' in window)
+      ? `${window.speechSynthesis.getVoices().length} voices total across all languages.`
+      : 'This browser has no speech synthesis at all.'}</p>
+      </div>
+    </details>
   </div>`;
 }
 
@@ -6974,7 +7360,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme]');
   if (!t) return;
 
   Sfx.resume();
@@ -6987,6 +7373,8 @@ document.addEventListener('click', e => {
   if (t.dataset.view) { cancelFx(); Voice.cancel(); view = t.dataset.view; sess = null; convo = null; render(); return; }
   if (t.dataset.conv) { openConvo(t.dataset.conv); return; }
   if (t.dataset.selfgrade) { saySelfGrade(parseInt(t.dataset.selfgrade, 10)); return; }
+  if (t.dataset.settheme) { S.accent = t.dataset.settheme; save(); render(); return; }
+  if (t.dataset.buytheme) { buyTheme(t.dataset.buytheme); return; }
   if (t.dataset.expand) { expanded[t.dataset.expand] = !expanded[t.dataset.expand]; render(); return; }
   if (t.dataset.toggle) { S.settings[t.dataset.toggle] = !S.settings[t.dataset.toggle]; save(); render(); return; }
   if (t.dataset.pick) { pickMC(t.dataset.pick); return; }
@@ -7001,8 +7389,10 @@ document.addEventListener('click', e => {
   if (act === 'theme') { S.settings.theme = S.settings.theme === 'dark' ? 'light' : 'dark'; save(); render(); return; }
   if (act === 'start') { startSession(); return; }
   if (act === 'extra') { startExtra(); return; }
-  if (act === 'quit') { if (sess && sess.answered) { finishSession(); } else { view = 'today'; sess = null; render(); } return; }
-  if (act === 'stopnow') { finishSession(); return; }
+  if (act === 'quit') { if (sess && sess.answered) { finishSession('abandoned'); } else { view = 'today'; sess = null; render(); } return; }
+  // Stopping when the app itself suggested it, at the time budget, is a
+  // finished session — that prompt exists because stopping there is correct.
+  if (act === 'stopnow') { finishSession('stopped'); return; }
   if (act === 'keepgoing') { sess.askStop = false; sess.overtime = true; sess.budgetMs = Infinity; render(); return; }
   if (act === 'learned') { learnedStep(); return; }
   if (act === 'reteachdone') { advance(); return; }
@@ -7043,6 +7433,7 @@ document.addEventListener('click', e => {
   if (act === 'install') { doInstall(); return; }
   if (act === 'dismissinstall') { installPrompt = null; render(); return; }
   if (act === 'swupdate') { applyUpdate(); return; }
+  if (act === 'redeem') { redeemNearMiss(); return; }
 });
 
 document.addEventListener('change', e => {
@@ -7338,6 +7729,7 @@ function scoreAnswer(ex, result, elapsed, grade) {
     return commentaryFor(ctx);
   }
 
+  sess.comboBeforeMiss = sess.combo;
   sess.combo = 0;
   sess.lastTier = 0;
   sess.justMissed = true;
@@ -7373,6 +7765,8 @@ function submitAnswer() {
 
   const elapsed = Date.now() - exStart;
   const grade = result === 'right' ? (elapsed < 5000 ? 4 : 3) : result === 'close' ? 2 : 1;
+  // `near` deliberately falls through to 1: off by one character is off by
+  // one sound, and the card has to come back.
   const line = scoreAnswer(ex, result, elapsed, grade);
   sess.reveal = { result, raw, options: ex._opts, line };
   if (ex.speakAfter) speak(ex.speakAfter);
@@ -7388,12 +7782,13 @@ function giveUp() {
   render();
 }
 
-/* Let the learner override the auto-grade — self-report of effort is
-   the signal FSRS actually wants, and only they can supply it. */
-function adjustGrade(grade) {
+/* Roll the last answer back out of the log and the day's tally so it can be
+   graded again. Shared by the manual grade buttons and by buying a near miss
+   back, which are the same operation with different motives. */
+function regrade(grade) {
   const key = sess && sess.lastGradeKey;
   const undone = S.log[S.log.length - 1];
-  if (!key || !undone || undone.key !== key) { advance(); return; }
+  if (!key || !undone || undone.key !== key) return false;
   S.log.pop();
 
   const rec = dayRec(todayKey());
@@ -7408,7 +7803,69 @@ function adjustGrade(grade) {
 
   if (undone.before) S.cards[key] = undone.before;
   gradeCard(key, grade, undone.ms, true);
+  return true;
+}
+
+/* Let the learner override the auto-grade — self-report of effort is
+   the signal FSRS actually wants, and only they can supply it. */
+function adjustGrade(grade) {
+  if (!regrade(grade)) { advance(); return; }
   advance();
+}
+
+/* Buy back a near miss. Note what this does and does not do: it restores the
+   combo, the session credit and the day's accuracy, and it grades the card a
+   2 rather than a 1 — "hard", not "correct". The card still comes back
+   tomorrow. Selling a power-up that lied to the scheduler would be selling
+   the learner worse Korean. */
+function redeemNearMiss() {
+  if (!sess || !sess.reveal || sess.reveal.result !== 'near' || sess.reveal.redeemed) return;
+  if (!spend(NEAR_MISS_COST)) { showToast('Not enough coins yet.'); return; }
+
+  S.redeemed = (S.redeemed || 0) + 1;
+  // regrade() rolls the miss back out and gradeCard() puts the new grade in,
+  // including sess.answered and sess.correct — nothing to add by hand here.
+  regrade(2);
+  // The miss reset the combo to zero; buying it back is supposed to restore
+  // the run, not start a fresh one, so put back what was there before.
+  sess.combo = (sess.comboBeforeMiss || 0) + 1;
+  sess.lastTier = comboTier(sess.combo);
+  sess.bestCombo = Math.max(sess.bestCombo, sess.combo);
+  sess.justMissed = false;
+  sess.againKeys.delete(sess.lastGradeKey);
+  sess.reveal.redeemed = true;
+  sess.reveal.result = 'close';
+  sess.reveal.line = '되찾았어요 — bought back';
+  save();
+  render();
+  redeemFx();
+}
+
+function buyTheme(id) {
+  const t = themeById(id);
+  if (ownsTheme(id) || !spend(t.cost)) return;
+  S.unlocked.push(id);
+  S.accent = id;
+  save();
+  Sfx.play('levelup');
+  FX.rain({ count: 50, avoidCenter: true });
+  bannerFx(t.ko, t.name + ' unlocked', { hold: 1300, ko: true, small: true });
+  render();
+}
+
+/* The power-up gets its own look: gold rather than the usual green, a
+   shockwave rather than confetti, so it reads as a distinct event. */
+function redeemFx() {
+  Sfx.play('levelup');
+  flashScreen('gold');
+  edgeGlow('good', 1200);
+  const p = centerOf('.fb');
+  FX.rays(p.x, p.y, { count: 18, len: 150 });
+  FX.burst(p.x, p.y, { count: 40, spread: Math.PI * 2, power: 300 });
+  FX.rain({ count: 40, avoidCenter: true });
+  bannerFx('되찾았어요', 'near miss bought back', { hold: 1200, ko: true, small: true });
+  Mascot.mood('wow', 2000);
+  Mascot.say('한 번 더!', 1800);
 }
 
 /* Start an item over from scratch. Sometimes a card has simply been
@@ -7570,7 +8027,14 @@ function roleNext() {
     const rec = convRec(c.id);
     rec.roleplayed++;
     rec.best = Math.max(rec.best || 0, avg);
+    // First run through a conversation pays properly; repeats pay a little,
+    // so grinding the same dialogue is not a coin farm.
+    const first = rec.roleplayed === 1;
+    let n = first ? 20 : 4;
+    if (avg >= 0.85) n += first ? 12 : 3;
+    S.coins += n; S.coinsEarned += n;
     save();
+    showToast('+' + n + ' coins');
     Sfx.play('milestone');
     if (avg >= 0.85) { FX.rain({ count: 60, avoidCenter: true }); Mascot.mood('wow', 2200); }
   }
@@ -7765,6 +8229,11 @@ window.addEventListener('beforeunload', () => { try { localStorage.setItem(STORE
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (Voice.recording) { Voice.cancel(); sayRec.phase = 'idle'; render(); }
+    // iOS Safari wedges its speech engine if the page is backgrounded while
+    // it is mid-utterance, and stays wedged until the tab is reloaded. Cutting
+    // the utterance off on the way out avoids that entirely.
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    clearTimeout(playTimer);
     return;
   }
   // Back in the foreground: pick up anything that shipped while it was away.
