@@ -11,10 +11,15 @@ curriculum and scheduler, no build step. Edit it directly.
   images, icons, avatars, video.
 - Higgsfield is on the free plan at 0 credits. Do not route work to it, and do
   not propose it as an option without checking `balance` first.
-- Runway's workspace has **image and video models only** — `nano-banana-pro`,
-  `gpt-image-2`, `seedream-5`, `gen-4*` for images; `veo-3.1`, `gen-4.5`,
-  `seedance-2`, `kling-*` for video. There is **no text-to-speech model**, so
-  Runway cannot produce spoken Korean audio. Do not imply otherwise.
+- Runway's *product* does have an Audio mode (Lyria 3 Pro). The **MCP
+  connection does not expose it** — the 14 tools available are image, video,
+  upload and task tools only, so audio cannot be driven from here even though
+  it exists in the web app. Say "the tools I can call", not "Runway cannot".
+- Lyria is a **music** model in any case, so it would not produce spoken
+  Korean dialogue even if it were reachable.
+- Korean speech needs a real TTS engine. The only one wired up is Higgsfield's
+  `generate_audio` (Seed Audio / ElevenLabs / MiniMax), which is the account
+  with no credits — roughly 25 credits would cover all 122 conversation lines.
 
 ## Checks before pushing
 
