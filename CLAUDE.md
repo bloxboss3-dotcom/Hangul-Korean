@@ -72,6 +72,11 @@ reach the public internet from the sandbox, so test against a local server.
   retrievals and deleting them costs real memory.
 - **Palettes recolour the accent only.** `--good` and `--bad` stay fixed in
   every theme; right and wrong must not change colour.
+- **The collection must stay honest.** No real money — coins come only from
+  studying. Drop rates are printed on screen, duplicates always refund, and
+  pity counters guarantee an epic within 10 eggs and a legendary within 25.
+  Nothing a character grants affects difficulty or scheduling; it is paint,
+  a palette and a particle colour.
 - **No third-party requests.** Same-origin only. The single exception is
   pronunciation checking, which is opt-in, off by default, and labelled as
   sending audio to the browser's speech service.
