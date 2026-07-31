@@ -13,7 +13,7 @@
    progress lives in localStorage and is never touched here.
    ============================================================ */
 
-const VERSION = 'hanbit-v4';
+const VERSION = 'hanbit-v5';
 const CORE = [
   './',
   './index.html',

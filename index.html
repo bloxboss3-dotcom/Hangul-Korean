@@ -4687,7 +4687,7 @@ function advance() {
   sess.build = [];
   composer.reset();
   kbShift = false;
-  if (!currentStep()) { finishSession(); return; }
+  if (!currentStep()) { finishSession('complete'); return; }
   if (!sess.overtime && Date.now() - sess.started > sess.budgetMs) {
     sess.askStop = true;
   }
@@ -4801,17 +4801,34 @@ function checkMilestones(key, before, after) {
   }
 }
 
-function finishSession() {
+/* How a session ended matters, and it used to be ignored.
+   ------------------------------------------------------------
+   Walking out four cards in with those four right is not a flawless
+   session, and calling it one — fireworks, "완벽", a coin bonus — pays
+   out the reward for finishing to somebody who did not finish. Worse,
+   it makes quitting early the cheapest way to farm a perfect record.
+
+   So an abandoned run gets no perfect, no celebration and no bonus.
+   What it does keep is the individual answers: those were real
+   retrievals, they were graded as they happened, and they belong in
+   the schedule. Throwing away genuine review data to punish a quit
+   would cost the learner actual memory, which is a real price for a
+   cosmetic point. The reward is withheld; the learning is not. */
+function finishSession(reason) {
   setTimeout(maybeAutoUpdate, 1500);
   if (!sess) { view = 'today'; render(); return; }
+  const remaining = Math.max(0, sess.queue.length - sess.pos);
+  sess.reason = reason || (remaining ? 'abandoned' : 'complete');
+  sess.remaining = remaining;
+  const abandoned = sess.reason === 'abandoned';
   const acc = sess.answered ? sess.correct / sess.answered : 0;
-  sess.perfect = sess.answered >= 8 && sess.correct === sess.answered;
-  sess.doneFx = sess.perfect ? 'perfect' : acc >= 0.9 ? 'great' : 'ok';
+  sess.perfect = !abandoned && sess.answered >= 8 && sess.correct === sess.answered;
+  sess.doneFx = abandoned ? null : sess.perfect ? 'perfect' : acc >= 0.9 ? 'great' : 'ok';
 
   /* Paid for finishing, not for being right — otherwise the incentive is to
      take easy sessions, which is the opposite of what builds memory. The
      accuracy bonus is small enough that it never outweighs simply showing up. */
-  if (sess.answered >= 5) {
+  if (!abandoned && sess.answered >= 5) {
     let n = 10;
     if (acc >= 0.9) n += 8;
     if (sess.perfect) n += 12;
@@ -5213,18 +5230,33 @@ const VOICE_TIER_LABEL = { premium: 'high quality', good: 'decent', basic: 'basi
    grade rather than the sentence the status pill carries. */
 const VOICE_TIER_SHORT = { premium: 'high quality', good: 'decent', basic: 'basic', none: '—' };
 
-/* Per-platform, because the fix is completely different on each and a
-   generic "install a better voice" helps nobody. */
+const IS_IOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+/* Per-platform, because the fix is completely different on each — and on
+   one of them there is no fix at all, which is the more useful thing to
+   say than a set of steps that will not work.
+
+   iOS is that one. Safari hands a web page only the voices that shipped
+   with the system: the Enhanced and Premium voices you can download in
+   Settings are visible to VoiceOver and to Apple's own apps, and are
+   simply absent from speechSynthesis.getVoices(). Sending someone to go
+   and download one would have them hunting for a setting that cannot
+   help them, which is worse than admitting the ceiling. */
 function voiceFixSteps() {
   const ua = navigator.userAgent;
-  const iOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (iOS) return {
+  if (IS_IOS()) return {
     where: 'iPhone / iPad',
-    steps: ['Open the iOS <b>Settings</b> app', 'Accessibility → Spoken Content → <b>Voices</b>', 'Korean → <b>유나 (Yuna)</b>', 'Tap the download arrow next to <b>Premium</b> (or Enhanced)', 'Come back here and pick it in the list above']
+    futile: true,
+    steps: [
+      'Safari only lets a web page use the Korean voice that came with iOS.',
+      'The Enhanced and Premium versions of 유나 (Yuna) that you can download under <b>Settings → Accessibility → Spoken Content → Voices</b> do work in Apple\'s own apps — but Safari never exposes them to a web page, so Hanbit cannot reach them. This is a WebKit limitation and every iPhone browser shares it, because they are all Safari underneath.',
+      'Nothing you can install will change this. If you want better audio, the same app on a computer or an Android phone will sound noticeably better; on iPhone the speech rate in this panel is the only lever that helps.'
+    ]
   };
   if (/Macintosh|Mac OS X/.test(ua)) return {
     where: 'Mac',
-    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', 'Korean → <b>Yuna (Premium)</b> → download', 'Come back here and pick it in the list above']
+    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', 'Korean → <b>Yuna (Premium)</b> → download', 'Reload this page, then pick it in the list above']
   };
   if (/Android/.test(ua)) return {
     where: 'Android',
@@ -6261,13 +6293,20 @@ function renderDone() {
   const missed = sess ? Array.from(sess.againKeys) : [];
   const best = sess ? sess.bestCombo : 0;
   const CIRC = 351.86;                                  // 2πr for r = 56
-  const headline = sess && sess.perfect ? '완벽!' : acc >= 0.9 ? '잘했어요!' : acc >= 0.7 ? '좋아요!' : '수고했어요!';
-  const headSub = sess && sess.perfect ? 'a flawless session'
-    : acc >= 0.9 ? 'that was a strong round'
-      : acc >= 0.7 ? 'right in the productive band'
-        : 'the hard sessions are the ones that build memory';
+  const abandoned = sess && sess.reason === 'abandoned';
+  const headline = abandoned ? '중단했어요'
+    : sess && sess.perfect ? '완벽!' : acc >= 0.9 ? '잘했어요!' : acc >= 0.7 ? '좋아요!' : '수고했어요!';
+  const headSub = abandoned ? 'session abandoned'
+    : sess && sess.perfect ? 'a flawless session'
+      : acc >= 0.9 ? 'that was a strong round'
+        : acc >= 0.7 ? 'right in the productive band'
+          : 'the hard sessions are the ones that build memory';
 
-  const tip = acc > 0.95
+  const tip = abandoned
+    ? `You stopped with ${sess.remaining} card${sess.remaining === 1 ? '' : 's'} still queued, so this does not count as a finished session — no bonus, and accuracy on a run you walked out of is not a record of anything.
+       The ${sess.answered} answer${sess.answered === 1 ? '' : 's'} you did give still count: those were real retrievals and they have already gone into the schedule.
+       The rest are simply waiting, not lost.`
+    : acc > 0.95
     ? 'Your accuracy was very high, which usually means the schedule is being too cautious. Nudging target retention down to 0.87 in Settings would get you more new material for the same minutes.'
     : acc < 0.7
       ? 'Accuracy under 70% means new items are arriving faster than they are sticking. Drop the daily new count for a week and let the backlog settle — the schedule will catch up on its own.'
@@ -6278,9 +6317,9 @@ function renderDone() {
       <div class="ringwrap">
         <svg viewBox="0 0 132 132">
           <circle class="trk" cx="66" cy="66" r="56"></circle>
-          <circle class="val" cx="66" cy="66" r="56" style="stroke-dashoffset:${(CIRC * (1 - acc)).toFixed(1)}"></circle>
+          ${abandoned ? '' : `<circle class="val" cx="66" cy="66" r="56" style="stroke-dashoffset:${(CIRC * (1 - acc)).toFixed(1)}"></circle>`}
         </svg>
-        <div class="pctxt">${pct(acc)}</div>
+        <div class="pctxt${abandoned ? ' faint' : ''}">${abandoned ? sess.answered + '/' + sess.queue.length : pct(acc)}</div>
       </div>
       <div class="dh-num ko">${headline}</div>
       <div class="dh-lab">${esc(headSub)}</div>
@@ -6983,10 +7022,19 @@ function renderMethod() {
     <h4>Fireworks, but no hearts</h4>
     <p>The celebration layer is deliberately one-sided. A correct answer escalates: sparks, then confetti, then rays and a screen bloom, then actual fireworks once you are twelve in a row. A wrong answer gets a shrug, a soft tone, and a note that the card is coming back sooner. That asymmetry is the whole point — reward feedback is legitimate and makes practice pleasant, whereas hearts, lives and countdown timers teach you to avoid the hard items, which is precisely backwards. If you would rather have none of it, Settings turns the effects down or off without touching the scheduling.</p>
 
+    <h4>Why speech sounds worse on an iPhone, and why that is not fixable here</h4>
+    <p>Hanbit ranks the Korean voices your browser offers and uses the best one. On a Mac, on Android and on Windows that is enough — the high-quality voices are a free download away and the browser hands them to a web page like any other.</p>
+    <p>Safari does not. iOS exposes only the voices that shipped with the system to <code>speechSynthesis</code>; the Enhanced and Premium versions of 유나 that you can download under Accessibility work in VoiceOver and in Apple's own apps and are simply invisible to a web page. Every browser on iPhone is Safari underneath, so no browser choice changes it, and there is no setting Hanbit can offer that would. The Voice panel in Settings lists exactly what your browser reports so you can see this for yourself rather than hunting for something that is not there.</p>
+    <p>The honest workarounds are small: the speech rate helps, and the same app on a laptop or an Android phone sounds noticeably better. Shipping recorded native audio would solve it outright and is the obvious next step if this ever matters enough to pay for.</p>
+
     <h4>Coins, and the one game mechanic that is not a trap</h4>
     <p>Hearts, lives and countdown timers all do the same thing: they attach a cost to getting something wrong, which teaches you to avoid the hard items. That is precisely backwards, because the hard items are where the learning is. So this app has none of them.</p>
     <p>Coins are the exception, and they are safe for a specific reason — they are purely additive. You earn them for finishing a session, for hitting a milestone and for running a conversation; you cannot lose them, running out costs you nothing, and none of the things they buy make the course easier to get through. The palettes are paint. The one power-up buys back a near miss.</p>
     <p>That power-up is worth being precise about, because it is exactly the sort of thing that usually corrupts an app like this. When you are off by <em>one character</em>, you can spend coins to keep your streak and your session credit. What you cannot buy is a lie to the scheduler: the card is still graded as one you got wrong, and it still comes back tomorrow. A redemption that quietly told the forgetting curve you knew the word would be selling you worse Korean in exchange for a nicer number.</p>
+
+    <h4>Leaving early</h4>
+    <p>Quitting a session part-way used to be treated as finishing it, which meant walking out four cards in with those four correct produced fireworks, a "완벽" and a coin bonus. That paid the reward for finishing to somebody who did not finish, and made quitting early the cheapest route to a flawless record.</p>
+    <p>An abandoned run now gets none of that — no perfect, no celebration, no bonus. What it keeps is the answers themselves. Those were real retrievals, they were graded as they happened, and deleting them to make a point would cost you actual memory in exchange for a cosmetic one. Stopping when the app itself suggests it, at the time budget, is a finished session; that prompt exists because stopping there is the right call.</p>
 
     <h4>Why the grading is strict</h4>
     <p>It did not used to be, and that was a real bug. The old rule forgave any answer within one edit, which meant typing <span class="ko">ga gi</span> for <span class="ko">고기</span> — <code>gogi</code> — was marked correct. One edit, but one entire vowel: ㅏ against ㅗ, which is the exact discrimination the exercise exists to train. The same held in Korean, where <span class="ko">밥</span> and <span class="ko">밤</span> are one jamo and two different words.</p>
@@ -7046,15 +7094,35 @@ function renderVoiceCard() {
     `}
 
     ${tier === 'basic' && !better ? `<div class="notice" style="margin-top:12px">
-      <b>This is the robotic one.</b> Your device only has the small, low-quality Korean voice installed — the good one is a
-      free download the operating system does not prompt you for. It takes a minute and the difference is not subtle.
+      ${fix.futile
+      ? `<b>This is as good as it gets on this device, and that is not your fault.</b>`
+      : `<b>This is the robotic one.</b> Your device only has the small, low-quality Korean voice installed — the good one is a
+         free download the operating system does not prompt you for. It takes a minute and the difference is not subtle.`}
       <div style="margin-top:10px"><b>${esc(fix.where)}</b></div>
-      <ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>
+      ${fix.futile
+      ? fix.steps.map(x => `<p style="margin:6px 0 0;line-height:1.6">${x}</p>`).join('')
+      : `<ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>`}
     </div>` : ''}
     ${tier === 'basic' && better ? `<div class="notice" style="margin-top:12px">
       <b>A better voice is installed but not selected.</b> Set the dropdown back to "Best available", or pick the one
       marked high quality.
     </div>` : ''}
+
+    <details style="margin-top:12px">
+      <summary class="faint" style="cursor:pointer;font-size:12.5px">What this browser actually reports</summary>
+      <div class="prose" style="font-size:12.5px;margin-top:8px">
+        <p style="margin:0 0 6px">If you went looking for a voice in your system settings and could not find it here, this is
+        why — the list below is everything the browser is willing to hand a web page, and Hanbit cannot use anything that is
+        not on it.</p>
+        ${voices.length
+      ? `<ul style="margin:0;padding-left:18px;line-height:1.7">${voices.map(v =>
+        `<li><code>${esc(v.name)}</code> · ${esc(v.lang)} · ${v.localService === false ? 'online' : 'on-device'} · ${VOICE_TIER_SHORT[voiceTier(v)]}</li>`).join('')}</ul>`
+      : '<p style="margin:0"><em>None. The browser reports no Korean voice at all.</em></p>'}
+        <p style="margin:8px 0 0" class="faint">${('speechSynthesis' in window)
+      ? `${window.speechSynthesis.getVoices().length} voices total across all languages.`
+      : 'This browser has no speech synthesis at all.'}</p>
+      </div>
+    </details>
   </div>`;
 }
 
@@ -7305,8 +7373,10 @@ document.addEventListener('click', e => {
   if (act === 'theme') { S.settings.theme = S.settings.theme === 'dark' ? 'light' : 'dark'; save(); render(); return; }
   if (act === 'start') { startSession(); return; }
   if (act === 'extra') { startExtra(); return; }
-  if (act === 'quit') { if (sess && sess.answered) { finishSession(); } else { view = 'today'; sess = null; render(); } return; }
-  if (act === 'stopnow') { finishSession(); return; }
+  if (act === 'quit') { if (sess && sess.answered) { finishSession('abandoned'); } else { view = 'today'; sess = null; render(); } return; }
+  // Stopping when the app itself suggested it, at the time budget, is a
+  // finished session — that prompt exists because stopping there is correct.
+  if (act === 'stopnow') { finishSession('stopped'); return; }
   if (act === 'keepgoing') { sess.askStop = false; sess.overtime = true; sess.budgetMs = Infinity; render(); return; }
   if (act === 'learned') { learnedStep(); return; }
   if (act === 'reteachdone') { advance(); return; }
@@ -8143,6 +8213,11 @@ window.addEventListener('beforeunload', () => { try { localStorage.setItem(STORE
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (Voice.recording) { Voice.cancel(); sayRec.phase = 'idle'; render(); }
+    // iOS Safari wedges its speech engine if the page is backgrounded while
+    // it is mid-utterance, and stays wedged until the tab is reloaded. Cutting
+    // the utterance off on the way out avoids that entirely.
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    clearTimeout(playTimer);
     return;
   }
   // Back in the foreground: pick up anything that shipped while it was away.
