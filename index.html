@@ -76,6 +76,16 @@ html, body { margin: 0; padding: 0; }
    the grey flash on tap, the double-tap-to-zoom delay, and the rubber-band
    overscroll past the top of a list. */
 html { -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+/* Installed to a home screen the page runs under the status bar and the
+   Dynamic Island, because the viewport is viewport-fit=cover and the status
+   bar is translucent. Every top-level bit of chrome has to inset itself or it
+   ends up physically unreachable under the island. */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
 button, a, .chunk, .conv-card, .opt, .tile, .kb-key {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
@@ -93,11 +103,15 @@ input { font: inherit; color: inherit; }
 a { color: var(--accent); }
 
 /* ---------- shell ---------- */
-#app { max-width: 780px; margin: 0 auto; padding: 0 16px 120px; }
+#app {
+  max-width: 780px; margin: 0 auto; padding: 0 16px 120px;
+  padding-left: max(16px, var(--sal));
+  padding-right: max(16px, var(--sar));
+}
 
 header.top {
   display: flex; align-items: center; gap: 12px;
-  padding: 18px 0 14px; position: sticky; top: 0; z-index: 30;
+  padding: max(18px, var(--sat)) 0 14px; position: sticky; top: 0; z-index: 30;
   background: linear-gradient(var(--bg) 70%, transparent);
 }
 .brand { display: flex; align-items: baseline; gap: 9px; font-weight: 650; letter-spacing: -.01em; }
@@ -192,8 +206,11 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .bar > i.good { background: var(--good); }
 
 /* ---------- session ---------- */
-.session-wrap { padding-top: 4px; }
-.sess-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.session-wrap { padding-top: max(4px, var(--sat)); }
+.sess-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; min-height: 44px; }
+/* 44px is the smallest target a thumb reliably hits; the glyph stays the
+   same size, the hit area grows around it. */
+.sess-head .iconbtn { width: 44px; height: 44px; font-size: 17px; }
 .sess-head .bar { flex: 1; }
 .sess-head .count { font-size: 12px; color: var(--tx-faint); font-variant-numeric: tabular-nums; }
 
@@ -378,7 +395,7 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
   .q-sentence { font-size: 21px; }
   .grid.four { grid-template-columns: 1fr 1fr; }
   .kb-key { height: 40px; font-size: 15px; }
-  #app { padding: 0 12px 120px; }
+  #app { padding-left: max(12px, var(--sal)); padding-right: max(12px, var(--sar)); }
 }
 
 /* ============================================================
@@ -901,14 +918,13 @@ img.who { padding: 0; }
 
 @media (max-width: 720px) {
   nav.tabs { display: none; }
-  #app { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
-  header.top { padding-top: max(18px, env(safe-area-inset-top)); }
+  #app { padding-bottom: calc(86px + var(--sab)); }
 
   .tabbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     background: var(--bg-soft); border-top: 1px solid var(--line-soft);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    padding: 6px max(4px, var(--sal)) calc(6px + var(--sab)) max(4px, var(--sar));
     backdrop-filter: saturate(1.4) blur(12px);
   }
   .tabbar button {
