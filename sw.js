@@ -13,7 +13,7 @@
    progress lives in localStorage and is never touched here.
    ============================================================ */
 
-const VERSION = 'hanbit-v7';
+const VERSION = 'hanbit-v8';
 const CORE = [
   './',
   './index.html',
@@ -26,6 +26,10 @@ const CORE = [
   './icons/av-minsu.webp',
   './audio/manifest.json'
 ];
+
+/* Character art is not precached either. The starter tiger is an inline SVG,
+   so a first run needs none of it, and everything else arrives one portrait
+   at a time as characters are won — the runtime handler below keeps each. */
 
 /* The recorded lines are deliberately NOT precached: 122 clips is several
    megabytes and would make the first install crawl. The runtime handler

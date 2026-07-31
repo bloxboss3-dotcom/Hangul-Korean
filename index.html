@@ -749,6 +749,109 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 .earned .ea-b { font-size: 12.5px; color: var(--tx-faint); }
 
 /* ============================================================
+   THE COLLECTION — eggs, characters, the reveal
+   ============================================================ */
+.eggrow {
+  display: flex; align-items: center; gap: 14px; margin-top: 16px;
+  padding: 14px; border-radius: var(--radius-sm);
+  background: var(--bg-raise); border: 1px solid var(--line-soft);
+}
+.eggart { flex: none; width: 46px; height: 58px; display: grid; place-items: center; }
+
+/* One egg shape, reused at both sizes. Drawn rather than an image file so
+   it takes the accent colour of whoever is equipped. */
+.egg-s {
+  display: block; width: 42px; height: 54px;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  background: linear-gradient(160deg, var(--accent), var(--accent2));
+  box-shadow: inset -6px -8px 14px rgba(0,0,0,.28), inset 5px 6px 12px rgba(255,255,255,.22);
+  position: relative;
+}
+.egg-s::after {
+  content: ''; position: absolute; left: 24%; top: 20%; width: 22%; height: 15%;
+  border-radius: 50%; background: rgba(255,255,255,.5); filter: blur(1px);
+}
+
+/* full-screen reveal */
+.eggov {
+  position: fixed; inset: 0; z-index: 96; display: grid; place-items: center;
+  background: rgba(6,9,14,.9); backdrop-filter: blur(7px);
+  opacity: 0; transition: opacity .25s ease; padding: 24px;
+}
+.eggov.on { opacity: 1; }
+:root.light .eggov { background: rgba(240,242,246,.94); }
+.eggstage { text-align: center; max-width: 420px; width: 100%; }
+
+.eggbig { display: grid; place-items: center; }
+.eggbig .egg-s { width: 128px; height: 164px; animation: eggShake var(--shake, .5s) ease-in-out infinite; }
+.eggbig.r2 .egg-s, .eggbig.r3 .egg-s, .eggbig.r4 .egg-s {
+  box-shadow: inset -6px -8px 14px rgba(0,0,0,.28), inset 5px 6px 12px rgba(255,255,255,.22),
+              0 0 46px 6px var(--accent);
+}
+.eggbig.crack .egg-s { animation: eggPop .5s cubic-bezier(.2,1.6,.35,1) forwards; }
+@keyframes eggShake {
+  0%,100% { transform: rotate(-5deg) translateX(-2px); }
+  50% { transform: rotate(5deg) translateX(2px); }
+}
+@keyframes eggPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.3) rotate(6deg); }
+  100% { transform: scale(0); opacity: 0; }
+}
+.eggcap { margin-top: 20px; color: var(--tx-faint); font-size: 13.5px; letter-spacing: .04em; }
+
+.reveal { opacity: 0; transform: translateY(14px) scale(.94); transition: opacity .4s ease, transform .5s cubic-bezier(.2,1.3,.35,1); }
+.reveal.in { opacity: 1; transform: none; }
+.reveal .rv-rar { font-size: 12px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
+.reveal .rv-art { margin: 12px auto 4px; width: 180px; height: 180px; }
+.reveal .rv-art img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--rv, var(--accent)); box-shadow: 0 0 40px -6px var(--rv, var(--accent)); }
+.reveal.r3 .rv-art img, .reveal.r4 .rv-art img { box-shadow: 0 0 70px -4px var(--rv, var(--accent)); }
+.reveal.r4 .rv-art { animation: revFloat 3.4s ease-in-out infinite; }
+@keyframes revFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+.reveal .rv-ko { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-top: 8px; }
+.reveal .rv-en { font-size: 14px; color: var(--tx-dim); margin-top: 2px; }
+.reveal .rv-blurb { font-size: 13px; color: var(--tx-faint); line-height: 1.6; margin: 12px auto 0; max-width: 34ch; }
+.reveal .rv-new {
+  display: inline-block; margin-top: 12px; padding: 4px 13px; border-radius: 999px;
+  background: var(--good); color: #0b1220; font-size: 11.5px; font-weight: 800; letter-spacing: .12em;
+}
+.reveal .rv-dupe { margin-top: 12px; font-size: 13px; color: var(--tx-dim); }
+.reveal .rv-dupe b { color: var(--tx); }
+
+/* the grid */
+.chargrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 6px; }
+.charcard {
+  position: relative; display: grid; justify-items: center; gap: 2px; padding: 11px 7px;
+  border-radius: var(--radius-sm); background: var(--bg-raise);
+  border: 1px solid var(--line-soft); transition: transform .12s, border-color .15s;
+}
+.charcard:hover:not(:disabled) { transform: translateY(-2px); }
+.charcard .cf { width: 64px; height: 64px; display: grid; place-items: center; }
+.charcard .cf img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.charcard .qm { font-size: 26px; font-weight: 800; color: var(--tx-faint); opacity: .4; }
+.charcard.locked .cf { background: var(--bg-card); border-radius: 50%; width: 64px; height: 64px; }
+.charcard .cn { font-size: 13.5px; font-weight: 650; margin-top: 4px; }
+.charcard .ce { font-size: 11px; color: var(--tx-faint); text-align: center; line-height: 1.3; }
+.charcard .dupe { position: absolute; top: 6px; right: 7px; font-size: 10.5px; color: var(--tx-faint);
+  font-variant-numeric: tabular-nums; }
+.charcard .eqd { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-top: 3px; }
+.charcard.on { border-color: var(--accent); }
+.charcard.locked { opacity: .55; }
+/* rarity reads at a glance from the ring, before you read any label */
+.charcard.r-rare:not(.locked) .cf img { box-shadow: 0 0 0 2px #6ea8fe; }
+.charcard.r-epic:not(.locked) .cf img { box-shadow: 0 0 0 2px #b39ddb, 0 0 14px -2px #b39ddb; }
+.charcard.r-legendary:not(.locked) .cf img { box-shadow: 0 0 0 2px #ffb457, 0 0 20px -2px #ffb457; }
+.charcard.r-mythical:not(.locked) .cf img { box-shadow: 0 0 0 2px #7ee8c0, 0 0 26px -1px #7ee8c0; }
+
+/* the mascot frame, when it is holding a portrait rather than the tiger SVG */
+#mascot .m-art { width: 100%; height: 100%; }
+#mascot.m-photo .m-art img {
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--accent); box-shadow: 0 4px 18px rgba(0,0,0,.4);
+}
+
+/* ============================================================
    CONVERSATIONS
    A dialogue is presented whole, then taken apart chunk by chunk.
    The colours are the point: the same colour on a Korean chunk and
@@ -2709,6 +2812,7 @@ const CONVERSATIONS = [
    ============================================================ */
 
 const FX_PALETTE = ['#6ea8fe', '#4ec9a5', '#ffd166', '#f78fb3', '#b39ddb', '#7ee8c0', '#ffb457'];
+const pickFrom = a => a[Math.floor(Math.random() * a.length)];
 const FX_JAMO = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅎ', 'ㅏ', 'ㅓ', 'ㅗ', 'ㅜ', 'ㅣ', '한', '빛'];
 
 /* ------------------------------------------------------------
@@ -2979,7 +3083,7 @@ const FX = {
         vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
         g: opts.g == null ? 620 : opts.g, drag: 0.985,
         size: (kind === 'jamo' ? 9 : 7) * (0.7 + Math.random() * 0.9) * (opts.scale || 1),
-        color: opts.color || FX_PALETTE[Math.floor(Math.random() * FX_PALETTE.length)],
+        color: opts.color || pickFrom(opts.colors || FX_PALETTE),
         ch: FX_JAMO[Math.floor(Math.random() * FX_JAMO.length)],
         rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 14,
         life: 0, max: (opts.max || 1.5) * (0.7 + Math.random() * 0.6)
@@ -3323,14 +3427,35 @@ const Mascot = {
     const wrap = document.createElement('div');
     wrap.id = 'mascot';
     wrap.className = 'm-idle';
-    wrap.innerHTML = MASCOT_SVG + '<div class="m-bubble"></div>';
+    wrap.innerHTML = '<div class="m-art"></div><div class="m-bubble"></div>';
     document.body.appendChild(wrap);
     this.el = wrap;
+    this.dress();
     this.scheduleBlink();
+  },
+
+  /* Swap in the equipped character. The tiger keeps its hand-built SVG —
+     it blinks, its ears move, and no flat portrait would match that — while
+     everyone else is a portrait inside the same frame. The bounce, pop and
+     tilt animations live on the container, so they apply to both. */
+  dress() {
+    if (!this.el) return;
+    const c = equippedChar();
+    if (this.wearing === c.id) return;
+    this.wearing = c.id;
+    const art = this.el.querySelector('.m-art');
+    if (c.id === 'tiger') {
+      art.innerHTML = MASCOT_SVG;
+      this.el.classList.remove('m-photo');
+    } else {
+      art.innerHTML = `<img src="./icons/chars/${c.id}.webp" alt="${esc(c.en)}" width="76" height="76">`;
+      this.el.classList.add('m-photo');
+    }
   },
 
   show(on) {
     this.mount();
+    this.dress();
     this.el.classList.toggle('visible', !!on);
   },
 
@@ -3486,18 +3611,22 @@ function celebrateCorrect(ctx) {
   const tier = comboTier(ctx.combo);
   const anchor = ctx.anchor || '.fb';
   const p = centerOf(anchor);
+  // Whoever is equipped colours and shapes the celebration, so collecting a
+  // character actually changes what studying looks like.
+  const fx = equippedChar().fx;
 
   Sfx.play('correct', tier);
 
   const scale = 1 + tier * 0.22;
-  FX.ring(p.x, p.y, { r1: 110 + tier * 55, color: tier >= 2 ? '#ffd166' : '#4ec9a5', w: 2 + tier * 0.6 });
+  FX.ring(p.x, p.y, { r1: 110 + tier * 55, color: tier >= 2 ? fx.colors[0] : fx.colors[1] || fx.colors[0], w: 2 + tier * 0.6 });
   FX.burst(p.x, p.y, {
     count: 18 + tier * 16,
     power: 240 + tier * 90,
     scale,
     spread: Math.PI * (tier >= 2 ? 2 : 1.15),
     dir: tier >= 2 ? 0 : -Math.PI / 2,
-    kinds: tier >= 1 ? ['confetti', 'spark', 'star', 'jamo'] : ['spark', 'confetti']
+    colors: fx.colors,
+    kinds: tier >= 1 ? fx.kinds : fx.kinds.slice(0, 2)
   });
 
   if (tier >= 1) FX.rays(p.x, p.y, { count: 8 + tier * 3, len: 70 + tier * 30 });
@@ -3508,7 +3637,7 @@ function celebrateCorrect(ctx) {
   if (ctx.combo >= 2) {
     floatText('×' + ctx.combo, p.x + 8, p.y - 30, {
       big: tier >= 2,
-      color: ['#4ec9a5', '#6ea8fe', '#ffd166', '#ffb457', '#f78fb3'][tier]
+      color: fx.colors[Math.min(tier, fx.colors.length - 1)]
     });
   }
 
@@ -4279,18 +4408,174 @@ const THEMES = [
     dark: ['#8fd3ff', '#1b4a63', '#e59cff'], light: ['#175f8c', '#cfeaff', '#7a3ca8'] }
 ];
 
+/* ---------------------------------------------------------------
+   THE COLLECTION
+   ------------------------------------------------------------
+   Fifteen characters out of Korean folklore, won from eggs bought
+   with study coins. The one you equip replaces the tiger in the
+   corner, repaints the accent, and changes what a correct answer
+   looks like.
+
+   Gacha is the one mechanic here that could genuinely go wrong, so
+   the sharp edges are filed off deliberately:
+     · no real money, ever — coins come only from studying
+     · the odds are printed on the screen, not buried
+     · a duplicate always refunds coins, so no pull is a dead loss
+     · pity counters guarantee an epic within 10 and a legendary
+       within 25, so a bad streak cannot go on forever
+   Nothing you can win makes the Korean easier. It is all paint,
+   and that is what keeps it honest.
+   --------------------------------------------------------------- */
+
+const EGG_COST = 120;
+
+const RARITY = {
+  common: { label: 'Common', odds: 0.58, refund: 20, color: '#98a2b3', order: 0 },
+  rare: { label: 'Rare', odds: 0.26, refund: 45, color: '#6ea8fe', order: 1 },
+  epic: { label: 'Epic', odds: 0.11, refund: 90, color: '#b39ddb', order: 2 },
+  legendary: { label: 'Legendary', odds: 0.04, refund: 175, color: '#ffb457', order: 3 },
+  mythical: { label: 'Mythical', odds: 0.01, refund: 350, color: '#7ee8c0', order: 4 }
+};
+const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythical'];
+
+/* accent: [base, dim, second] for dark and light. fx: the particle palette
+   and shapes a correct answer throws when this character is equipped. */
+const CHARACTERS = [
+  { id: 'tiger', ko: '호랑이', en: 'Tiger', rarity: 'common', starter: true,
+    blurb: 'The one who was here first. Stubborn, encouraging, faintly smug.',
+    accent: { dark: ['#6ea8fe', '#2b4d80', '#4ec9a5'], light: ['#2563eb', '#c7dbff', '#0e8f6e'] },
+    fx: { colors: ['#6ea8fe', '#4ec9a5', '#ffd166'], kinds: ['confetti', 'spark', 'star'] } },
+
+  { id: 'magpie', ko: '까치', en: 'Magpie', rarity: 'common',
+    blurb: 'Korea\'s bird of good news. Turns up when something is about to go right.',
+    accent: { dark: ['#8fd3ff', '#1b4a63', '#e8ecf2'], light: ['#175f8c', '#cfeaff', '#4a5462'] },
+    fx: { colors: ['#8fd3ff', '#e8ecf2', '#6ea8fe'], kinds: ['spark', 'star'] } },
+
+  { id: 'jindo', ko: '진돗개', en: 'Jindo', rarity: 'common',
+    blurb: 'Famously loyal. Will wait by the door for the whole of your study break.',
+    accent: { dark: ['#ffd166', '#6b5417', '#ffb457'], light: ['#8a6100', '#fff0c4', '#8f5000'] },
+    fx: { colors: ['#ffd166', '#ffb457', '#fff0c4'], kinds: ['confetti', 'spark'] } },
+
+  { id: 'rabbit', ko: '토끼', en: 'Moon Rabbit', rarity: 'common',
+    blurb: 'Pounds rice cakes on the moon. Korean children are told to look for it.',
+    accent: { dark: ['#d8dee9', '#3a4150', '#b39ddb'], light: ['#4a5568', '#e2e8f0', '#5f43a6'] },
+    fx: { colors: ['#e8ecf2', '#d8dee9', '#b39ddb'], kinds: ['spark', 'star'] } },
+
+  { id: 'crane', ko: '학', en: 'Crane', rarity: 'rare',
+    blurb: 'A thousand years of life, folded into one bird. Patience made visible.',
+    accent: { dark: ['#f0736a', '#55251f', '#e8ecf2'], light: ['#c8362c', '#fbdcd9', '#4a5462'] },
+    fx: { colors: ['#e8ecf2', '#f0736a', '#ffd166'], kinds: ['star', 'spark'] } },
+
+  { id: 'bear', ko: '곰', en: 'Bear', rarity: 'rare',
+    blurb: 'Ate mugwort and garlic in a cave for a hundred days and became the mother of Korea.',
+    accent: { dark: ['#c79a6b', '#4a3520', '#7ee8c0'], light: ['#8a5a2b', '#f0e0cc', '#0f7a63'] },
+    fx: { colors: ['#c79a6b', '#7ee8c0', '#ffd166'], kinds: ['confetti', 'spark'] } },
+
+  { id: 'carp', ko: '잉어', en: 'Koi', rarity: 'rare',
+    blurb: 'Swims up the waterfall. The one that makes it turns into a dragon.',
+    accent: { dark: ['#ffb457', '#6b4517', '#8fd3ff'], light: ['#b8600a', '#ffe0bf', '#175f8c'] },
+    fx: { colors: ['#ffb457', '#8fd3ff', '#ffd166'], kinds: ['spark', 'confetti'] } },
+
+  { id: 'gumiho', ko: '구미호', en: 'Nine-tailed Fox', rarity: 'epic',
+    blurb: 'A thousand years a fox, and then nine tails and a very good disguise.',
+    accent: { dark: ['#ffc46b', '#6b4a17', '#fff0c4'], light: ['#a8690a', '#ffe8c4', '#8a6100'] },
+    fx: { colors: ['#ffc46b', '#fff0c4', '#ffd166'], kinds: ['spark', 'star', 'jamo'] } },
+
+  { id: 'dokkaebi', ko: '도깨비', en: 'Dokkaebi', rarity: 'epic',
+    blurb: 'A goblin who loves games, wrestling and being paid in buckwheat jelly.',
+    accent: { dark: ['#5fd3b2', '#1e5346', '#ffd166'], light: ['#0e8f6e', '#cdeee4', '#8a6100'] },
+    fx: { colors: ['#5fd3b2', '#ffd166', '#8fe8d0'], kinds: ['confetti', 'star', 'jamo'] } },
+
+  { id: 'haetae', ko: '해태', en: 'Haetae', rarity: 'epic',
+    blurb: 'Can tell right from wrong on sight. Guards Gwanghwamun and eats fire.',
+    accent: { dark: ['#9db4d0', '#2b3a4d', '#ffb457'], light: ['#3f5b7d', '#d6e2f0', '#8f5000'] },
+    fx: { colors: ['#9db4d0', '#ffb457', '#e8ecf2'], kinds: ['spark', 'star', 'jamo'] } },
+
+  { id: 'dragon', ko: '청룡', en: 'Azure Dragon', rarity: 'legendary',
+    blurb: 'Guardian of the east and the spring. Where it passes, rain follows.',
+    accent: { dark: ['#4fd6d6', '#12454f', '#8fd3ff'], light: ['#0d7f88', '#c9eef0', '#175f8c'] },
+    fx: { colors: ['#4fd6d6', '#8fd3ff', '#e8ecf2'], kinds: ['spark', 'star', 'jamo', 'confetti'] } },
+
+  { id: 'jujak', ko: '주작', en: 'Vermilion Bird', rarity: 'legendary',
+    blurb: 'Guardian of the south and the summer. Burns without ever being consumed.',
+    accent: { dark: ['#ff7a5c', '#5c2419', '#ffd166'], light: ['#c03a12', '#ffdccf', '#8a6100'] },
+    fx: { colors: ['#ff7a5c', '#ffd166', '#ffb457'], kinds: ['spark', 'star', 'jamo', 'confetti'] } },
+
+  { id: 'baekho', ko: '백호', en: 'White Tiger', rarity: 'legendary',
+    blurb: 'Guardian of the west and the autumn. Arrives with the first frost.',
+    accent: { dark: ['#cfe4ff', '#2b3f5c', '#8fd3ff'], light: ['#2f5a8a', '#dbeaff', '#175f8c'] },
+    fx: { colors: ['#cfe4ff', '#8fd3ff', '#e8ecf2'], kinds: ['spark', 'star', 'jamo', 'confetti'] } },
+
+  { id: 'sage', ko: '신선', en: 'Mountain Sage', rarity: 'mythical',
+    blurb: 'Gave up the world for the mountains and stopped ageing. Will teach you if you ask well.',
+    accent: { dark: ['#ffe08a', '#5c4a17', '#7ee8c0'], light: ['#8a6100', '#fff2cc', '#0f7a63'] },
+    fx: { colors: ['#ffe08a', '#7ee8c0', '#fff0c4'], kinds: ['spark', 'star', 'jamo', 'confetti'] } },
+
+  { id: 'bonghwang', ko: '봉황', en: 'Bonghwang', rarity: 'mythical',
+    blurb: 'Appears only when the world is at peace and the ruler is just. Rarely seen.',
+    accent: { dark: ['#d5a6ff', '#3f2b5c', '#7ee8c0'], light: ['#6b3aa8', '#ead9ff', '#0f7a63'] },
+    fx: { colors: ['#d5a6ff', '#7ee8c0', '#ffe08a'], kinds: ['spark', 'star', 'jamo', 'confetti'] } }
+];
+
+const CHAR_BY_ID = {};
+CHARACTERS.forEach(c => CHAR_BY_ID[c.id] = c);
+
+const charById = id => CHAR_BY_ID[id] || CHAR_BY_ID.tiger;
+const ownsChar = id => !!(S.chars && S.chars.owned && S.chars.owned[id]);
+const equippedChar = () => charById(S.chars && S.chars.equipped);
+const charsOfRarity = r => CHARACTERS.filter(c => c.rarity === r);
+
+/* Roll one egg. Pity is checked before the random draw rather than after,
+   so a guaranteed pull is genuinely guaranteed and not merely likely. */
+function rollEgg() {
+  const ch = S.chars;
+  let rarity = null;
+
+  if (ch.sinceLegendary >= 24) rarity = Math.random() < 0.2 ? 'mythical' : 'legendary';
+  else if (ch.sinceEpic >= 9) rarity = RARITY_ORDER[2 + (Math.random() < 0.25 ? 1 : 0)];
+
+  if (!rarity) {
+    let r = Math.random(), acc = 0;
+    for (const k of RARITY_ORDER) {
+      acc += RARITY[k].odds;
+      if (r < acc) { rarity = k; break; }
+    }
+    rarity = rarity || 'common';
+  }
+
+  const pool = charsOfRarity(rarity);
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+
+  ch.opened++;
+  ch.sinceEpic = RARITY[rarity].order >= 2 ? 0 : ch.sinceEpic + 1;
+  ch.sinceLegendary = RARITY[rarity].order >= 3 ? 0 : ch.sinceLegendary + 1;
+
+  const dupe = ownsChar(pick.id);
+  ch.owned[pick.id] = (ch.owned[pick.id] || 0) + 1;
+  let refund = 0;
+  if (dupe) {
+    refund = RARITY[rarity].refund;
+    S.coins += refund;
+    S.coinsEarned += refund;
+  }
+  return { char: pick, rarity, dupe, refund };
+}
+
 const themeById = id => THEMES.find(t => t.id === id) || THEMES[0];
 const ownsTheme = id => (S.unlocked || []).includes(id);
 
 function applyAccent() {
-  const t = themeById(S.accent);
-  const [a, dim, a2] = S.settings.theme === 'light' ? t.light : t.dark;
+  const light = S.settings.theme === 'light';
+  // 'char' means follow whoever is equipped, so pulling a new character
+  // actually repaints the app rather than just changing the corner.
+  const src = S.accent === 'char' ? equippedChar().accent : themeById(S.accent);
+  const [a, dim, a2] = light ? src.light : src.dark;
   const r = document.documentElement.style;
   r.setProperty('--accent', a);
   r.setProperty('--accent-dim', dim);
   r.setProperty('--accent2', a2);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', S.settings.theme === 'light' ? '#f6f7f9' : '#0f1115');
+  if (meta) meta.setAttribute('content', light ? '#f6f7f9' : '#0f1115');
 }
 
 /* Coins arrive for finishing things, never for individual answers — a
@@ -4354,8 +4639,15 @@ const DEFAULTS = {
   coins: 0,                // spendable; earned only, never lost
   coinsEarned: 0,          // lifetime total, for the stat
   redeemed: 0,             // near misses bought back
-  accent: 'default',       // active cosmetic palette
+  accent: 'char',          // 'char' follows the equipped character; else a palette id
   unlocked: ['default'],   // palettes owned
+  chars: {                 // the collection
+    owned: { tiger: 1 },   // id -> how many times pulled
+    equipped: 'tiger',
+    opened: 0,             // eggs opened, ever
+    sinceEpic: 0,          // pity counters
+    sinceLegendary: 0
+  },
   milestones: {},          // which one-time celebrations have already fired
   cards: {},          // "itemId|skill" -> card
   confusions: {},      // "idA~idB" -> { a, b, n, last }
@@ -4403,7 +4695,20 @@ function normalizeSettings() {
   });
   if (!Array.isArray(S.unlocked)) S.unlocked = ['default'];
   if (!S.unlocked.includes('default')) S.unlocked.push('default');
-  if (!THEMES.some(t => t.id === S.accent && S.unlocked.includes(t.id))) S.accent = 'default';
+  if (S.accent !== 'char' && !THEMES.some(t => t.id === S.accent && S.unlocked.includes(t.id))) S.accent = 'char';
+
+  if (!S.chars || typeof S.chars !== 'object') S.chars = structuredCloneSafe(DEFAULTS.chars);
+  if (!S.chars.owned || typeof S.chars.owned !== 'object') S.chars.owned = {};
+  // The tiger is the starter and cannot be lost, including out of an old save.
+  S.chars.owned.tiger = Math.max(1, S.chars.owned.tiger | 0);
+  Object.keys(S.chars.owned).forEach(id => {
+    if (!CHAR_BY_ID[id]) delete S.chars.owned[id];
+  });
+  if (!ownsChar(S.chars.equipped)) S.chars.equipped = 'tiger';
+  ['opened', 'sinceEpic', 'sinceLegendary'].forEach(k => {
+    const n = Number(S.chars[k]);
+    S.chars[k] = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+  });
   S.settings.consolidateFirst = S.settings.consolidateFirst !== false;
   const sl = Number(S.settings.shakyLimit);
   S.settings.shakyLimit = Number.isFinite(sl) ? Math.min(200, Math.max(5, sl)) : 30;
@@ -5768,6 +6073,7 @@ function render() {
 
   let body = '';
   if (view === 'today') body = renderToday();
+  else if (view === 'collection') body = renderCollection();
   else if (view === 'talk') body = renderTalk();
   else if (view === 'convo') body = renderConvo();
   else if (view === 'weak') body = renderWeak();
@@ -5793,14 +6099,14 @@ const NAV_ICON = {
 function shell(body) {
   const weakN = weakCards().length;
   const tabs = [['today', 'Today'], ['talk', 'Talk'], ['weak', 'Weak spots' + (weakN ? ' · ' + weakN : '')],
-  ['progress', 'Progress'], ['browse', 'Course'], ['method', 'Method'], ['settings', 'Settings']];
+  ['collection', 'Collection'], ['progress', 'Progress'], ['browse', 'Course'], ['method', 'Method'], ['settings', 'Settings']];
   const navHere = view === 'convo' ? 'talk' : view;
   const bottom = [['today', 'Today'], ['talk', 'Talk'], ['weak', 'Weak', weakN], ['progress', 'Progress'], ['settings', 'Settings']];
   return `
   <header class="top">
     <div class="brand"><span class="mark ko">한</span><span>Hanbit<br><small>Korean, on a forgetting curve</small></span></div>
     <div class="spacer"></div>
-    <button class="wallet" data-view="progress" title="Coins — spend them in Progress">
+    <button class="wallet" data-view="collection" title="Coins, eggs and your collection">
       <span class="coin"></span><b>${S.coins || 0}</b>
     </button>
     <button class="iconbtn" data-act="theme" title="Light / dark">${S.settings.theme === 'dark' ? '☀' : '☾'}</button>
@@ -6456,6 +6762,86 @@ function renderDone() {
 }
 
 /* ---------- Progress ---------- */
+/* ---------- Collection ---------- */
+function renderCollection() {
+  const owned = CHARACTERS.filter(c => ownsChar(c.id)).length;
+  const eq = equippedChar();
+  const can = (S.coins || 0) >= EGG_COST;
+  const ch = S.chars;
+
+  const byRarity = RARITY_ORDER.map(r => {
+    const list = charsOfRarity(r);
+    const mine = list.filter(c => ownsChar(c.id)).length;
+    return `
+    <h3 style="display:flex;align-items:center;gap:9px">
+      <span style="color:${RARITY[r].color}">${RARITY[r].label}</span>
+      <span class="faint" style="font-weight:400;text-transform:none;letter-spacing:0">${mine}/${list.length}</span>
+    </h3>
+    <div class="chargrid">${list.map(c => {
+      const have = ownsChar(c.id);
+      const n = (ch.owned[c.id] || 0);
+      return `<button class="charcard r-${c.rarity} ${have ? '' : 'locked'} ${ch.equipped === c.id ? 'on' : ''}"
+        ${have ? `data-equip="${c.id}"` : 'disabled'}>
+        <span class="cf">${have
+        ? `<img src="./icons/chars/${c.id}.webp" width="64" height="64" alt="" loading="lazy">`
+        : '<span class="qm">?</span>'}</span>
+        <span class="cn ko">${have ? esc(c.ko) : '???'}</span>
+        <span class="ce">${have ? esc(c.en) : RARITY[c.rarity].label}</span>
+        ${n > 1 ? `<span class="dupe">×${n}</span>` : ''}
+        ${ch.equipped === c.id ? '<span class="eqd">equipped</span>' : ''}
+      </button>`;
+    }).join('')}</div>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h2 style="margin-bottom:2px">Collection</h2>
+        <p class="sub" style="margin:0">${owned} of ${CHARACTERS.length} found. Whoever you equip sits in the corner,
+        repaints the app and changes what a correct answer looks like.</p>
+      </div>
+      <div class="bigcoin"><span class="coin lg"></span><b>${S.coins || 0}</b></div>
+    </div>
+
+    <div class="eggrow">
+      <div class="eggart" aria-hidden="true"><span class="egg-s"></span></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:650;font-size:15px">Spirit egg</div>
+        <div class="faint" style="font-size:12.5px;margin-top:3px">
+          ${ch.opened} opened${ch.sinceEpic >= 5 ? ` · epic guaranteed in ${Math.max(0, 10 - ch.sinceEpic)}` : ''}${ch.sinceLegendary >= 15 ? ` · legendary in ${Math.max(0, 25 - ch.sinceLegendary)}` : ''}
+        </div>
+      </div>
+      <button class="btn ${can ? 'primary' : ''}" data-act="egg" ${can ? '' : 'disabled'}>
+        <span class="coin"></span> ${EGG_COST}
+      </button>
+    </div>
+    ${can ? '' : `<p class="sub" style="margin:10px 0 0;font-size:12.5px">${EGG_COST - (S.coins || 0)} more coins. A finished session pays about 35.</p>`}
+
+    <details style="margin-top:12px">
+      <summary class="faint" style="cursor:pointer;font-size:12.5px">Drop rates</summary>
+      <div class="prose" style="font-size:12.5px;margin-top:8px">
+        <p style="margin:0 0 6px">Printed here rather than hidden, because an unpublished rate is just a way of hoping you will not do the arithmetic.</p>
+        <ul style="margin:0;padding-left:18px;line-height:1.8">
+          ${RARITY_ORDER.map(r => `<li><b style="color:${RARITY[r].color}">${RARITY[r].label}</b> — ${(RARITY[r].odds * 100).toFixed(0)}% base, duplicate refunds ${RARITY[r].refund} coins</li>`).join('')}
+        </ul>
+        <p style="margin:8px 0 0">Those are <em>base</em> rates. An epic or better is guaranteed within 10 eggs and a
+        legendary or better within 25, which pulls the rates you actually see slightly above the numbers above — measured
+        over 20,000 eggs it works out nearer 13% epic and 6% legendary. Duplicates always refund, so no egg is a dead loss.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:2px">${esc(eq.en)}</h2>
+    <p class="sub" style="margin:0 0 12px"><span class="ko">${esc(eq.ko)}</span> · <span style="color:${RARITY[eq.rarity].color}">${RARITY[eq.rarity].label}</span></p>
+    <div class="prose" style="font-size:13.5px"><p style="margin:0">${esc(eq.blurb)}</p></div>
+    ${byRarity}
+  </div>
+
+  ${renderShop()}`;
+}
+
 /* The shop. Two things are for sale and neither makes the course easier:
    paint, and the right to keep your streak after a near miss. */
 function renderShop() {
@@ -6488,6 +6874,11 @@ function renderShop() {
 
     <h3>Palettes</h3>
     <div class="themegrid">
+      <button class="themecard ${S.accent === 'char' ? 'on' : ''}" data-settheme="char">
+        <span class="sw" style="background:linear-gradient(135deg,var(--accent),var(--accent2))"></span>
+        <span class="tc-n">Follow character</span><span class="tc-k ko">${esc(equippedChar().ko)}</span>
+        <span class="tc-c">${S.accent === 'char' ? 'in use' : 'auto'}</span>
+      </button>
       ${owned.map(t => `<button class="themecard ${S.accent === t.id ? 'on' : ''}" data-settheme="${t.id}">
         ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ko">${esc(t.ko)}</span>
         <span class="tc-c">${S.accent === t.id ? 'in use' : 'owned'}</span>
@@ -6527,7 +6918,6 @@ function renderProgress() {
   const weak = rows.slice().sort((a, b) => (a.c.S || 0) - (b.c.S || 0)).slice(0, 12);
 
   return `
-  ${renderShop()}
   <div class="grid four">
     <div class="stat"><div class="n">${pct(st.predictedR)}</div><div class="l">Predicted recall</div><div class="h">Average across every scheduled card, from its forgetting curve</div></div>
     <div class="stat"><div class="n">${st.reviewsAll ? pct(st.measuredR) : '—'}</div><div class="l">Measured retention</div><div class="h">${st.reviewsAll} real reviews graded so far</div></div>
@@ -7444,7 +7834,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip]');
   if (!t) return;
 
   Sfx.resume();
@@ -7463,6 +7853,7 @@ document.addEventListener('click', e => {
   if (t.dataset.conv) { openConvo(t.dataset.conv); return; }
   if (t.dataset.selfgrade) { saySelfGrade(parseInt(t.dataset.selfgrade, 10)); return; }
   if (t.dataset.settheme) { S.accent = t.dataset.settheme; save(); render(); return; }
+  if (t.dataset.equip) { equipChar(t.dataset.equip); return; }
   if (t.dataset.buytheme) { buyTheme(t.dataset.buytheme); return; }
   if (t.dataset.expand) { expanded[t.dataset.expand] = !expanded[t.dataset.expand]; render(); return; }
   if (t.dataset.toggle) { S.settings[t.dataset.toggle] = !S.settings[t.dataset.toggle]; save(); render(); return; }
@@ -7523,6 +7914,9 @@ document.addEventListener('click', e => {
   if (act === 'dismissinstall') { installPrompt = null; render(); return; }
   if (act === 'swupdate') { applyUpdate(); return; }
   if (act === 'redeem') { redeemNearMiss(); return; }
+  if (act === 'egg') { openEgg(); return; }
+  if (act === 'eggclose') { closeEgg(); return; }
+  if (act === 'equipnow') { closeEgg(t.dataset.id); return; }
 });
 
 document.addEventListener('change', e => {
@@ -7930,6 +8324,108 @@ function redeemNearMiss() {
   redeemFx();
 }
 
+/* ---------------------------------------------------------------
+   OPENING AN EGG
+   ------------------------------------------------------------
+   Three beats: the egg shakes, it cracks, the character arrives.
+   Everything scales with what came out — a common gets a shake and
+   a puff, a mythical gets the screen. The result is decided before
+   the animation starts and never changes partway, so the shake is
+   suspense rather than a lie about what has already been rolled.
+   --------------------------------------------------------------- */
+let eggBusy = false;
+
+function openEgg() {
+  if (eggBusy) return;
+  if ((S.coins || 0) < EGG_COST) { showToast('Not enough coins yet.'); return; }
+  if (!spend(EGG_COST)) return;
+  eggBusy = true;
+
+  const result = rollEgg();
+  save();
+
+  const tier = RARITY[result.rarity].order;
+  const ov = document.createElement('div');
+  ov.className = 'eggov';
+  ov.innerHTML = `
+    <div class="eggstage">
+      <div class="eggbig r${tier}"><span class="egg-s"></span></div>
+      <div class="eggcap">${['a stirring…', 'something bright…', 'the air changes…', 'the ground hums…', 'everything goes quiet…'][tier]}</div>
+    </div>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => ov.classList.add('on'));
+
+  Sfx.play('tap');
+  const egg = ov.querySelector('.eggbig');
+
+  // shake, longer and more agitated the better the pull
+  const shakeMs = 900 + tier * 350;
+  egg.style.setProperty('--shake', (0.5 - tier * 0.07) + 's');
+  scheduleFx(() => { Sfx.play('pop'); egg.classList.add('crack'); }, shakeMs);
+  scheduleFx(() => revealChar(ov, result), shakeMs + 520);
+}
+
+function revealChar(ov, result) {
+  const c = result.char;
+  const tier = RARITY[result.rarity].order;
+  const col = RARITY[result.rarity].color;
+  const p = { x: window.innerWidth / 2, y: window.innerHeight * 0.42 };
+
+  Sfx.play(tier >= 3 ? 'levelup' : tier >= 2 ? 'big' : 'milestone');
+  FX.ring(p.x, p.y, { r1: 160 + tier * 70, color: col, w: 2 + tier });
+  FX.burst(p.x, p.y, {
+    count: 26 + tier * 26, power: 280 + tier * 110, spread: Math.PI * 2, dir: 0,
+    colors: c.fx.colors, kinds: c.fx.kinds, scale: 1 + tier * 0.2
+  });
+  if (tier >= 1) FX.rays(p.x, p.y, { count: 10 + tier * 5, len: 90 + tier * 45 });
+  if (tier >= 2) { FX.bloom(p.x, p.y, 300 + tier * 110); flashScreen(tier >= 3 ? 'gold' : 'good'); }
+  if (tier >= 3) { edgeGlow('good', 1600); pulseApp(); FX.rain({ count: 70, avoidCenter: true }); }
+  if (tier >= 4) { FX.fireworks(3); Sfx.play('firework'); scheduleFx(() => FX.fireworks(2), 700); }
+
+  const pal = (S.settings.theme === 'light' ? c.accent.light : c.accent.dark);
+  ov.querySelector('.eggstage').innerHTML = `
+    <div class="reveal r${tier}" style="--rv:${pal[0]}">
+      <div class="rv-rar" style="color:${col}">${RARITY[result.rarity].label}</div>
+      <div class="rv-art"><img src="./icons/chars/${c.id}.webp" width="180" height="180" alt=""></div>
+      <div class="rv-ko ko">${esc(c.ko)}</div>
+      <div class="rv-en">${esc(c.en)}</div>
+      <div class="rv-blurb">${esc(c.blurb)}</div>
+      ${result.dupe
+      ? `<div class="rv-dupe">Already yours — <span class="coin"></span> <b>+${result.refund}</b> coins instead</div>`
+      : '<div class="rv-new">NEW</div>'}
+      <div class="row" style="justify-content:center;margin-top:16px">
+        ${result.dupe ? '' : `<button class="btn primary" data-act="equipnow" data-id="${c.id}">Equip ${esc(c.en)}</button>`}
+        <button class="btn ${result.dupe ? 'primary' : 'ghost'}" data-act="eggclose">Done</button>
+      </div>
+    </div>`;
+  requestAnimationFrame(() => ov.querySelector('.reveal').classList.add('in'));
+}
+
+function closeEgg(equipId) {
+  const ov = document.querySelector('.eggov');
+  if (ov) { ov.classList.remove('on'); setTimeout(() => ov.remove(), 260); }
+  eggBusy = false;
+  if (equipId && ownsChar(equipId)) S.chars.equipped = equipId;
+  save();
+  Mascot.dress();
+  view = 'collection';
+  render();
+}
+
+function equipChar(id) {
+  if (!ownsChar(id)) return;
+  S.chars.equipped = id;
+  save();
+  Mascot.dress();
+  Sfx.play('pop');
+  render();
+  const c = charById(id);
+  Mascot.show(true);
+  Mascot.mood('wow', 1600);
+  Mascot.say(c.ko, 1600);
+  setTimeout(() => Mascot.show(view === 'session' || view === 'done'), 1900);
+}
+
 function buyTheme(id) {
   const t = themeById(id);
   if (ownsTheme(id) || !spend(t.cost)) return;
@@ -8296,7 +8792,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
    inside a conversation. */
 function applyHash() {
   const h = (location.hash || '').replace('#', '');
-  if (['today', 'talk', 'weak', 'progress', 'browse', 'method', 'settings'].includes(h)) {
+  if (['today', 'talk', 'weak', 'collection', 'progress', 'browse', 'method', 'settings'].includes(h)) {
     view = h;
     return true;
   }
