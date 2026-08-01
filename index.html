@@ -1422,6 +1422,75 @@ const UNITS_A = [
     ]
   },
 
+  /* Repair phrases, placed second on purpose — before family, before food,
+     before anything you might want to say. The thing that ends a beginner's
+     first real conversation is not a missing noun, it is having no way to
+     say "sorry, again, slower". These buy you the turn back, and every one
+     of them is a fixed chunk: no conjugation, no assembly, say it whole.
+     A learner who can only produce sentences has to abandon the exchange
+     the moment one goes past them. */
+  {
+    id: 'U1b',
+    title: 'Staying in the conversation',
+    goal: 'Keep a conversation alive when you have not understood — ask for it again, slower, or in words you know.',
+    grammar: [
+      {
+        id: 'g_repeat',
+        name: '다시 / 천천히  +  말해 주세요',
+        pattern: '다시 말해 주세요  ·  천천히 말해 주세요  ·  크게 말해 주세요',
+        explain: 'One frame, three words. 말해 주세요 is "please say it (for me)" — the 주세요 is what makes it a favour rather than an order. Put 다시 (again), 천천히 (slowly) or 크게 (loudly) in front and you have covered almost every reason you missed something. Learn the whole phrase as one piece; you will need it before you can build it.',
+        examples: [
+          { ko: '다시 말해 주세요.', rom: 'da-si mal-hae ju-se-yo.', en: 'Please say that again.' },
+          { ko: '천천히 말해 주세요.', rom: 'cheon-cheon-hi mal-hae ju-se-yo.', en: 'Please speak slowly.' },
+          { ko: '조금 더 천천히요.', rom: 'jo-geum deo cheon-cheon-hi-yo.', en: 'A little slower, please.' }
+        ]
+      },
+      {
+        id: 'g_whatmeans',
+        name: '뭐예요?  —  asking what something is',
+        pattern: 'X이/가 뭐예요?  ·  X은/는 한국어로 뭐예요?',
+        explain: 'The single most useful question you can carry. 뭐 is "what", and 뭐예요? asks what something is. 한국어로 means "in Korean", so 한국어로 뭐예요? turns any English word you are missing into a question a Korean speaker can answer — which is how you keep going instead of stopping.',
+        examples: [
+          { ko: '그게 무슨 뜻이에요?', rom: 'geu-ge mu-seun tteus-i-e-yo?', en: 'What does that mean?' },
+          { ko: '이거 한국어로 뭐예요?', rom: 'i-geo han-gug-eo-ro mwo-ye-yo?', en: 'How do you say this in Korean?' },
+          { ko: '어떻게 써요?', rom: 'eo-tteo-ke sseo-yo?', en: 'How do you write it?' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: '네?', rom: 'ne?', en: 'sorry? (what did you say?)', pos: 'phrase',
+        note: 'Same word as "yes", said with a rising question. The quickest way to ask for a repeat — a Korean speaker will simply say it again.' },
+      { ko: '다시 말해 주세요', rom: 'dasi malhae juseyo', en: 'please say that again', pos: 'phrase',
+        ex: { ko: '죄송해요, 다시 말해 주세요.', rom: 'joe-song-hae-yo, da-si mal-hae ju-se-yo.', en: 'Sorry, please say that again.' } },
+      { ko: '천천히 말해 주세요', rom: 'cheoncheonhi malhae juseyo', en: 'please speak slowly', pos: 'phrase',
+        note: 'The highest-value sentence in the unit. Most breakdowns are speed, not vocabulary.',
+        ex: { ko: '조금 천천히 말해 주세요.', rom: 'jo-geum cheon-cheon-hi mal-hae ju-se-yo.', en: 'Please speak a little slowly.' } },
+      { ko: '무슨 뜻이에요?', rom: 'museun tteusieyo?', en: 'what does it mean?', pos: 'phrase',
+        ex: { ko: '그 말이 무슨 뜻이에요?', rom: 'geu mal-i mu-seun tteus-i-e-yo?', en: 'What does that word mean?' } },
+      { ko: '한국어로 뭐예요?', rom: 'hangugeoro mwoyeyo?', en: 'how do you say it in Korean?', pos: 'phrase',
+        ex: { ko: '이거 한국어로 뭐예요?', rom: 'i-geo han-gug-eo-ro mwo-ye-yo?', en: 'How do you say this in Korean?' } },
+      { ko: '잘 모르겠어요', rom: 'jal moreugesseoyo', en: "I don't know / I'm not sure", pos: 'phrase',
+        note: 'Softer than 몰라요. The 겠 hedges it — "I don\'t quite know", which is what you want when you are guessing.' },
+      { ko: '잠깐만요', rom: 'jamkkanmanyo', en: 'just a moment', pos: 'phrase',
+        note: 'Buys you thinking time without dead silence. Also how you get someone\'s attention in a shop.' },
+      { ko: '알겠어요', rom: 'algesseoyo', en: 'I understand / got it', pos: 'phrase',
+        note: 'Says you followed it. Without this the other person cannot tell whether to carry on or start again.' },
+      { ko: '죄송해요', rom: 'joesonghaeyo', en: "I'm sorry", pos: 'phrase',
+        note: 'More formal than 미안해요, and the right one for a stranger.' },
+      { ko: '괜찮아요', rom: 'gwaenchanayo', en: "it's fine / no problem", pos: 'phrase',
+        note: 'Also "are you okay?" with a rising tone, and "no thanks" when offered something.' },
+      { ko: '맞아요', rom: 'majayo', en: "that's right", pos: 'phrase' },
+      { ko: '아니에요', rom: 'anieyo', en: "no, it's not / not at all", pos: 'phrase' },
+      { ko: '영어 하세요?', rom: 'yeongeo haseyo?', en: 'do you speak English?', pos: 'phrase',
+        note: 'The escape hatch. Worth knowing, worth using late.' },
+      { ko: '다시', rom: 'dasi', en: 'again', pos: 'adv' },
+      { ko: '천천히', rom: 'cheoncheonhi', en: 'slowly', pos: 'adv' },
+      { ko: '조금', rom: 'jogeum', en: 'a little', pos: 'adv' },
+      { ko: '뜻', rom: 'tteut', en: 'meaning', pos: 'noun' },
+      { ko: '말', rom: 'mal', en: 'words, speech', pos: 'noun' }
+    ]
+  },
+
   {
     id: 'U2',
     title: 'People, family, and things',
@@ -5061,6 +5130,48 @@ function isHolding(card) {
   return card && card.state !== 'new' && (card.reps || 0) >= 2 && (card.S || 0) >= 3;
 }
 
+/* ------------------------------------------------------------
+   Knowing a word and being able to use it in a conversation are
+   different things, and the scheduler only ever measured the first.
+   A card you answer correctly after eight seconds of digging is a
+   card you cannot speak with: the turn is over before you find it.
+
+   So every answer is timed against what that exercise could
+   plausibly take when the answer is automatic, and a card has to
+   come back fast several times running before it counts as usable.
+   Slow is never punished — it costs nothing, loses nothing and
+   never touches the FSRS grade. It simply is not yet fluent.
+   ------------------------------------------------------------ */
+
+/* Budgets are per exercise type because the floor is mechanical, not
+   mental: an answer you must thumb-type through a Hangul keyboard
+   cannot be as quick as one you tap. These are ceilings for "did not
+   have to think", not targets to race. */
+const FLUENT_MS = {
+  mc: 3500,        // read four options and tap
+  text: 9000,      // compose the whole word on the keyboard
+  build: 9000,     // assemble from tiles
+  say: 6000,       // record, and say it
+  _default: 6000
+};
+
+const FLUENT_RUN = 3;      // consecutive fast, correct answers to count as usable
+
+/* The rungs where you build the answer rather than pick it. Speed on a
+   multiple choice measures recognition; conversation runs on these. */
+const PRODUCTION_SKILLS = ['recall', 'cloze', 'say', 'build', 'read'];
+
+function fluentBudget(exType) {
+  return FLUENT_MS[exType] || FLUENT_MS._default;
+}
+
+/* Usable = holding in memory AND retrievable at conversational speed.
+   Both halves matter: fast but not holding is a card you will lose by
+   next week, holding but slow is one you cannot get out in time. */
+function isFluent(card) {
+  return isHolding(card) && (card.fast || 0) >= FLUENT_RUN;
+}
+
 /* Open the next rung of an item's ladder once the current one holds. */
 function unlockSkills() {
   Object.keys(S.introduced).forEach(itemId => {
@@ -5295,6 +5406,22 @@ function gradeCard(key, grade, elapsedMs, noRequeue) {
   updated.streak = grade > 1 ? (card.streak || 0) + 1 : 0;
   updated.hist = (Array.isArray(card.hist) ? card.hist : []).concat(grade > 1 ? 1 : 0).slice(-WEAK_RULES.window);
   if (grade === 1) updated.lastMiss = Date.now();
+
+  /* Speed, tracked alongside accuracy and kept out of the scheduler.
+     A slow answer resets the run to zero and does nothing else — it is
+     not a miss, it costs nothing, and the FSRS grade above is untouched.
+     Giving up already grades a 1, so it fails the grade check here and
+     cannot bank speed. Regrades (noRequeue) are skipped too: buying a
+     near miss back is a purchase, not a retrieval, and liveEx by then
+     may not even be the exercise being regraded. */
+  const quick = !noRequeue && grade > 1 && elapsedMs > 0
+    && elapsedMs <= fluentBudget(liveEx && liveEx.type);
+  updated.fast = noRequeue ? (card.fast || 0) : (quick ? (card.fast || 0) + 1 : 0);
+  if (quick && !isFluent(card) && isFluent(updated) && sess) {
+    sess.celebrations.push({
+      title: 'AUTOMATIC', sub: 'that one comes without thinking now', big: false
+    });
+  }
 
   const wasFlagged = !!card.flagged;
   if (!wasFlagged && isStruggling(updated)) {
@@ -6254,6 +6381,17 @@ function stats() {
     return c && c.state !== 'new' && (c.S || 0) >= 3;
   }).length;
 
+  /* Of the words you know, how many come back fast enough to speak with.
+     Measured on the production rungs only — being quick to recognise a
+     word says nothing about whether you can produce it in a turn. */
+  const speakable = introducedItems.filter(id => {
+    const it = ITEMS[id];
+    if (it.kind !== 'word' && it.kind !== 'hword') return false;
+    const rungs = ladderFor(it).filter(s => PRODUCTION_SKILLS.includes(s));
+    if (!rungs.length) return false;
+    return rungs.every(s => isFluent(S.cards[ck(id, s)]));
+  }).length;
+
   // Honest measured retention: how often you got a real review right.
   let correct = 0, total = 0;
   Object.keys(S.days).forEach(k => { correct += S.days[k].correct; total += S.days[k].total; });
@@ -6286,7 +6424,7 @@ function stats() {
   let totalMs = 0; Object.keys(S.days).forEach(k => totalMs += S.days[k].ms || 0);
 
   return {
-    learning, young, mature, cards: keys.length,
+    learning, young, mature, cards: keys.length, speakable,
     predictedR: rcount ? rsum / rcount : 0,
     measuredR: rtotal ? rcorrect / rtotal : (total ? correct / total : 0),
     reviewsAll: total, wordsKnown,
@@ -6435,7 +6573,7 @@ function renderToday() {
 
   <div class="grid four" style="margin-top:14px">
     <div class="stat"><div class="n">${st.wordsKnown}</div><div class="l">Words holding</div><div class="h">Recall is above the 3-day mark</div></div>
-    <div class="stat"><div class="n">${st.mature}</div><div class="l">Mature cards</div><div class="h">Stable for 3 weeks or more</div></div>
+    <div class="stat"><div class="n">${st.speakable}</div><div class="l">Fast enough to speak</div><div class="h">Comes back without digging for it</div></div>
     <div class="stat"><div class="n">${st.reviewsAll ? pct(st.measuredR) : '—'}</div><div class="l">Real retention</div><div class="h">Measured, not predicted</div></div>
     <div class="stat"><div class="n">${st.introduced}/${st.courseTotal}</div><div class="l">Course seen</div><div class="h">${fmtMin(st.totalMs)} total</div></div>
   </div>
