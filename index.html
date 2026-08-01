@@ -6465,6 +6465,8 @@ function render() {
   if (view === 'convo' && convo && convo.mode === 'role') {
     app.innerHTML = renderConvo(); afterRender(); return;
   }
+  // Respond is a session too: nothing on screen to lean on.
+  if (view === 'respond') { app.innerHTML = renderRespond(); afterRender(); return; }
 
   let body = '';
   if (view === 'today') body = renderToday();
@@ -7395,6 +7397,84 @@ function partnerAvatar(c) {
   return other ? `./icons/av-${AVATARS[c.cast[other]]}.webp` : null;
 }
 
+/* ------------------------------------------------------------
+   RESPOND — the drill where nothing tells you what to say.
+
+   Every other exercise in the app hands you the target: the English
+   of the sentence, the word to translate, the tiles to assemble.
+   Roleplay included — your line arrives with its English above it, so
+   you are encoding a given message, never choosing one. A real turn
+   gives you none of that. Somebody says something, and what comes out
+   of you next is your problem.
+
+   The dialogues already hold the material for this and it needed no
+   new writing: any two adjacent lines by different speakers are a
+   prompt and a real answer to it. Play the first, ask for the second,
+   show nothing.
+
+   Two things make it a conversation rather than a memory test:
+
+   - The prompt is AUDIO FIRST. Text is available, but you have to ask
+     for it, and asking costs you the clean pass. Comprehending speech
+     you cannot see is the skill; printing it underneath removes the
+     whole exercise.
+   - A repair phrase is always accepted. If you did not catch it,
+     "다시 말해 주세요" is not a failure — it is the correct move, and
+     the one that keeps a real conversation alive. It does not count as
+     the line, but it does not count against you either.
+   ------------------------------------------------------------ */
+
+const RESPOND_PAIRS = (() => {
+  const out = [];
+  CONVERSATIONS.forEach(c => {
+    for (let i = 0; i < c.lines.length - 1; i++) {
+      const ask = c.lines[i], reply = c.lines[i + 1];
+      // Same speaker carrying on is not a turn — there is nothing to answer.
+      if (ask.w === reply.w) continue;
+      out.push({ conv: c.id, unit: c.unit, idx: i, ask, reply });
+    }
+  });
+  return out;
+})();
+
+/* Moves that answer any prompt, because they are about the conversation
+   rather than its content. Matched on a stem so 주세요 / 주시겠어요 and a
+   trailing question mark all land. */
+const REPAIR_MOVES = [
+  { stem: '다시말해', label: 'asked for it again' },
+  { stem: '천천히', label: 'asked them to slow down' },
+  { stem: '무슨뜻', label: 'asked what it meant' },
+  { stem: '한국어로뭐', label: 'asked for the Korean' },
+  { stem: '잘모르겠', label: 'said you were not sure' },
+  { stem: '잠깐만', label: 'bought yourself a second' },
+  { stem: '뭐라고', label: 'asked them to repeat' },
+  { stem: '네', label: 'asked them to repeat', exact: true }
+];
+
+function repairMove(input) {
+  const a = normKo(input);
+  if (!a) return null;
+  for (const m of REPAIR_MOVES) {
+    if (m.exact ? a === m.stem : a.includes(m.stem)) return m;
+  }
+  return null;
+}
+
+/* Same strictness as everywhere else — off by a character is a miss, because
+   in Korean the character is the word. The one addition is the repair verdict,
+   which sits outside right/wrong entirely. */
+function checkReply(pair, input) {
+  const a = normKo(input), b = normKo(pair.reply.ko);
+  if (!a) return { v: 'wrong' };
+  if (a === b) return { v: 'right' };
+  const rep = repairMove(input);
+  if (rep) return { v: 'repair', label: rep.label };
+  if (levenshtein(a, b) === 1) return { v: 'near' };
+  return { v: 'wrong' };
+}
+
+let drill = null;   // { pairs, pos, shown, reveal, scores }
+
 let convo = null;   // { id, mode: 'read' | 'role', pos, lit, hidden, done }
 
 function convRec(id) {
@@ -7429,6 +7509,140 @@ function convItems(c) {
     if (text.includes(it.ko) || (stem.length > 1 && text.includes(stem))) out.push(it);
   });
   return out;
+}
+
+/* Only draw on dialogues you have actually studied — being asked to answer
+   a sentence you have never met is a guessing game, not a conversation. */
+function respondPool() {
+  return RESPOND_PAIRS.filter(p => {
+    const rec = S.convo[p.conv];
+    return rec && (rec.read > 0 || rec.roleplayed > 0);
+  });
+}
+
+function startRespond() {
+  const pool = respondPool();
+  if (!pool.length) { showToast('Read a conversation through first — then you can answer it cold.'); return; }
+  drill = { pairs: shuffle(pool.slice()).slice(0, 12), pos: 0, shown: false, reveal: null, scores: [] };
+  composer.reset();
+  view = 'respond';
+  window.scrollTo(0, 0);
+  render();
+  playAsk();
+}
+
+/* Play the prompt, preferring a real recording where one exists. This is the
+   only thing the learner gets, so it fires on arrival at every turn. */
+function playAsk() {
+  if (!drill || drill.pos >= drill.pairs.length) return;
+  const p = drill.pairs[drill.pos];
+  if (LineAudio.has(p.conv, p.idx)) LineAudio.play(p.conv, p.idx).catch(() => speak(p.ask.ko));
+  else speak(p.ask.ko);
+}
+
+function answerRespond(input) {
+  if (!drill || drill.reveal) return;
+  const p = drill.pairs[drill.pos];
+  const res = checkReply(p, input);
+  // Asking for the text is help, and a clean pass has to mean you did it cold.
+  if (res.v === 'right' && drill.shown) res.v = 'near';
+  drill.reveal = res;
+  drill.scores.push(res.v);
+  if (res.v === 'right' || res.v === 'repair') {
+    Sfx.play('correct', res.v === 'right' ? 2 : 1);
+    if (FX.on) FX.burst(window.innerWidth / 2, window.innerHeight * 0.42, { count: 18 });
+  } else Sfx.play(input ? 'wrong' : 'shown');
+  render();
+  speak(p.reply.ko);
+}
+
+function renderRespond() {
+  if (!drill) return '';
+  if (drill.pos >= drill.pairs.length) return renderRespondDone();
+  const p = drill.pairs[drill.pos];
+  const r = drill.reveal;
+
+  const head = `<div class="sess-head">
+    <button class="iconbtn" data-act="respondquit" title="Leave">✕</button>
+    <div class="bar"><i style="width:${Math.round(drill.pos / drill.pairs.length * 100)}%"></i></div>
+    <span class="count">${drill.pos} / ${drill.pairs.length}</span>
+  </div>`;
+
+  const verdict = r ? ({
+    right: ['good', 'Exactly what they said'],
+    repair: ['good', 'You kept it going — ' + (r.label || 'repair')],
+    near: ['bad', 'One character out'],
+    wrong: ['bad', 'Not this time']
+  })[r.v] : null;
+
+  return `<div class="session-wrap">${head}
+    <div class="q-card">
+      <div class="q-kind">They say</div>
+      ${drill.shown || r
+        ? `<div class="q-target ko ${p.ask.ko.length > 12 ? 'small' : ''}">${esc(p.ask.ko)}</div>
+           ${r ? `<div class="q-prompt" style="margin-top:8px">${esc(p.ask.en)}</div>` : ''}`
+        : `<div class="q-prompt" style="margin:6px 0 2px">Listen, and answer them. No text unless you ask for it.</div>`}
+      <div class="row" style="margin-top:12px">
+        <button class="speak lg" data-speak="${esc(p.ask.ko)}" data-line="${p.conv}:${p.idx}" aria-label="Play again">${SPEAKER_SVG}</button>
+        ${!drill.shown && !r ? `<button class="btn ghost" data-act="respondshow">Show me what they said</button>` : ''}
+      </div>
+    </div>
+
+    ${r ? `
+      <div class="fb ${verdict[0]}" style="margin-top:14px">
+        <div class="fb-head">${esc(verdict[1])}</div>
+        <div class="ko" style="font-size:20px;margin-top:6px">${esc(p.reply.ko)}</div>
+        <div class="muted" style="margin-top:4px">${esc(p.reply.en)}</div>
+        ${r.v === 'repair' ? `<div class="muted" style="margin-top:8px;font-size:12.5px">A repair is a real answer, so this is not marked wrong — but it is not the line either, so it does not count as a clean one.</div>` : ''}
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="speak" data-speak="${esc(p.reply.ko)}" aria-label="Hear the answer">${SPEAKER_SVG}</button>
+        <button class="btn primary" data-act="respondnext">Next <span class="faint" style="font-weight:400;font-size:11.5px">↵</span></button>
+      </div>`
+      : `
+      <div class="q-card" style="margin-top:12px">
+        <div class="q-kind">Your turn</div>
+        <div class="typedisplay ko focus" id="kodisplay">${
+          composer.value ? esc(composer.value) + '<span class="caret"></span>'
+            : '<span class="ph">say something back — the keys are below</span>'}</div>
+        ${renderKeyboard()}
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" data-act="respondcheck">Answer</button>
+          <button class="btn ghost" data-act="respondgiveup">I have no idea</button>
+        </div>
+        <div class="muted" style="margin-top:10px;font-size:12.5px">
+          Stuck? Asking for it again is a real answer here, the same as it is in Korea.
+        </div>
+      </div>`}
+  </div>`;
+}
+
+function renderRespondDone() {
+  const clean = drill.scores.filter(s => s === 'right').length;
+  const kept = drill.scores.filter(s => s === 'repair').length;
+  const n = drill.scores.length;
+  return `<div class="session-wrap">
+    <div class="card" style="margin-top:14px">
+      <div class="done-hero">
+        <div class="dh-num">${n ? Math.round(clean / n * 100) + '%' : '—'}</div>
+        <div class="dh-lab">answered cold</div>
+      </div>
+      <div class="grid" style="margin-top:14px">
+        <div class="stat"><div class="n">${clean}</div><div class="l">Got the line</div></div>
+        <div class="stat"><div class="n">${kept}</div><div class="l">Kept it alive</div><div class="h">asked for help in Korean</div></div>
+      </div>
+      <p class="muted" style="margin-top:14px">
+        This is the only place in the app where nothing tells you what to say.
+        A lower number here than in a lesson is expected and is the point —
+        producing on demand is a different skill from recognising, and it is
+        the one a conversation actually asks for.
+      </p>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" data-act="respondagain">Go again</button>
+        <button class="btn ghost" data-act="respondquit">Done</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function renderTalk() {
@@ -7466,6 +7680,22 @@ function renderTalk() {
       two thirds of the way through Unit 1 — it is built only from words you have already met, so it waits for you.</div>` : ''}
   </div>
   <div class="conv-list" style="margin-top:14px">${cards}</div>
+
+  ${(() => {
+    const pool = respondPool().length;
+    return `<div class="card" style="margin-top:14px">
+      <h3 style="margin-top:0">Respond${pool ? ` <span class="faint" style="font-weight:400;font-size:13px">· ${pool} turns ready</span>` : ''}</h3>
+      <div class="prose"><p>Everything else in this app tells you what to say before it asks you to say it — even the
+      roleplay puts the English of your line on the screen. Here somebody speaks and you answer, with nothing in front
+      of you. You can ask to see what they said, but it costs you the clean pass.</p>
+      <p>If you did not catch it, ask them to repeat it <em>in Korean</em>. That is not giving up — it is the move a
+      real conversation runs on, and it counts as an answer here.</p></div>
+      ${pool
+        ? `<button class="btn primary" data-act="respondstart" style="margin-top:6px">Answer cold</button>`
+        : `<div class="notice" style="margin-top:8px">Read a conversation through first. Turns you have never met would be a guessing game, not a conversation.</div>`}
+    </div>`;
+  })()}
+
   <div class="card" style="margin-top:14px">
     <h3 style="margin-top:0">Why a whole conversation</h3>
     <div class="prose">
@@ -8197,7 +8427,8 @@ function afterRender() {
   // The tab bar would sit on top of a session, and the roleplay screen is
   // a session in all but name.
   document.body.classList.toggle('in-session',
-    view === 'session' || view === 'done' || (view === 'convo' && convo && convo.mode === 'role'));
+    view === 'session' || view === 'done' || view === 'respond'
+    || (view === 'convo' && convo && convo.mode === 'role'));
 
   const canvas = document.getElementById('wavecanvas');
   if (canvas) {
@@ -8295,6 +8526,19 @@ document.addEventListener('click', e => {
   if (act === 'convhide') { convo.hidden = !convo.hidden; render(); return; }
   if (act === 'convplay') { playThrough(); return; }
   if (act === 'convrole') { startRoleplay(); return; }
+
+  if (act === 'respondstart') { startRespond(); return; }
+  if (act === 'respondquit') { Voice.cancel(); LineAudio.stop(); drill = null; view = 'talk'; render(); return; }
+  if (act === 'respondagain') { startRespond(); return; }
+  if (act === 'respondshow') { drill.shown = true; render(); return; }
+  if (act === 'respondcheck') { answerRespond(composer.value); return; }
+  if (act === 'respondgiveup') { answerRespond(''); return; }
+  if (act === 'respondnext') {
+    drill.pos++; drill.shown = false; drill.reveal = null; composer.reset();
+    render();
+    if (drill.pos < drill.pairs.length) playAsk();
+    return;
+  }
   if (act === 'convread') { convo.mode = 'read'; convo.peek = false; render(); return; }
   if (act === 'convnext') { roleNext(); return; }
   if (act === 'convpeek') { convo.peek = true; render(); return; }
@@ -8359,6 +8603,26 @@ document.addEventListener('keydown', e => {
     if (e.key === ' ' && l.w === c.you) {
       e.preventDefault();
       if (sayRec.phase === 'rec') sayStop(); else sayStart(l.ko);
+    }
+    return;
+  }
+
+  // Respond: the Hangul keys type, enter answers and then moves on.
+  if (view === 'respond' && drill) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (drill.reveal) {
+        drill.pos++; drill.shown = false; drill.reveal = null; composer.reset();
+        render();
+        if (drill.pos < drill.pairs.length) playAsk();
+      } else answerRespond(composer.value);
+      return;
+    }
+    if (drill.reveal) return;
+    if (e.key === 'Backspace') { e.preventDefault(); composer.backspace(); render(); return; }
+    const jamo = QWERTY_MAP[e.key];
+    if (jamo && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault(); composer.input(jamo); render();
     }
     return;
   }
