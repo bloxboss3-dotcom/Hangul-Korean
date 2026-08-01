@@ -6462,7 +6462,7 @@ function render() {
 
   // The roleplay screen is a session in everything but name — full bleed,
   // no chrome to reach past.
-  if (view === 'convo' && convo && convo.mode === 'role') {
+  if (view === 'convo' && convo && (convo.mode === 'role' || convo.mode === 'branch')) {
     app.innerHTML = renderConvo(); afterRender(); return;
   }
   // Respond is a session too: nothing on screen to lean on.
@@ -7372,6 +7372,248 @@ function renderProgress() {
    understanding; roleplay is for producing, which is where the
    learning actually happens. */
 
+/* ------------------------------------------------------------
+   BRANCHES — the points where the conversation is actually yours.
+
+   Respond removed the cue; this removes the single answer. At a branch
+   you are given two or three things a person could genuinely say next,
+   all of them correct, and the other speaker answers the one you
+   picked. None of them is the "right" one — they differ in what you
+   mean, not in whether you are allowed to mean it.
+
+   Shape: at a branch on your line `at`, your choice replaces that line
+   and its `reply` is INSERTED before the next scripted line. Diverge,
+   get answered, converge. The script continues intact, which is what
+   keeps twelve dialogues coherent under 24 branch points instead of
+   needing twelve dialogue trees.
+
+   Options stay inside the vocabulary of their own unit or earlier —
+   a branch that needs a word you have not met is not a choice.
+   ------------------------------------------------------------ */
+const BRANCHES = {
+  C1: [
+    { at: 1, why: 'How you open. She introduces herself either way.', options: [
+      { ko: '안녕하세요. 저는 케빈이에요.', rom: 'annyeonghaseyo. jeoneun kebin-ieyo.', en: "Hello. I'm Kevin.",
+        reply: { ko: '아, 케빈 씨.', rom: 'a, kebin ssi.', en: 'Ah, Kevin.' } },
+      { ko: '안녕하세요. 반갑습니다.', rom: 'annyeonghaseyo. bangapseumnida.', en: 'Hello. Good to meet you.',
+        reply: { ko: '네, 안녕하세요.', rom: 'ne, annyeonghaseyo.', en: 'Hello to you.' } },
+      { ko: '안녕하세요! 이름이 뭐예요?', rom: 'annyeonghaseyo! ireumi mwoyeyo?', en: "Hello! What's your name?",
+        reply: { ko: '아, 네!', rom: 'a, ne!', en: 'Ah, right!' } }
+    ] },
+    { at: 5, why: 'She asked where you are from.', options: [
+      { ko: '저는 미국 사람이에요.', rom: 'jeoneun miguk saram-ieyo.', en: "I'm American.",
+        reply: { ko: '아, 미국이요.', rom: 'a, migug-iyo.', en: 'Ah, America.' } },
+      { ko: '저는 미국 사람이에요. 지우 씨는요?', rom: 'jeoneun miguk saram-ieyo. jiu ssineunyo?', en: "I'm American. And you?",
+        reply: { ko: '아, 저요?', rom: 'a, jeoyo?', en: 'Oh, me?' } },
+      { ko: '저도 한국 사람이에요.', rom: 'jeodo hanguk saram-ieyo.', en: "I'm Korean too.",
+        reply: { ko: '어, 그래요?', rom: 'eo, geuraeyo?', en: 'Oh, really?' } }
+    ] }
+  ],
+  C2: [
+    { at: 1, why: 'Who the person in the photo is.', options: [
+      { ko: '제 어머니예요.', rom: 'je eomeoni-yeyo.', en: "That's my mother.",
+        reply: { ko: '아, 어머니요.', rom: 'a, eomeoniyo.', en: 'Ah, your mother.' } },
+      { ko: '이 사람은 제 어머니예요.', rom: 'i sarameun je eomeoni-yeyo.', en: 'This person is my mother.',
+        reply: { ko: '아, 네!', rom: 'a, ne!', en: 'Ah, I see!' } },
+      { ko: '제 어머니예요. 지금 한국에 있어요.', rom: 'je eomeoni-yeyo. jigeum hanguge isseoyo.', en: "My mother. She's in Korea now.",
+        reply: { ko: '아, 한국에요?', rom: 'a, hanguge-yo?', en: 'Oh, in Korea?' } }
+    ] },
+    { at: 9, why: 'The bag. Say it however you like — she is about to disagree.', options: [
+      { ko: '제 가방이에요.', rom: 'je gabang-ieyo.', en: "It's my bag.",
+        reply: { ko: '네?', rom: 'ne?', en: 'Sorry?' } },
+      { ko: '그거는 제 가방이에요.', rom: 'geugeoneun je gabang-ieyo.', en: "That one is my bag.",
+        reply: { ko: '잠깐만요...', rom: 'jamkkanmanyo...', en: 'Hold on a second...' } },
+      { ko: '제 가방이에요. 왜요?', rom: 'je gabang-ieyo. waeyo?', en: "It's my bag. Why?",
+        reply: { ko: '어...', rom: 'eo...', en: 'Uh...' } }
+    ] }
+  ],
+  C3: [
+    { at: 0, why: 'How you stop a stranger.', options: [
+      { ko: '저기요, 화장실이 어디에 있어요?', rom: 'jeogiyo, hwajangsiri eodie isseoyo?', en: 'Excuse me, where is the restroom?',
+        reply: { ko: '아, 화장실이요.', rom: 'a, hwajangsiriyo.', en: 'Ah, the restroom.' } },
+      { ko: '안녕하세요. 화장실이 어디예요?', rom: 'annyeonghaseyo. hwajangsiri eodiyeyo?', en: "Hello. Where's the restroom?",
+        reply: { ko: '네, 잠깐만요.', rom: 'ne, jamkkanmanyo.', en: 'Yes, one moment.' } },
+      { ko: '저기요, 화장실 좀 알려 주세요.', rom: 'jeogiyo, hwajangsil jom allyeo juseyo.', en: 'Excuse me, could you tell me where the restroom is?',
+        reply: { ko: '네, 알겠어요.', rom: 'ne, algesseoyo.', en: 'Of course.' } }
+    ] },
+    { at: 4, why: 'Asking about the station. There is not one near here.', options: [
+      { ko: '지하철역은 어디에 있어요?', rom: 'jihacheollyeogeun eodie isseoyo?', en: 'Where is the subway station?',
+        reply: { ko: '아, 지하철역이요.', rom: 'a, jihacheollyeogiyo.', en: 'Ah, the subway station.' } },
+      { ko: '근처에 지하철역이 있어요?', rom: 'geuncheoe jihacheollyeogi isseoyo?', en: 'Is there a subway station nearby?',
+        reply: { ko: '음...', rom: 'eum...', en: 'Hm...' } },
+      { ko: '지하철역도 이 층에 있어요?', rom: 'jihacheollyeokdo i cheunge isseoyo?', en: 'Is the subway station on this floor too?',
+        reply: { ko: '아니요.', rom: 'aniyo.', en: 'No.' } }
+    ] }
+  ],
+  C4: [
+    { at: 1, why: 'What you are doing. She asks about Korean next either way.', options: [
+      { ko: '한국어를 공부해요.', rom: 'hangugeoreul gongbuhaeyo.', en: "I'm studying Korean.",
+        reply: { ko: '아, 공부해요?', rom: 'a, gongbuhaeyo?', en: "Oh, you're studying?" } },
+      { ko: '한국어 책을 읽어요.', rom: 'hangugeo chaegeul ilgeoyo.', en: "I'm reading a Korean book.",
+        reply: { ko: '아, 책이요?', rom: 'a, chaegiyo?', en: 'Oh, a book?' } },
+      { ko: '한국어를 배워요. 좀 어려워요.', rom: 'hangugeoreul baewoyo. jom eoryeowoyo.', en: "I'm learning Korean. It's a bit hard.",
+        reply: { ko: '아, 그래요?', rom: 'a, geuraeyo?', en: 'Oh, is it?' } }
+    ] },
+    { at: 5, why: 'Say yes, and suggest going somewhere.', options: [
+      { ko: '네, 가르쳐요. 지금 카페에 가요?', rom: 'ne, gareuchyeoyo. jigeum kapee gayo?', en: 'Sure. Shall we go to a cafe now?',
+        reply: { ko: '좋아요!', rom: 'joayo!', en: 'Great!' } },
+      { ko: '네, 좋아요. 카페에 가요?', rom: 'ne, joayo. kapee gayo?', en: 'Yes, gladly. To a cafe?',
+        reply: { ko: '네!', rom: 'ne!', en: 'Yes!' } },
+      { ko: '네, 가르쳐요. 같이 카페에 가요.', rom: 'ne, gareuchyeoyo. gachi kapee gayo.', en: "I will. Let's go to a cafe together.",
+        reply: { ko: '고마워요!', rom: 'gomawoyo!', en: 'Thank you!' } }
+    ] }
+  ],
+  C5: [
+    { at: 2, why: 'How you order it. The bibimbap is spicy whichever way you ask.', options: [
+      { ko: '비빔밥하고 김치 주세요.', rom: 'bibimbap-hago gimchi juseyo.', en: 'Bibimbap and kimchi, please.',
+        reply: { ko: '네, 알겠습니다.', rom: 'ne, algesseumnida.', en: 'Certainly.' } },
+      { ko: '비빔밥 주세요.', rom: 'bibimbap juseyo.', en: 'Bibimbap, please.',
+        reply: { ko: '네.', rom: 'ne.', en: 'Right.' } },
+      { ko: '비빔밥 두 개 주세요.', rom: 'bibimbap du gae juseyo.', en: 'Two bibimbap, please.',
+        reply: { ko: '네, 두 개요.', rom: 'ne, du gaeyo.', en: 'Two, yes.' } }
+    ] },
+    { at: 4, why: 'They warned you it is spicy.', options: [
+      { ko: '괜찮아요. 저는 김치도 좋아해요.', rom: 'gwaenchanayo. jeoneun gimchido joahaeyo.', en: "That's fine. I like kimchi too.",
+        reply: { ko: '아, 잘됐네요.', rom: 'a, jaldwaenneyo.', en: 'Ah, good.' } },
+      { ko: '저는 매운 음식을 좋아해요.', rom: 'jeoneun maeun eumsigeul joahaeyo.', en: 'I like spicy food.',
+        reply: { ko: '아, 좋아요.', rom: 'a, joayo.', en: 'Ah, good.' } },
+      { ko: '조금 매워요? 괜찮아요.', rom: 'jogeum maewoyo? gwaenchanayo.', en: "A little spicy? That's fine.",
+        reply: { ko: '네, 괜찮아요.', rom: 'ne, gwaenchanayo.', en: "Yes, it's fine." } }
+    ] }
+  ],
+  C6: [
+    { at: 1, why: 'What time you finish. She suggests six regardless.', options: [
+      { ko: '다섯 시 반에 끝나요.', rom: 'daseot si bane kkeunnayo.', en: 'I finish at half past five.',
+        reply: { ko: '아, 다섯 시 반이요.', rom: 'a, daseot si baniyo.', en: 'Ah, half five.' } },
+      { ko: '다섯 시에 끝나요.', rom: 'daseot sie kkeunnayo.', en: 'I finish at five.',
+        reply: { ko: '아, 일찍 끝나요.', rom: 'a, iljjik kkeunnayo.', en: 'Ah, you finish early.' } },
+      { ko: '네 시에 끝나요.', rom: 'ne sie kkeunnayo.', en: 'I finish at four.',
+        reply: { ko: '아, 좋아요.', rom: 'a, joayo.', en: 'Ah, good.' } }
+    ] },
+    { at: 3, why: 'Accepting the time — and where.', options: [
+      { ko: '네, 좋아요. 지하철역 앞에서 만나요.', rom: 'ne, joayo. jihacheollyeok apeseo mannayo.', en: "Sounds good. In front of the station.",
+        reply: { ko: '네, 거기에서 봐요.', rom: 'ne, geogieseo bwayo.', en: 'Right, see you there.' } },
+      { ko: '네, 여섯 시에 만나요.', rom: 'ne, yeoseot sie mannayo.', en: "Yes, let's meet at six.",
+        reply: { ko: '네!', rom: 'ne!', en: 'Good!' } },
+      { ko: '좋아요. 어디에서 만나요?', rom: 'joayo. eodieseo mannayo?', en: 'Good. Where shall we meet?',
+        reply: { ko: '지하철역 앞에서 만나요.', rom: 'jihacheollyeok apeseo mannayo.', en: "In front of the station." } }
+    ] }
+  ],
+  C7: [
+    { at: 1, why: 'Yesterday. She asks where you worked out next.', options: [
+      { ko: '아침에 일어나고 운동했어요.', rom: 'achime ireonago undonghaesseoyo.', en: 'I got up and worked out.',
+        reply: { ko: '와, 부지런해요!', rom: 'wa, bujireonhaeyo!', en: "Wow, that's diligent!" } },
+      { ko: '친구하고 같이 운동했어요.', rom: 'chinguhago gachi undonghaesseoyo.', en: 'I worked out with a friend.',
+        reply: { ko: '아, 친구하고요?', rom: 'a, chinguhagoyo?', en: 'Oh, with a friend?' } },
+      { ko: '운동하고 공부했어요.', rom: 'undonghago gongbuhaesseoyo.', en: 'I worked out and studied.',
+        reply: { ko: '와, 바빴어요!', rom: 'wa, bappasseoyo!', en: 'Wow, you were busy!' } }
+    ] },
+    { at: 5, why: 'Ask about what she cooked.', options: [
+      { ko: '뭐 요리했어요?', rom: 'mwo yorihaesseoyo?', en: 'What did you cook?',
+        reply: { ko: '아, 물어봐 줘서 고마워요.', rom: 'a, mureobwa jwoseo gomawoyo.', en: 'Ah, thanks for asking.' } },
+      { ko: '무슨 음식을 요리했어요?', rom: 'museun eumsigeul yorihaesseoyo?', en: 'What kind of food did you cook?',
+        reply: { ko: '음...', rom: 'eum...', en: 'Let me think...' } },
+      { ko: '뭐 요리했어요? 저도 먹고 싶어요.', rom: 'mwo yorihaesseoyo? jeodo meokgo sipeoyo.', en: 'What did you cook? I want some too.',
+        reply: { ko: '하하, 좋아요.', rom: 'haha, joayo.', en: 'Ha, alright.' } }
+    ] }
+  ],
+  C8: [
+    { at: 1, why: 'Compliment the bag and ask the price — she says it was cheap.', options: [
+      { ko: '네, 아주 예뻐요. 비싸요?', rom: 'ne, aju yeppeoyo. bissayo?', en: 'Yes, really nice. Is it expensive?',
+        reply: { ko: '음...', rom: 'eum...', en: 'Hm...' } },
+      { ko: '네, 좋아요. 비싸요?', rom: 'ne, joayo. bissayo?', en: 'Yes, nice. Expensive?',
+        reply: { ko: '아, 네.', rom: 'a, ne.', en: 'Ah, right.' } },
+      { ko: '예뻐요! 그거 비싸요?', rom: 'yeppeoyo! geugeo bissayo?', en: "It's lovely! Is it dear?",
+        reply: { ko: '왜요?', rom: 'waeyo?', en: 'Why?' } }
+    ] },
+    { at: 7, why: 'Is Korean hard? Genuinely your call.', options: [
+      { ko: '조금 어려워요. 아주 재미있어요.', rom: 'jogeum eoryeowoyo. aju jaemiisseoyo.', en: "A little. Very interesting though.",
+        reply: { ko: '맞아요, 재미있어요.', rom: 'majayo, jaemiisseoyo.', en: "That's right, it is." } },
+      { ko: '네, 아주 어려워요.', rom: 'ne, aju eoryeowoyo.', en: 'Yes, very hard.',
+        reply: { ko: '천천히 하세요. 괜찮아요.', rom: 'cheoncheonhi haseyo. gwaenchanayo.', en: "Take it slowly. It's fine." } },
+      { ko: '아니요, 안 어려워요.', rom: 'aniyo, an eoryeowoyo.', en: "No, it isn't hard.",
+        reply: { ko: '와, 대단해요!', rom: 'wa, daedanhaeyo!', en: 'Wow, impressive!' } }
+    ] }
+  ],
+  C9: [
+    { at: 1, why: 'Invite her. Saturday is out either way.', options: [
+      { ko: '영화를 보고 싶어요. 같이 갈 수 있어요?', rom: 'yeonghwareul bogo sipeoyo. gachi gal su isseoyo?', en: 'I want to see a film. Can you come?',
+        reply: { ko: '영화 좋아요!', rom: 'yeonghwa joayo!', en: 'A film sounds good!' } },
+      { ko: '같이 영화 볼 수 있어요?', rom: 'gachi yeonghwa bol su isseoyo?', en: 'Can we see a film together?',
+        reply: { ko: '음, 언제요?', rom: 'eum, eonjeyo?', en: 'Hm, when?' } },
+      { ko: '주말에 같이 갈 수 있어요?', rom: 'jumare gachi gal su isseoyo?', en: 'Can you come along this weekend?',
+        reply: { ko: '어디에요?', rom: 'eodieyo?', en: 'Where to?' } }
+    ] },
+    { at: 7, why: 'She asked you to explain the film.', options: [
+      { ko: '네, 꼭 설명할 거예요.', rom: 'ne, kkok seolmyeonghal geoyeyo.', en: 'I will, definitely.',
+        reply: { ko: '고마워요!', rom: 'gomawoyo!', en: 'Thank you!' } },
+      { ko: '네, 천천히 설명할게요.', rom: 'ne, cheoncheonhi seolmyeonghalgeyo.', en: "Sure, I'll explain slowly.",
+        reply: { ko: '좋아요!', rom: 'joayo!', en: 'Great!' } },
+      { ko: '네, 같이 봐요. 설명해 줄게요.', rom: 'ne, gachi bwayo. seolmyeonghae julgeyo.', en: "Yes, let's watch together. I'll explain.",
+        reply: { ko: '네!', rom: 'ne!', en: 'Yes!' } }
+    ] }
+  ],
+  C10: [
+    { at: 2, why: 'Ask about the other one — it turns out to be on sale.', options: [
+      { ko: '좀 비싸요. 저거는 얼마예요?', rom: 'jom bissayo. jeogeoneun eolmayeyo?', en: "A bit dear. How much is that one?",
+        reply: { ko: '아, 저거요?', rom: 'a, jeogeoyo?', en: 'Ah, that one?' } },
+      { ko: '저거는 얼마예요?', rom: 'jeogeoneun eolmayeyo?', en: 'How much is that one?',
+        reply: { ko: '잠깐만요.', rom: 'jamkkanmanyo.', en: 'One moment.' } },
+      { ko: '조금 싼 거 있어요? 저거는요?', rom: 'jogeum ssan geo isseoyo? jeogeoneunyo?', en: 'Have you anything cheaper? That one?',
+        reply: { ko: '아, 저거요.', rom: 'a, jeogeoyo.', en: 'Ah, that one.' } }
+    ] },
+    { at: 6, why: 'How you pay, and what you ask for.', options: [
+      { ko: '카드예요. 영수증 주세요.', rom: 'kadeuyeyo. yeongsujeung juseyo.', en: 'Card. And the receipt, please.',
+        reply: { ko: '네, 카드요.', rom: 'ne, kadeuyo.', en: 'Card, right.' } },
+      { ko: '현금이에요. 영수증 주세요.', rom: 'hyeongeum-ieyo. yeongsujeung juseyo.', en: 'Cash. And the receipt, please.',
+        reply: { ko: '네, 현금이요.', rom: 'ne, hyeongeum-iyo.', en: 'Cash, right.' } },
+      { ko: '카드예요. 봉투 주세요.', rom: 'kadeuyeyo. bongtu juseyo.', en: 'Card. And a bag, please.',
+        reply: { ko: '네.', rom: 'ne.', en: 'Certainly.' } }
+    ] }
+  ],
+  C11: [
+    { at: 2, why: 'Ask how long it takes.', options: [
+      { ko: '얼마나 걸려요?', rom: 'eolmana geollyeoyo?', en: 'How long does it take?',
+        reply: { ko: '음...', rom: 'eum...', en: 'Let me see...' } },
+      { ko: '지하철로 얼마나 걸려요?', rom: 'jihacheollo eolmana geollyeoyo?', en: 'How long by subway?',
+        reply: { ko: '아, 지하철로요.', rom: 'a, jihacheolloyo.', en: 'Ah, by subway.' } },
+      { ko: '시간이 얼마나 걸려요?', rom: 'sigani eolmana geollyeoyo?', en: 'How much time does it take?',
+        reply: { ko: '잠깐만요.', rom: 'jamkkanmanyo.', en: 'One moment.' } }
+    ] },
+    { at: 6, why: 'Ask where to buy a ticket.', options: [
+      { ko: '표는 어디에서 사요?', rom: 'pyoneun eodieseo sayo?', en: 'Where do I buy a ticket?',
+        reply: { ko: '아, 표요.', rom: 'a, pyoyo.', en: 'Ah, tickets.' } },
+      { ko: '어디에서 표를 살 수 있어요?', rom: 'eodieseo pyoreul sal su isseoyo?', en: 'Where can I buy a ticket?',
+        reply: { ko: '네...', rom: 'ne...', en: 'Right...' } },
+      { ko: '표 좀 사고 싶어요. 어디에서 사요?', rom: 'pyo jom sago sipeoyo. eodieseo sayo?', en: "I'd like a ticket. Where do I buy one?",
+        reply: { ko: '네, 알겠어요.', rom: 'ne, algesseoyo.', en: 'Right you are.' } }
+    ] }
+  ],
+  C12: [
+    { at: 1, why: 'You are in a good mood — say why.', options: [
+      { ko: '네, 아주 좋아요. 숙제가 끝나서 행복해요.', rom: 'ne, aju joayo. sukjega kkeunnaseo haengbokaeyo.', en: "Yes, very. The homework's done, so I'm happy.",
+        reply: { ko: '와, 잘됐네요!', rom: 'wa, jaldwaenneyo!', en: "Oh, that's great!" } },
+      { ko: '네, 좋아요. 오늘 숙제가 없어서 좋아요.', rom: 'ne, joayo. oneul sukjega eopseoseo joayo.', en: "Yes. No homework today, so I'm glad.",
+        reply: { ko: '아, 좋겠어요!', rom: 'a, jokesseoyo!', en: 'Ah, lucky you!' } },
+      { ko: '네! 숙제가 끝났어요.', rom: 'ne! sukjega kkeunnasseoyo.', en: "Yes! The homework's finished.",
+        reply: { ko: '와, 정말요?', rom: 'wa, jeongmaryo?', en: 'Oh, really?' } }
+    ] },
+    { at: 3, why: 'She said she was sad.', options: [
+      { ko: '왜 슬퍼요?', rom: 'wae seulpeoyo?', en: 'Why sad?',
+        reply: { ko: '음...', rom: 'eum...', en: 'Well...' } },
+      { ko: '왜요? 무슨 일이에요?', rom: 'waeyo? museun ir-ieyo?', en: "Why? What's happened?",
+        reply: { ko: '아, 그게요...', rom: 'a, geugeyo...', en: 'Ah, the thing is...' } },
+      { ko: '괜찮아요? 왜 슬퍼요?', rom: 'gwaenchanayo? wae seulpeoyo?', en: 'Are you okay? Why sad?',
+        reply: { ko: '고마워요.', rom: 'gomawoyo.', en: 'Thank you.' } }
+    ] }
+  ]
+};
+function branchAt(convId, pos) {
+  const list = BRANCHES[convId];
+  if (!list) return null;
+  return list.find(b => b.at === pos) || null;
+}
+
 const CONV_BY_ID = {};
 CONVERSATIONS.forEach(c => CONV_BY_ID[c.id] = c);
 
@@ -7715,7 +7957,163 @@ function CON() { return convo ? CONV_BY_ID[convo.id] : null; }
 function renderConvo() {
   const c = CON();
   if (!c) { view = 'talk'; return renderTalk(); }
+  if (convo.mode === 'branch') return renderBranch(c);
   return convo.mode === 'role' ? renderRoleplay(c) : renderRead(c);
+}
+
+/* --- branching: the conversation answers what you actually said --- */
+
+function startBranch() {
+  const c = CON();
+  if (!c || !BRANCHES[c.id]) return;
+  convo.mode = 'branch';
+  convo.pos = 0;
+  convo.chose = {};
+  convo.beat = null;
+  window.scrollTo(0, 0);
+  render();
+  branchSpeak();
+}
+
+/* Whatever is on screen at this position, said out loud. The inserted
+   reply has no line index of its own, so it falls back to synthesis. */
+function branchSpeak() {
+  const c = CON();
+  if (!c || !convo || convo.mode !== 'branch') return;
+  if (convo.beat) { speak(convo.beat.ko); return; }
+  const l = c.lines[convo.pos];
+  if (!l || l.w === c.you) return;
+  if (LineAudio.has(c.id, convo.pos)) LineAudio.play(c.id, convo.pos).catch(() => speak(l.ko));
+  else speak(l.ko);
+}
+
+function branchPick(i) {
+  const c = CON();
+  const b = branchAt(c.id, convo.pos);
+  if (!b || !b.options[i]) return;
+  convo.chose[convo.pos] = i;
+  const opt = b.options[i];
+  Sfx.play('pop');
+  speak(opt.ko);
+  // Their answer lands as its own beat, then the script picks up again.
+  convo.beat = opt.reply;
+  convo.pos++;
+  render();
+  setTimeout(() => { if (convo && convo.mode === 'branch' && convo.beat) speak(convo.beat.ko); }, 900);
+}
+
+function branchNext() {
+  const c = CON();
+  if (!c || !convo) return;
+  if (convo.beat) { convo.beat = null; render(); branchSpeak(); return; }
+  convo.pos++;
+  if (convo.pos >= c.lines.length) { save(); render(); return; }
+  render();
+  branchSpeak();
+}
+
+function renderBranch(c) {
+  const pos = convo.pos;
+  if (pos >= c.lines.length && !convo.beat) return renderBranchDone(c);
+
+  const head = `<div class="sess-head">
+    <button class="iconbtn" data-act="convback" title="Leave">✕</button>
+    <div class="bar"><i style="width:${Math.round(Math.min(pos, c.lines.length) / c.lines.length * 100)}%"></i></div>
+    <span class="count">${Math.min(pos, c.lines.length)} / ${c.lines.length}</span>
+  </div>`;
+
+  // The last few turns, including the ones you chose rather than were given.
+  const hist = [];
+  for (let i = Math.max(0, pos - 3); i < pos; i++) {
+    const chosen = convo.chose[i] != null ? branchAt(c.id, i).options[convo.chose[i]] : null;
+    const l = chosen || c.lines[i];
+    hist.push(`<div class="line ${c.lines[i].w === c.you ? 'you' : ''}" style="opacity:.55;padding:8px 0">
+      ${avatarFor(c, c.lines[i].w)}
+      <div class="lbody"><div class="lko" style="font-size:16px">${esc(l.ko)}</div>
+      <div class="len" style="font-size:12.5px">${esc(l.en)}</div></div></div>`);
+  }
+  const history = hist.length ? `<div class="card" style="margin-bottom:12px">${hist.join('')}</div>` : '';
+
+  // An answer to the thing you picked, before the script resumes.
+  if (convo.beat) {
+    return `<div class="session-wrap">${head}${history}
+      <div class="q-card">
+        <div class="q-kind">${esc(c.castEn[c.lines[Math.min(pos, c.lines.length - 1)].w === c.you ? Object.keys(c.cast).find(k => k !== c.you) : c.lines[Math.min(pos, c.lines.length - 1)].w] || 'They')} answers you</div>
+        <div class="q-target ko ${convo.beat.ko.length > 12 ? 'small' : ''}">${esc(convo.beat.ko)}</div>
+        ${S.settings.showRomanization ? `<div class="q-rom">${esc(convo.beat.rom)}</div>` : ''}
+        <div class="q-prompt" style="margin-top:10px;font-size:14.5px">${esc(convo.beat.en)}</div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="speak lg" data-speak="${esc(convo.beat.ko)}" aria-label="Again">${SPEAKER_SVG}</button>
+        <button class="btn primary" data-act="branchnext">Continue <span class="faint" style="font-weight:400;font-size:11.5px">↵</span></button>
+      </div>
+    </div>`;
+  }
+
+  const l = c.lines[pos];
+  const mine = l.w === c.you;
+  const b = mine ? branchAt(c.id, pos) : null;
+
+  if (b) {
+    return `<div class="session-wrap">${head}${history}
+      <div class="q-card">
+        <div class="q-kind">Your turn — pick one</div>
+        <div class="q-prompt" style="margin-top:2px">${esc(b.why)}</div>
+        <div class="muted" style="margin-top:6px;font-size:12.5px">
+          None of these is the right answer. They are different things to mean, and you get answered on the one you pick.
+        </div>
+      </div>
+      <div class="opts" style="margin-top:12px">
+        ${b.options.map((o, i) => `<button class="opt" data-branch="${i}">
+          <span class="ko" style="font-size:17px">${esc(o.ko)}</span>
+          <span class="faint" style="display:block;font-size:12.5px;margin-top:3px">${esc(o.en)}</span>
+        </button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  return `<div class="session-wrap">${head}${history}
+    <div class="q-card">
+      <div class="q-kind">${mine ? 'You say' : esc(c.castEn[l.w] || c.cast[l.w]) + ' says'}</div>
+      <div class="q-target ko ${l.ko.length > 12 ? 'small' : ''}">${esc(l.ko)}</div>
+      ${S.settings.showRomanization ? `<div class="q-rom">${esc(l.rom)}</div>` : ''}
+      <div class="q-prompt" style="margin-top:10px;font-size:14.5px">${esc(l.en)}</div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="speak lg" data-line="${c.id}:${pos}" data-speak="${esc(l.ko)}" aria-label="Again">${SPEAKER_SVG}</button>
+      <button class="btn primary" data-act="branchnext">Continue <span class="faint" style="font-weight:400;font-size:11.5px">↵</span></button>
+    </div>
+  </div>`;
+}
+
+function renderBranchDone(c) {
+  const picks = Object.keys(convo.chose).map(pos => {
+    const b = branchAt(c.id, +pos);
+    return { at: +pos, opt: b.options[convo.chose[pos]], n: b.options.length };
+  }).sort((a, b) => a.at - b.at);
+  return `<div class="session-wrap">
+    <div class="card" style="margin-top:14px">
+      <div class="done-hero">
+        <div class="dh-num">${picks.length}</div>
+        <div class="dh-lab">${picks.length === 1 ? 'choice you made' : 'choices you made'}</div>
+      </div>
+      <div style="margin-top:14px">
+        ${picks.map(p => `<div class="line you" style="padding:10px 0;border-top:1px solid var(--line)">
+          <div class="lbody"><div class="lko ko" style="font-size:17px">${esc(p.opt.ko)}</div>
+          <div class="len" style="font-size:12.5px">${esc(p.opt.en)}</div>
+          <div class="faint" style="font-size:11.5px;margin-top:3px">one of ${p.n} — the others were true too</div></div>
+        </div>`).join('')}
+      </div>
+      <p class="muted" style="margin-top:14px">
+        Run it again and mean something else. The point is not the branch you took;
+        it is that the conversation had somewhere else to go, and you decided.
+      </p>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" data-act="branchagain">Again, differently</button>
+        <button class="btn ghost" data-act="convback">Done</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function convHead(c, right) {
@@ -7839,6 +8237,8 @@ function renderRead(c) {
     <p class="sub">You are ${esc(c.castEn[c.you])}. Hanbit plays the other part and waits for your lines —
     you say them out loud and it tells you how close you got.</p>
     <button class="btn primary big" data-act="convrole">Start roleplay</button>
+    ${BRANCHES[c.id] ? `<button class="btn big" data-act="convbranch">Take it your way
+      <span class="faint" style="font-weight:400;font-size:11.5px;display:block">${BRANCHES[c.id].length} points where you choose what to say</span></button>` : ''}
   </div>`;
 }
 
@@ -8428,7 +8828,7 @@ function afterRender() {
   // a session in all but name.
   document.body.classList.toggle('in-session',
     view === 'session' || view === 'done' || view === 'respond'
-    || (view === 'convo' && convo && convo.mode === 'role'));
+    || (view === 'convo' && convo && (convo.mode === 'role' || convo.mode === 'branch')));
 
   const canvas = document.getElementById('wavecanvas');
   if (canvas) {
@@ -8460,7 +8860,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch]');
   if (!t) return;
 
   Sfx.resume();
@@ -8526,6 +8926,10 @@ document.addEventListener('click', e => {
   if (act === 'convhide') { convo.hidden = !convo.hidden; render(); return; }
   if (act === 'convplay') { playThrough(); return; }
   if (act === 'convrole') { startRoleplay(); return; }
+  if (act === 'convbranch') { startBranch(); return; }
+  if (act === 'branchnext') { branchNext(); return; }
+  if (act === 'branchagain') { startBranch(); return; }
+  if (t.dataset.branch) { branchPick(parseInt(t.dataset.branch, 10)); return; }
 
   if (act === 'respondstart') { startRespond(); return; }
   if (act === 'respondquit') { Voice.cancel(); LineAudio.stop(); drill = null; view = 'talk'; render(); return; }
@@ -8595,7 +8999,7 @@ document.addEventListener('input', e => {
 /* physical keyboard: 2-set Korean input + shortcuts */
 document.addEventListener('keydown', e => {
   // Roleplay: space to record and stop, enter to move on.
-  if (view === 'convo' && convo && convo.mode === 'role') {
+  if (view === 'convo' && convo && (convo.mode === 'role' || convo.mode === 'branch')) {
     const c = CON();
     const l = c && c.lines[convo.pos];
     if (!l) return;
@@ -9406,7 +9810,7 @@ function applyUpdate() {
    immediately when you are idle, and otherwise holds until you finish. */
 function maybeAutoUpdate() {
   if (!swWaiting) return;
-  const busy = view === 'session' || (view === 'convo' && convo && convo.mode === 'role') || sayRec.phase === 'rec';
+  const busy = view === 'session' || (view === 'convo' && convo && (convo.mode === 'role' || convo.mode === 'branch')) || sayRec.phase === 'rec';
   if (busy) return;
   showToast('Updating Hanbit…');
   setTimeout(applyUpdate, 700);
