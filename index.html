@@ -1141,7 +1141,7 @@ const HANGUL_UNITS = [
     letters: [
       { ch: 'ㅓ', rom: 'eo', type: 'vowel', sound: 'uh, like "cup" — lips NOT rounded', tip: 'Compare 오 (rounded lips) with 어 (relaxed lips). Same tongue, different lips.' },
       { ch: 'ㅡ', rom: 'eu', type: 'vowel', sound: 'a tight "oo" with lips spread wide, like saying "eee" but with an "oo" tongue', tip: 'Smile and grunt. That is ㅡ.' },
-      { ch: 'ㅐ', rom: 'ae', type: 'vowel', sound: 'e, like "bed"', tip: 'ㅏ + ㅣ squashed together.' },
+      { ch: 'ㅐ', rom: 'ae', type: 'vowel', sound: 'e, like "bed"', tip: 'ㅏ + ㅣ squashed together. It sounds exactly like ㅔ in modern Seoul Korean — nobody can hear the difference, so you learn which one a word uses when you learn the word.' },
       { ch: 'ㅔ', rom: 'e', type: 'vowel', sound: 'e, like "bed"', tip: 'ㅓ + ㅣ squashed together. In modern Seoul Korean ㅐ and ㅔ sound the same — you learn which to write per word, not by ear.' }
     ],
     rule: 'ㅓ vs ㅗ is the single most useful pair to drill. 고기 (meat) vs 거기 (there) — round your lips only for ㅗ.',
@@ -1217,8 +1217,8 @@ const HANGUL_UNITS = [
       { ch: 'ㅕ', rom: 'yeo', type: 'vowel', sound: 'yuh', tip: 'ㅓ with two strokes.' },
       { ch: 'ㅛ', rom: 'yo', type: 'vowel', sound: 'yo', tip: 'ㅗ with two strokes.' },
       { ch: 'ㅠ', rom: 'yu', type: 'vowel', sound: 'yu', tip: 'ㅜ with two strokes.' },
-      { ch: 'ㅒ', rom: 'yae', type: 'vowel', sound: 'yae — indistinguishable from ㅖ in modern speech', tip: 'Rare. ㅐ with a y.' },
-      { ch: 'ㅖ', rom: 'ye', type: 'vowel', sound: 'ye, like "yes"', tip: 'ㅔ with a y.' }
+      { ch: 'ㅒ', rom: 'yae', type: 'vowel', sound: 'ye, like "yes"', tip: 'Rare. ㅐ with a y, and it sounds exactly like ㅖ. Told apart by spelling only.' },
+      { ch: 'ㅖ', rom: 'ye', type: 'vowel', sound: 'ye, like "yes"', tip: 'ㅔ with a y. Same sound as ㅒ; this is the common one.' }
     ],
     rule: 'One extra stroke = one extra "y". This is why Korean children learn to read in weeks.',
     words: [
@@ -1294,10 +1294,10 @@ const HANGUL_UNITS = [
     blurb: 'Glue two vowels side by side and you get a glide. Most of these behave exactly as they look.',
     letters: [
       { ch: 'ㅘ', rom: 'wa', type: 'vowel', sound: 'wa', tip: 'ㅗ + ㅏ.' },
-      { ch: 'ㅙ', rom: 'wae', type: 'vowel', sound: 'we', tip: 'ㅗ + ㅐ.' },
+      { ch: 'ㅙ', rom: 'wae', type: 'vowel', sound: 'we', tip: 'ㅗ + ㅐ. ㅙ, ㅚ and ㅞ are all pronounced "we" — the spelling is the only thing separating them.' },
       { ch: 'ㅚ', rom: 'oe', type: 'vowel', sound: 'we', tip: 'Written ㅗ + ㅣ but pronounced "we" — same as ㅙ and ㅞ in modern speech.' },
       { ch: 'ㅝ', rom: 'wo', type: 'vowel', sound: 'wuh', tip: 'ㅜ + ㅓ.' },
-      { ch: 'ㅞ', rom: 'we', type: 'vowel', sound: 'we', tip: 'ㅜ + ㅔ. Rare.' },
+      { ch: 'ㅞ', rom: 'we', type: 'vowel', sound: 'we', tip: 'ㅜ + ㅔ. Rare, and the same sound as ㅙ and ㅚ.' },
       { ch: 'ㅟ', rom: 'wi', type: 'vowel', sound: 'wee', tip: 'ㅜ + ㅣ.' },
       { ch: 'ㅢ', rom: 'ui', type: 'vowel', sound: 'eu-i, often just "i" or "e" in fast speech', tip: 'The one genuine oddball. As the possessive particle it is pronounced "e".' }
     ],
@@ -4656,6 +4656,23 @@ const LADDER = {
   grammar: ['build']
 };
 
+/* Letters modern Seoul Korean does not distinguish by ear. This is a fact
+   about the language rather than about the data, and it is listed here
+   because the app must never ask a question these make unanswerable:
+   "which one means e-like-bed" has two right answers, and marking one of
+   them wrong files the pair as a confusion, so it returns forever and is
+   a coin toss every time. Where a twin is in play, the question has to be
+   about spelling — which is genuinely how Koreans tell them apart. */
+const SAME_SOUND = [
+  ['ㅐ', 'ㅔ'],           // both "e" as in bed
+  ['ㅒ', 'ㅖ'],           // both "ye"
+  ['ㅙ', 'ㅚ', 'ㅞ']      // all "we"
+];
+function soundTwins(ch) {
+  const group = SAME_SOUND.find(g => g.includes(ch));
+  return group ? group.filter(c => c !== ch) : [];
+}
+
 /* A bare jamo read aloud gives you the letter's NAME (ㄱ → "기역"), which
    is not what you want to hear. Wrap it in a real syllable instead. */
 function letterSyllable(item) {
@@ -5573,18 +5590,45 @@ function makeExercise(key, step) {
     const other = ITEMS[step.discriminate];
     const aKo = item.ko || item.ch || '';
     const bKo = other.ko || other.ch || '';
-    const meaning = item.en || item.sound || '';
+    // What each one is, in whatever terms the item actually carries. A
+    // letter has no `en`; printing one left "ㅐ () with ㅔ ()" on screen.
+    const gloss = it => it.en || it.sound || it.rom || '';
+    const mine = gloss(item), theirs = gloss(other);
+
     ex.type = 'mc';
     ex.discriminate = true;
-    ex.prompt = 'These two keep getting mixed up. Which one means this?';
-    ex.target = meaning;
-    ex.targetEn = true;
     ex.answer = aKo;
     ex.options = shuffle([aKo, bKo]);
     ex.koOptions = true;
-    ex.why = 'You have confused ' + aKo + ' (' + (item.en || '') + ') with ' + bKo + ' (' + (other.en || '') + ') before. '
-      + (item.rom && other.rom ? 'Sounds: ' + item.rom + ' vs ' + other.rom + '.' : '');
+    ex.targetEn = true;
     ex.speakAfter = aKo;
+
+    /* ㅐ and ㅔ are the same sound in modern Seoul Korean, and so are ㅙ ㅚ ㅞ.
+       Asking which one "means" e-like-bed is a coin toss with a red border
+       on the losing side, and losing it files the letter as a confusion —
+       so the pair comes back forever, unanswerable every time.
+
+       When the two genuinely sound alike, discriminate on the thing that
+       does differ: how the letter is written and romanised. And say the
+       quiet part out loud, because "these sound identical, you learn them
+       per word" is the actual lesson, not a consolation. */
+    const homophones = (item.ch && other.ch && soundTwins(item.ch).includes(other.ch))
+      || (!!mine && mine === theirs);
+
+    if (homophones && item.rom && other.rom) {
+      ex.prompt = 'These two sound the same. Which one is written this way?';
+      ex.target = item.rom;
+      ex.why = aKo + ' and ' + bKo + ' are pronounced identically in modern Seoul Korean — no ear can '
+        + 'separate them, and yours is not the problem. They are told apart by spelling: '
+        + aKo + ' is romanised "' + item.rom + '", ' + bKo + ' is "' + other.rom + '". '
+        + 'You learn which one a word takes when you learn the word.';
+    } else {
+      ex.prompt = 'These two keep getting mixed up. Which one is this?';
+      ex.target = mine;
+      ex.why = 'You have confused ' + aKo + (mine ? ' (' + mine + ')' : '')
+        + ' with ' + bKo + (theirs ? ' (' + theirs + ')' : '') + ' before.'
+        + (item.rom && other.rom ? ' Written: ' + item.rom + ' vs ' + other.rom + '.' : '');
+    }
     return ex;
   }
 
@@ -5618,20 +5662,26 @@ function makeExercise(key, step) {
   if (item.kind === 'letter') {
     if (skill === 'sound') {
       ex.type = 'mc';
-      ex.prompt = 'Which sound is this letter?';
       ex.target = item.ch;
       ex.answer = item.rom;
       ex.options = uniqBy([item.rom].concat(pool(i => i.kind === 'letter' && i.type === item.type, item.id, 6).map(i => i.rom)), x => x).slice(0, 4);
       if (ex.options.length < 4) ex.options = ex.options.concat(pool(i => i.kind === 'letter', item.id, 4).map(i => i.rom)).filter(uniqFilter()).slice(0, 4);
       ex.mono = true;
+      // If a letter that sounds exactly the same is sitting in the options,
+      // "which sound is this" has two right answers. Ask for the spelling.
+      const twins = soundTwins(item.ch).filter(c => ex.options.includes((ITEMS['L:' + c] || {}).rom));
+      ex.prompt = twins.length ? 'Which romanisation is this letter?' : 'Which sound is this letter?';
+      if (twins.length) ex.sub = 'Careful: ' + twins.join(' ') + ' sound identical to this one. Go by how it is written.';
     } else {
       ex.type = 'mc';
-      ex.prompt = 'Which letter makes this sound?';
       ex.target = item.rom;
       ex.targetIsRom = true;
       ex.answer = item.ch;
       ex.options = uniqBy([item.ch].concat(pool(i => i.kind === 'letter' && i.type === item.type, item.id, 6).map(i => i.ch)), x => x).slice(0, 4);
       ex.koOptions = true;
+      const twins = soundTwins(item.ch).filter(c => ex.options.includes(c));
+      ex.prompt = twins.length ? 'Which letter is written this way?' : 'Which letter makes this sound?';
+      if (twins.length) ex.sub = 'Careful: ' + twins.join(' ') + ' sound identical to this one. Go by the spelling above.';
     }
     ex.speakAfter = letterSyllable(item) || '';
   }
