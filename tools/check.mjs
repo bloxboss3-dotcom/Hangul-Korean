@@ -75,6 +75,59 @@ if (sandbox.CONVERSATIONS && sandbox.UNITS_A && sandbox.UNITS_B) {
   else ok(`conversations — ${lines} lines, chunk mapping reassembles every line`);
 }
 
+/* ---- 3a. branch points sit on your lines, and nobody repeats themselves ----
+   A branch inserts the chosen option's reply and then resumes the script, so
+   a reply that says what the next scripted line is about to say makes the
+   other speaker say it twice. That reads as a bug and is easy to reintroduce
+   while editing dialogue, so it is checked rather than remembered. */
+{
+  const m = body.match(/const BRANCHES = (\{[\s\S]*?\n\});/);
+  if (!m) bad('BRANCHES not found');
+  else if (sandbox.CONVERSATIONS) {
+    let branches = null;
+    try { branches = vm.runInNewContext('(' + m[1] + ')', { ...sandbox }); }
+    catch (e) { bad(`BRANCHES does not evaluate — ${e.message}`); }
+    if (branches) {
+      const byId = Object.fromEntries(sandbox.CONVERSATIONS.map(c => [c.id, c]));
+      let points = 0, options = 0, problems = 0;
+      for (const [id, list] of Object.entries(branches)) {
+        const c = byId[id];
+        if (!c) { bad(`BRANCHES.${id} has no conversation`); problems++; continue; }
+        for (const b of list) {
+          points++;
+          const line = c.lines[b.at];
+          if (!line) { bad(`${id}@${b.at} is past the end`); problems++; continue; }
+          if (line.w !== c.you) { bad(`${id}@${b.at} is not your line`); problems++; }
+          if (!b.why) { bad(`${id}@${b.at} has no prompt`); problems++; }
+          if (!Array.isArray(b.options) || b.options.length < 2) { bad(`${id}@${b.at} needs at least two options`); problems++; continue; }
+          const seen = new Set();
+          const next = c.lines[b.at + 1];
+          for (const [i, o] of b.options.entries()) {
+            options++;
+            if (!o.ko || !o.rom || !o.en) { bad(`${id}@${b.at}[${i}] is missing a field`); problems++; }
+            if (!o.reply || !o.reply.ko || !o.reply.rom || !o.reply.en) { bad(`${id}@${b.at}[${i}] is missing its reply`); problems++; }
+            if (seen.has(o.ko)) { bad(`${id}@${b.at}[${i}] repeats another option`); problems++; }
+            seen.add(o.ko);
+            // the reply must not pre-empt the scripted line that follows it
+            if (next && o.reply) {
+              const r = o.reply.ko.replace(/[^가-힣]/g, ''), n = next.ko.replace(/[^가-힣]/g, '');
+              let shared = '';
+              for (let a = 0; a < r.length; a++) {
+                for (let len = 4; a + len <= r.length; len++) {
+                  const s = r.slice(a, a + len);
+                  if (n.includes(s) && s.length > shared.length) shared = s;
+                }
+              }
+              if (shared) { bad(`${id}@${b.at}[${i}] reply repeats "${shared}" from the next line`); problems++; }
+            }
+          }
+        }
+      }
+      if (!problems) ok(`branches — ${points} points, ${options} options, none pre-empting the script`);
+    }
+  }
+}
+
 /* ---- 3b. recorded audio, if any, matches the conversations ---- */
 if (existsSync(root + 'audio/manifest.json') && sandbox.CONVERSATIONS) {
   const man = JSON.parse(readFileSync(root + 'audio/manifest.json', 'utf8'));
