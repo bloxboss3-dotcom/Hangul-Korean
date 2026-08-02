@@ -773,6 +773,17 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 }
 .eggart { flex: none; width: 46px; height: 58px; display: grid; place-items: center; }
 
+/* Sits under each rarity heading. Quiet until it can actually be used —
+   a permanently lit button you cannot press is just nagging. */
+.fuserow {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 0 10px; padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--bg-raise); border: 1px dashed var(--line-soft);
+  opacity: .68;
+}
+.fuserow.ready { opacity: 1; border-style: solid; border-color: var(--line); }
+.fuserow button { flex: none; }
+
 /* One egg shape, reused at both sizes. Drawn rather than an image file so
    it takes the accent colour of whoever is equipped. */
 .egg-s {
@@ -799,7 +810,7 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 
 .eggbig { display: grid; place-items: center; }
 .eggbig .egg-s { width: 128px; height: 164px; animation: eggShake var(--shake, .5s) ease-in-out infinite; }
-.eggbig.r2 .egg-s, .eggbig.r3 .egg-s, .eggbig.r4 .egg-s {
+.eggbig.r3 .egg-s, .eggbig.r4 .egg-s, .eggbig.r5 .egg-s, .eggbig.r6 .egg-s {
   box-shadow: inset -6px -8px 14px rgba(0,0,0,.28), inset 5px 6px 12px rgba(255,255,255,.22),
               0 0 46px 6px var(--accent);
 }
@@ -821,8 +832,8 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 .reveal .rv-art { margin: 12px auto 4px; width: 180px; height: 180px; }
 .reveal .rv-art img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
   border: 3px solid var(--rv, var(--accent)); box-shadow: 0 0 40px -6px var(--rv, var(--accent)); }
-.reveal.r3 .rv-art img, .reveal.r4 .rv-art img { box-shadow: 0 0 70px -4px var(--rv, var(--accent)); }
-.reveal.r4 .rv-art { animation: revFloat 3.4s ease-in-out infinite; }
+.reveal.r4 .rv-art img, .reveal.r5 .rv-art img, .reveal.r6 .rv-art img { box-shadow: 0 0 70px -4px var(--rv, var(--accent)); }
+.reveal.r5 .rv-art, .reveal.r6 .rv-art { animation: revFloat 3.4s ease-in-out infinite; }
 @keyframes revFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 .reveal .rv-ko { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-top: 8px; }
 .reveal .rv-en { font-size: 14px; color: var(--tx-dim); margin-top: 2px; }
@@ -3711,6 +3722,87 @@ const RIGS = {
     marks: `<g fill="#9fe8d8" opacity=".7"><path d="M26 50c8-4 14-4 18 0-6 4-12 4-18 0z"/><path d="M94 50c-8-4-14-4-18 0 6 4 12 4 18 0z"/></g>
             <ellipse cx="60" cy="30" rx="10" ry="6" fill="#ffd166" opacity=".85"/>`,
     face: `<path d="M60 66l10 10-10 16-10-16z" fill="#ffd166"/>`
+  },
+
+  /* ---- uncommon ---- */
+
+  squirrel: {
+    c: ['#e0a86b', '#c07f3f', '#4a2c17', '#33210f', '#f79fae', '#f2828f'],
+    // The tail is the animal. It has to clear the head or it reads as a rat.
+    back: `<path d="M92 78c26-6 32-30 22-46-4 16-14 24-26 26 8 6 8 14 4 20z" fill="#c07f3f"/>
+           <path d="M94 74c19-6 24-24 17-37-3 12-11 19-21 21 6 5 7 11 4 16z" fill="#e8bd8a"/>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:32px 26px"><path d="M32 26c-4-14 0-21 7-22 2 10 0 17-7 22z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:88px 26px"><path d="M88 26c4-14 0-21-7-22-2 10 0 17 7 22z" fill="var(--m-fur)"/></g>`,
+    head: `<path d="M60 18c24 0 40 17 40 39s-17 42-40 42-40-20-40-42 16-39 40-39z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M36 34c8-6 16-8 24-7-9 3-17 7-24 7z" fill="#f0cfa8" opacity=".55"/>
+            <path d="M60 88c-14 0-24-6-28-15 8 12 20 17 28 17s20-5 28-17c-4 9-14 15-28 15z" fill="#4a2c17" opacity=".25"/>`,
+    face: `<ellipse cx="60" cy="76" rx="24" ry="19" fill="var(--m-muz)"/>
+           <path d="M60 66c4 0 6.5 2.2 6.5 4.4 0 2.4-3 4-6.5 4s-6.5-1.6-6.5-4c0-2.2 2.5-4.4 6.5-4.4z" fill="#7a4a2a"/>`,
+    extra: `<g stroke="#a06a3a" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M32 74h11"/><path d="M33 81l10-3"/><path d="M88 74H77"/><path d="M87 81l-10-3"/></g>`
+  },
+
+  frog: {
+    c: ['#7ee88f', '#3fa85a', '#123a1c', '#0d2a14', '#f79fae', '#f2828f'],
+    // Frog eyes sit ON TOP of the skull, which is the whole silhouette.
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:43px 46px"><circle cx="43" cy="46" r="17" fill="var(--m-fur)"/><circle cx="43" cy="44" r="13" fill="#a8e8b4" opacity=".45"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:77px 46px"><circle cx="77" cy="46" r="17" fill="var(--m-fur)"/><circle cx="77" cy="44" r="13" fill="#a8e8b4" opacity=".45"/></g>`,
+    head: `<ellipse cx="60" cy="62" rx="42" ry="37" fill="var(--m-fur)"/>`,
+    marks: `<ellipse cx="60" cy="86" rx="30" ry="14" fill="#c8f5cf" opacity=".55"/>
+            <circle cx="27" cy="52" r="5" fill="#2e7a42" opacity=".45"/>
+            <circle cx="93" cy="52" r="5" fill="#2e7a42" opacity=".45"/>
+            <circle cx="36" cy="70" r="3.5" fill="#2e7a42" opacity=".35"/>
+            <circle cx="84" cy="70" r="3.5" fill="#2e7a42" opacity=".35"/>`,
+    face: `<g stroke="#2a6b3a" stroke-width="3" stroke-linecap="round" opacity=".7"><path d="M55 62h1"/><path d="M64 62h1"/></g>`
+  },
+
+  sapsali: {
+    c: ['#d9c8ab', '#b09b78', '#4a4136', '#2f2a22', '#f79fae', '#f2828f'],
+    // Shaggy: the fringe is drawn OVER the eyes, so the mood reads through it.
+    back: `<g fill="#c4b193"><path d="M18 44c-8 6-10 18-4 26 2-10 6-18 12-22z"/><path d="M102 44c8 6 10 18 4 26-2-10-6-18-12-22z"/>
+           <path d="M24 84c-6 10-4 20 4 26 0-10 2-18 8-22z"/><path d="M96 84c6 10 4 20-4 26 0-10-2-18-8-22z"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:26px 40px"><path d="M26 40c-9 6-12 20-8 32 8-6 12-20 8-32z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:94px 40px"><path d="M94 40c9 6 12 20 8 32-8-6-12-20-8-32z" fill="var(--m-fur)"/></g>`,
+    head: `<path d="M60 16c25 0 41 18 41 42s-17 43-41 43-41-19-41-43 16-42 41-42z" fill="var(--m-fur)"/>`,
+    marks: `<g fill="#efe2cb"><path d="M30 30c8 10 10 22 8 32-8-8-11-20-8-32z"/><path d="M90 30c-8 10-10 22-8 32 8-8 11-20 8-32z"/>
+            <path d="M60 20c7 10 8 24 5 34-7-8-9-22-5-34z"/><path d="M45 24c5 11 5 24 1 33-6-9-6-23-1-33z"/><path d="M75 24c-5 11-5 24-1 33 6-9 6-23 1-33z"/></g>`,
+    face: `<ellipse cx="60" cy="80" rx="22" ry="16" fill="var(--m-muz)"/>
+           <path d="M60 70c4.2 0 6.8 2.2 6.8 4.4 0 2.5-3.1 4.2-6.8 4.2s-6.8-1.7-6.8-4.2c0-2.2 2.6-4.4 6.8-4.4z" fill="#3a332a"/>`
+  },
+
+  toad: {
+    c: ['#9ec46b', '#6f9440', '#28331a', '#1c2612', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:43px 48px"><ellipse cx="43" cy="48" rx="16" ry="14" fill="var(--m-fur)"/><ellipse cx="43" cy="46" rx="12" ry="10" fill="#c4dd96" opacity=".4"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:77px 48px"><ellipse cx="77" cy="48" rx="16" ry="14" fill="var(--m-fur)"/><ellipse cx="77" cy="46" rx="12" ry="10" fill="#c4dd96" opacity=".4"/></g>`,
+    head: `<ellipse cx="60" cy="64" rx="43" ry="35" fill="var(--m-fur)"/>`,
+    // The warts are the character. Scattered, not patterned.
+    marks: `<g fill="#5f8034" opacity=".5"><circle cx="26" cy="56" r="4.5"/><circle cx="94" cy="56" r="4.5"/>
+            <circle cx="34" cy="76" r="3.5"/><circle cx="86" cy="76" r="3.5"/><circle cx="60" cy="40" r="4"/>
+            <circle cx="44" cy="46" r="3"/><circle cx="76" cy="46" r="3"/><circle cx="22" cy="70" r="3"/><circle cx="98" cy="70" r="3"/></g>
+            <ellipse cx="60" cy="88" rx="27" ry="11" fill="#d8ecb0" opacity=".5"/>`,
+    face: `<g stroke="#4a6b28" stroke-width="3" stroke-linecap="round" opacity=".65"><path d="M52 64h2"/><path d="M66 64h2"/></g>`
+  },
+
+  /* ---- secret ----
+     Made of the alphabet, because that is what the app is made of. The jamo
+     orbiting it are the letters that spell its own name — ㅈ ㅓ ㅇ, ㅇ ㅡ ㅁ.
+     Nothing else in the roster is built out of writing. */
+
+  jeongeum: {
+    c: ['#f4f8ff', '#c3d6f5', '#1f2937', '#111827', '#bcd6ff', '#f2828f'],
+    back: `<g><circle cx="60" cy="58" r="52" fill="#8fd3ff" opacity=".10"/>
+           <circle cx="60" cy="58" r="44" fill="#ffffff" opacity=".08"/>
+           <g fill="#8fd3ff" opacity=".85" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif" font-weight="700" font-size="15">
+             <text x="12" y="30">ㅈ</text><text x="99" y="32">ㅓ</text><text x="6" y="86">ㅇ</text>
+             <text x="103" y="88">ㅇ</text><text x="24" y="112">ㅡ</text><text x="86" y="114">ㅁ</text>
+           </g></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:38px 22px"><path d="M38 22c-3-12 1-18 6-19 1 9-1 15-6 19z" fill="#ffe08a"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:82px 22px"><path d="M82 22c3-12-1-18-6-19-1 9 1 15 6 19z" fill="#ffe08a"/></g>`,
+    head: `<circle cx="60" cy="58" r="40" fill="var(--m-fur)"/>`,
+    marks: `<circle cx="60" cy="58" r="40" fill="none" stroke="#ffffff" stroke-width="2" opacity=".7"/>
+            <circle cx="60" cy="58" r="33" fill="none" stroke="#8fd3ff" stroke-width="1.4" opacity=".55"/>
+            <ellipse cx="46" cy="34" rx="14" ry="7" fill="#ffffff" opacity=".5" transform="rotate(-22 46 34)"/>`,
+    face: `<circle cx="60" cy="76" r="7" fill="#ffe08a" opacity=".9"/>
+           <circle cx="60" cy="76" r="12" fill="#ffe08a" opacity=".25"/>`
   }
 };
 
@@ -4772,14 +4864,22 @@ const THEMES = [
 
 const EGG_COST = 120;
 
+/* `secret` is hidden in one specific and limited sense: the odds table shows
+   its rate but not its name, art or count. The promise this collection makes
+   is that drop rates are printed on screen, and burying a rate outright would
+   turn that into a lie — so the row is there, reading "??? · 0.4%", and what
+   is behind it stays unknown until it drops. You cannot be misled about your
+   chances; you simply do not know what you are hoping for. */
 const RARITY = {
-  common: { label: 'Common', odds: 0.58, refund: 20, color: '#98a2b3', order: 0 },
-  rare: { label: 'Rare', odds: 0.26, refund: 45, color: '#6ea8fe', order: 1 },
-  epic: { label: 'Epic', odds: 0.11, refund: 90, color: '#b39ddb', order: 2 },
-  legendary: { label: 'Legendary', odds: 0.04, refund: 175, color: '#ffb457', order: 3 },
-  mythical: { label: 'Mythical', odds: 0.01, refund: 350, color: '#7ee8c0', order: 4 }
+  common: { label: 'Common', odds: 0.46, refund: 20, color: '#98a2b3', order: 0 },
+  uncommon: { label: 'Uncommon', odds: 0.24, refund: 32, color: '#7ee8c0', order: 1 },
+  rare: { label: 'Rare', odds: 0.17, refund: 45, color: '#6ea8fe', order: 2 },
+  epic: { label: 'Epic', odds: 0.086, refund: 90, color: '#b39ddb', order: 3 },
+  legendary: { label: 'Legendary', odds: 0.032, refund: 175, color: '#ffb457', order: 4 },
+  mythical: { label: 'Mythical', odds: 0.008, refund: 350, color: '#f0736a', order: 5 },
+  secret: { label: '???', reveal: 'Secret', odds: 0.004, refund: 600, color: '#e8ecf2', order: 6, hidden: true }
 };
-const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythical'];
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythical', 'secret'];
 
 /* accent: [base, dim, second] for dark and light. fx: the particle palette
    and shapes a correct answer throws when this character is equipped. */
@@ -4857,7 +4957,42 @@ const CHARACTERS = [
   { id: 'bonghwang', ko: '봉황', en: 'Bonghwang', rarity: 'mythical',
     blurb: 'Appears only when the world is at peace and the ruler is just. Rarely seen.',
     accent: { dark: ['#d5a6ff', '#3f2b5c', '#7ee8c0'], light: ['#6b3aa8', '#ead9ff', '#0f7a63'] },
-    fx: { colors: ['#d5a6ff', '#7ee8c0', '#ffe08a'], kinds: ['spark', 'star', 'jamo', 'confetti'] } }
+    fx: { colors: ['#d5a6ff', '#7ee8c0', '#ffe08a'], kinds: ['spark', 'star', 'jamo', 'confetti'] } },
+
+  /* ---- uncommon: the ones you actually meet in Korea ---- */
+
+  { id: 'squirrel', ko: '다람쥐', en: 'Squirrel', rarity: 'uncommon',
+    blurb: 'Lives on every mountain path in the country and is entirely unbothered by you.',
+    accent: { dark: ['#e0a86b', '#4a3320', '#ffd166'], light: ['#8a5a1b', '#f5e2c8', '#8a6100'] },
+    fx: { colors: ['#e0a86b', '#ffd166', '#c79a6b'], kinds: ['confetti', 'spark'] } },
+
+  { id: 'frog', ko: '청개구리', en: 'Green Frog', rarity: 'uncommon',
+    blurb: 'The one from the story who did the opposite of whatever he was told, and regretted it in the rain.',
+    accent: { dark: ['#7ee88f', '#1f4a26', '#ffd166'], light: ['#1a7a2e', '#d4f5da', '#8a6100'] },
+    fx: { colors: ['#7ee88f', '#ffd166', '#e8ecf2'], kinds: ['spark', 'star'] } },
+
+  { id: 'sapsali', ko: '삽살개', en: 'Sapsali', rarity: 'uncommon',
+    blurb: 'Shaggy enough to hide its eyes. Said to chase off ghosts, which is why nobody has seen one lately.',
+    accent: { dark: ['#c9b79a', '#4a4136', '#8fd3ff'], light: ['#6b5a3f', '#efe6d6', '#175f8c'] },
+    fx: { colors: ['#c9b79a', '#8fd3ff', '#fff0c4'], kinds: ['confetti', 'spark'] } },
+
+  { id: 'toad', ko: '두꺼비', en: 'Toad', rarity: 'uncommon',
+    blurb: 'Turns up in the old stories whenever somebody kind is about to get lucky.',
+    accent: { dark: ['#9ec46b', '#3a4a20', '#ffd166'], light: ['#5a7a1b', '#e2f0c8', '#8a6100'] },
+    fx: { colors: ['#9ec46b', '#ffd166', '#c9e8a0'], kinds: ['spark', 'confetti'] } },
+
+  /* ---- secret ----
+     정음 is what Hangul was called when it was made in 1443 — the alphabet
+     under its own original name. The only character whose existence the
+     collection will not admit to until you have it.
+
+     Deliberately NOT named 한빛: there is already a "Hanbit Blue" palette
+     in the shop, and a character sharing its name would read as a bug. */
+
+  { id: 'jeongeum', ko: '정음', en: 'Jeongeum', rarity: 'secret',
+    blurb: 'From 훈민정음 — "the correct sounds for teaching the people". What Hangul was called in 1443, before it had the name you know. It has been inside every letter you have read here.',
+    accent: { dark: ['#ffffff', '#3a4a63', '#8fd3ff'], light: ['#1f2937', '#dbe6f5', '#175f8c'] },
+    fx: { colors: ['#ffffff', '#8fd3ff', '#ffe08a'], kinds: ['jamo', 'star', 'spark'] } }
 ];
 
 const CHAR_BY_ID = {};
@@ -4874,8 +5009,10 @@ function rollEgg() {
   const ch = S.chars;
   let rarity = null;
 
+  // Pity, by name rather than by position in RARITY_ORDER — inserting a tier
+  // used to silently move these, and "epic within 10" quietly became "rare".
   if (ch.sinceLegendary >= 24) rarity = Math.random() < 0.2 ? 'mythical' : 'legendary';
-  else if (ch.sinceEpic >= 9) rarity = RARITY_ORDER[2 + (Math.random() < 0.25 ? 1 : 0)];
+  else if (ch.sinceEpic >= 9) rarity = Math.random() < 0.25 ? 'legendary' : 'epic';
 
   if (!rarity) {
     let r = Math.random(), acc = 0;
@@ -4890,8 +5027,8 @@ function rollEgg() {
   const pick = pool[Math.floor(Math.random() * pool.length)];
 
   ch.opened++;
-  ch.sinceEpic = RARITY[rarity].order >= 2 ? 0 : ch.sinceEpic + 1;
-  ch.sinceLegendary = RARITY[rarity].order >= 3 ? 0 : ch.sinceLegendary + 1;
+  ch.sinceEpic = RARITY[rarity].order >= RARITY.epic.order ? 0 : ch.sinceEpic + 1;
+  ch.sinceLegendary = RARITY[rarity].order >= RARITY.legendary.order ? 0 : ch.sinceLegendary + 1;
 
   const dupe = ownsChar(pick.id);
   ch.owned[pick.id] = (ch.owned[pick.id] || 0) + 1;
@@ -4902,6 +5039,74 @@ function rollEgg() {
     S.coinsEarned += refund;
   }
   return { char: pick, rarity, dupe, refund };
+}
+
+/* ---------------------------------------------------------------
+   FUSING — four spare copies become one of the tier above.
+
+   Spares only: the fourth 호랑이 you pulled, never the first. You cannot
+   lose a character you own, for the same reason you cannot lose coins —
+   the collection is additive or it is a slot machine.
+
+   And it cannot fail. A fusion that eats four copies and hands back
+   nothing is a punishment mechanic wearing a hat, so the tier above is
+   guaranteed; the roll is only over which of them you get. What you are
+   spending is the certainty of nothing, not a wager.
+   --------------------------------------------------------------- */
+const FUSE_COST = 4;
+
+function sparesOfRarity(r) {
+  return charsOfRarity(r).reduce((n, c) => n + Math.max(0, (S.chars.owned[c.id] || 0) - 1), 0);
+}
+
+function fuseTarget(r) {
+  const i = RARITY_ORDER.indexOf(r);
+  return i >= 0 && i < RARITY_ORDER.length - 1 ? RARITY_ORDER[i + 1] : null;
+}
+
+function canFuse(r) {
+  const t = fuseTarget(r);
+  return !!t && charsOfRarity(t).length > 0 && sparesOfRarity(r) >= FUSE_COST;
+}
+
+function fuse(r) {
+  if (!canFuse(r)) return null;
+  const target = fuseTarget(r);
+  const ch = S.chars;
+
+  // Take from the deepest stacks first, so fusing never costs you the
+  // variety you have — it eats the fourth copy before the second.
+  let need = FUSE_COST;
+  const used = [];
+  for (let guard = 0; need > 0 && guard < 200; guard++) {
+    const deepest = charsOfRarity(r)
+      .filter(c => (ch.owned[c.id] || 0) > 1)
+      .sort((a, b) => (ch.owned[b.id] || 0) - (ch.owned[a.id] || 0))[0];
+    if (!deepest) break;
+    ch.owned[deepest.id]--;
+    used.push(deepest);
+    need--;
+  }
+  if (need > 0) {           // should be unreachable; never half-spend
+    used.forEach(c => ch.owned[c.id]++);
+    return null;
+  }
+
+  const pool = charsOfRarity(target);
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const dupe = ownsChar(pick.id);
+  ch.owned[pick.id] = (ch.owned[pick.id] || 0) + 1;
+  ch.fused = (ch.fused || 0) + 1;
+
+  let refund = 0;
+  if (dupe) {
+    refund = RARITY[target].refund;
+    S.coins += refund;
+    S.coinsEarned += refund;
+  }
+  // Deliberately does not touch the egg pity counters. Those are a promise
+  // about eggs, and letting fusion feed them would let you farm the promise.
+  return { char: pick, rarity: target, dupe, refund, fused: true, spent: used };
 }
 
 const themeById = id => THEMES.find(t => t.id === id) || THEMES[0];
@@ -7211,7 +7416,10 @@ function renderDone() {
 /* ---------- Progress ---------- */
 /* ---------- Collection ---------- */
 function renderCollection() {
-  const owned = CHARACTERS.filter(c => ownsChar(c.id)).length;
+  // Unowned hidden characters are excluded from the total too — "3 of 21"
+  // when the grid shows 20 is a leak, and the leak is the whole secret.
+  const visible = CHARACTERS.filter(c => !RARITY[c.rarity].hidden || ownsChar(c.id));
+  const owned = visible.filter(c => ownsChar(c.id)).length;
   const eq = equippedChar();
   const can = (S.coins || 0) >= EGG_COST;
   const ch = S.chars;
@@ -7219,11 +7427,32 @@ function renderCollection() {
   const byRarity = RARITY_ORDER.map(r => {
     const list = charsOfRarity(r);
     const mine = list.filter(c => ownsChar(c.id)).length;
+    // A hidden tier does not appear at all until you have one. Showing an
+    // empty "??? 0/1" row would tell you how many there are and that you
+    // are missing them, which is most of what there is to spoil.
+    if (RARITY[r].hidden && !mine) return '';
+
+    const spare = sparesOfRarity(r);
+    const target = fuseTarget(r);
+    const fuseRow = target && charsOfRarity(target).length ? `
+      <div class="fuserow ${canFuse(r) ? 'ready' : ''}">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13.5px">Fuse ${FUSE_COST} spare into one
+            <span style="color:${RARITY[target].color}">${RARITY[target].label}</span></div>
+          <div class="faint" style="font-size:12px;margin-top:2px">
+            ${spare} spare ${spare === 1 ? 'copy' : 'copies'}${canFuse(r) ? '' : ` · ${FUSE_COST - spare} more to go`}
+            · never spends your last of anyone
+          </div>
+        </div>
+        <button class="btn ${canFuse(r) ? 'primary' : ''}" data-act="fuse" data-rarity="${r}" ${canFuse(r) ? '' : 'disabled'}>Fuse</button>
+      </div>` : '';
+
     return `
     <h3 style="display:flex;align-items:center;gap:9px">
       <span style="color:${RARITY[r].color}">${RARITY[r].label}</span>
       <span class="faint" style="font-weight:400;text-transform:none;letter-spacing:0">${mine}/${list.length}</span>
     </h3>
+    ${fuseRow}
     <div class="chargrid">${list.map(c => {
       const have = ownsChar(c.id);
       const n = (ch.owned[c.id] || 0);
@@ -7245,7 +7474,7 @@ function renderCollection() {
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div>
         <h2 style="margin-bottom:2px">Collection</h2>
-        <p class="sub" style="margin:0">${owned} of ${CHARACTERS.length} found. Whoever you equip sits in the corner,
+        <p class="sub" style="margin:0">${owned} of ${visible.length} found. Whoever you equip sits in the corner,
         repaints the app and changes what a correct answer looks like.</p>
       </div>
       <div class="bigcoin"><span class="coin lg"></span><b>${S.coins || 0}</b></div>
@@ -7270,7 +7499,10 @@ function renderCollection() {
       <div class="prose" style="font-size:12.5px;margin-top:8px">
         <p style="margin:0 0 6px">Printed here rather than hidden, because an unpublished rate is just a way of hoping you will not do the arithmetic.</p>
         <ul style="margin:0;padding-left:18px;line-height:1.8">
-          ${RARITY_ORDER.map(r => `<li><b style="color:${RARITY[r].color}">${RARITY[r].label}</b> — ${(RARITY[r].odds * 100).toFixed(0)}% base, duplicate refunds ${RARITY[r].refund} coins</li>`).join('')}
+          ${RARITY_ORDER.map(r => {
+            const pctTxt = RARITY[r].odds * 100 >= 1 ? (RARITY[r].odds * 100).toFixed(0) : (RARITY[r].odds * 100).toFixed(1);
+            return `<li><b style="color:${RARITY[r].color}">${RARITY[r].label}</b> — ${pctTxt}% base, duplicate refunds ${RARITY[r].refund} coins${RARITY[r].hidden ? ' <span class="faint">(what this is stays unsaid — the rate does not)</span>' : ''}</li>`;
+          }).join('')}
         </ul>
         <p style="margin:8px 0 0">Those are <em>base</em> rates. An epic or better is guaranteed within 10 eggs and a
         legendary or better within 25, which pulls the rates you actually see slightly above the numbers above — measured
@@ -9008,6 +9240,7 @@ document.addEventListener('click', e => {
   if (act === 'swupdate') { applyUpdate(); return; }
   if (act === 'redeem') { redeemNearMiss(); return; }
   if (act === 'egg') { openEgg(); return; }
+  if (act === 'fuse') { doFuse(t.dataset.rarity); return; }
   if (act === 'eggclose') { closeEgg(); return; }
   if (act === 'equipnow') { closeEgg(t.dataset.id); return; }
 });
@@ -9463,7 +9696,7 @@ function openEgg() {
   ov.innerHTML = `
     <div class="eggstage">
       <div class="eggbig r${tier}"><span class="egg-s"></span></div>
-      <div class="eggcap">${['a stirring…', 'something bright…', 'the air changes…', 'the ground hums…', 'everything goes quiet…'][tier]}</div>
+      <div class="eggcap">${['a stirring…', 'something shifts…', 'something bright…', 'the air changes…', 'the ground hums…', 'everything goes quiet…', '…'][tier] || '…'}</div>
     </div>`;
   document.body.appendChild(ov);
   requestAnimationFrame(() => ov.classList.add('on'));
@@ -9478,13 +9711,46 @@ function openEgg() {
   scheduleFx(() => revealChar(ov, result), shakeMs + 520);
 }
 
+/* Fusing shares the egg's reveal, with its own short build-up: the four
+   you spent are named on the way in, because watching them go is the
+   point of having chosen to spend them. */
+function doFuse(rarity) {
+  if (eggBusy || !rarity || !canFuse(rarity)) return;
+  const result = fuse(rarity);
+  if (!result) return;
+  eggBusy = true;
+  save();
+
+  const tier = RARITY[result.rarity].order;
+  const spentKo = result.spent.map(c => c.ko);
+  const ov = document.createElement('div');
+  ov.className = 'eggov';
+  ov.innerHTML = `
+    <div class="eggstage">
+      <div class="eggbig r${tier}"><span class="egg-s"></span></div>
+      <div class="eggcap">${esc(spentKo.join(' · '))}</div>
+    </div>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => ov.classList.add('on'));
+
+  Sfx.play('whoosh');
+  const egg = ov.querySelector('.eggbig');
+  egg.style.setProperty('--shake', (0.5 - tier * 0.06) + 's');
+  scheduleFx(() => {
+    const cap = ov.querySelector('.eggcap');
+    if (cap) cap.textContent = 'become one';
+  }, 620);
+  scheduleFx(() => { Sfx.play('pop'); egg.classList.add('crack'); }, 1150);
+  scheduleFx(() => revealChar(ov, result), 1670);
+}
+
 function revealChar(ov, result) {
   const c = result.char;
   const tier = RARITY[result.rarity].order;
   const col = RARITY[result.rarity].color;
   const p = { x: window.innerWidth / 2, y: window.innerHeight * 0.42 };
 
-  Sfx.play(tier >= 3 ? 'levelup' : tier >= 2 ? 'big' : 'milestone');
+  Sfx.play(tier >= 4 ? 'levelup' : tier >= 3 ? 'big' : 'milestone');
   FX.ring(p.x, p.y, { r1: 160 + tier * 70, color: col, w: 2 + tier });
   FX.burst(p.x, p.y, {
     count: 26 + tier * 26, power: 280 + tier * 110, spread: Math.PI * 2, dir: 0,
@@ -9498,7 +9764,7 @@ function revealChar(ov, result) {
   const pal = (S.settings.theme === 'light' ? c.accent.light : c.accent.dark);
   ov.querySelector('.eggstage').innerHTML = `
     <div class="reveal r${tier}" style="--rv:${pal[0]}">
-      <div class="rv-rar" style="color:${col}">${RARITY[result.rarity].label}</div>
+      <div class="rv-rar" style="color:${col}">${RARITY[result.rarity].reveal || RARITY[result.rarity].label}</div>
       <div class="rv-art"><img src="./icons/chars/${c.id}.webp" width="180" height="180" alt=""></div>
       <div class="rv-ko ko">${esc(c.ko)}</div>
       <div class="rv-en">${esc(c.en)}</div>
