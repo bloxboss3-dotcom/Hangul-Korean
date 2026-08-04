@@ -4423,9 +4423,70 @@ function recordConfusion(itemId, pickedText) {
   const key = [itemId, otherId].sort().join('~');
   const rec = S.confusions[key] || { a: itemId < otherId ? itemId : otherId, b: itemId < otherId ? otherId : itemId, n: 0 };
   rec.n++;
+  rec.ok = 0;                  // one miss and the run to breaking it starts over
   rec.last = Date.now();
   S.confusions[key] = rec;
   return rec;
+}
+
+/* ------------------------------------------------------------
+   Breaking a confusion.
+
+   For a long time nothing here could be broken. recordConfusion only ran
+   on a wrong answer and only ever incremented, and the single delete in
+   the codebase lived inside "restart this item from scratch" — so a pair
+   you had learned to tell apart perfectly stayed on the list forever,
+   under a button that said "Break 31 confusions". You could do the work
+   and watch the number refuse to move.
+
+   Now telling them apart is what clears them: CONFUSION_CLEAR correct
+   discriminations IN A ROW, because two in a row can be luck when there
+   are only two options on screen and a coin has no memory. One miss puts
+   the streak back to zero.
+   ------------------------------------------------------------ */
+const CONFUSION_CLEAR = 3;
+
+/* Pairs go stale too. If you have not mixed two things up in three weeks
+   and both are holding in memory, the confusion is a historical fact
+   rather than a live problem, and it should stop being offered as work. */
+const CONFUSION_STALE_DAYS = 21;
+
+function confusionKey(a, b) { return [a, b].sort().join('~'); }
+
+function creditConfusion(itemId, otherId) {
+  const key = confusionKey(itemId, otherId);
+  const rec = (S.confusions || {})[key];
+  if (!rec) return null;
+  rec.ok = (rec.ok || 0) + 1;
+  rec.last = Date.now();
+  if (rec.ok >= CONFUSION_CLEAR) {
+    delete S.confusions[key];
+    if (sess) sess.celebrations.push({
+      title: 'BROKEN',
+      sub: (ITEMS[rec.a] ? (ITEMS[rec.a].ko || ITEMS[rec.a].ch) : '') + ' vs '
+         + (ITEMS[rec.b] ? (ITEMS[rec.b].ko || ITEMS[rec.b].ch) : '') + ' — you can tell them apart now',
+      big: false
+    });
+    return { cleared: true, rec };
+  }
+  return { cleared: false, rec };
+}
+
+/* Drop pairs that have gone quiet. Run at load rather than on a timer so
+   the list you are shown is the list as of right now. */
+function pruneConfusions() {
+  const now = Date.now();
+  Object.keys(S.confusions || {}).forEach(k => {
+    const r = S.confusions[k];
+    if (!r) { delete S.confusions[k]; return; }
+    if (!ITEMS[r.a] || !ITEMS[r.b]) { delete S.confusions[k]; return; }
+    const quiet = now - (r.last || 0) > CONFUSION_STALE_DAYS * DAY;
+    const bothHolding = [r.a, r.b].every(id => {
+      const it = ITEMS[id];
+      return it && isHolding(S.cards[ck(id, ladderFor(it)[0])]);
+    });
+    if (quiet && bothHolding) delete S.confusions[k];
+  });
 }
 
 /* Pairs worth drilling: mixed up more than once, both still known. */
@@ -5235,6 +5296,10 @@ function normalizeSettings() {
   if (!['off', 'phrases', 'all'].includes(S.settings.speakRung)) S.settings.speakRung = 'phrases';
   if (!S.milestones || typeof S.milestones !== 'object') S.milestones = {};
   if (!S.confusions || typeof S.confusions !== 'object') S.confusions = {};
+  Object.keys(S.confusions).forEach(k => {
+    const r = S.confusions[k];
+    if (r && typeof r.ok !== 'number') r.ok = 0;   // saves made before breaking existed
+  });
   if (!S.weakLog || typeof S.weakLog !== 'object') S.weakLog = {};
   if (!S.convo || typeof S.convo !== 'object') S.convo = {};
   ['coins', 'coinsEarned', 'redeemed'].forEach(k => {
@@ -5802,6 +5867,7 @@ function makeExercise(key, step) {
 
     ex.type = 'mc';
     ex.discriminate = true;
+    ex.other = other;          // so a correct answer knows which pair it broke
     ex.answer = aKo;
     ex.options = shuffle([aKo, bKo]);
     ex.koOptions = true;
@@ -8735,13 +8801,15 @@ function renderWeak() {
   ${pairs.length ? `<div class="card">
     <h2>Pairs you mix up</h2>
     <p class="sub">Recorded from which wrong answer you actually reach for. Most chronic errors are two similar items colliding rather than one hard item, and the fix is contrast, not repetition.</p>
-    <table class="list"><thead><tr><th>This</th><th>Gets mistaken for</th><th>Times</th><th>Last</th></tr></thead><tbody>
+    <p class="sub" style="margin-top:0">A pair breaks when you pick the right one <b>${CONFUSION_CLEAR} times in a row</b> in the side-by-side drill — two can be luck when there are only two options on screen. One miss and the run restarts. Pairs you have not mixed up in ${CONFUSION_STALE_DAYS} days also drop off on their own once both items are holding.</p>
+    <table class="list"><thead><tr><th>This</th><th>Gets mistaken for</th><th>Times</th><th>To break</th><th>Last</th></tr></thead><tbody>
     ${pairs.map(pr => {
     const A = ITEMS[pr.a], B = ITEMS[pr.b];
     return `<tr>
         <td class="k">${esc(A.ko || A.ch || '')}<div class="faint" style="font-size:12px">${esc(A.en || '')}</div></td>
         <td class="k">${esc(B.ko || B.ch || '')}<div class="faint" style="font-size:12px">${esc(B.en || '')}</div></td>
         <td>${pr.n}×</td>
+        <td><b style="color:${(pr.ok || 0) ? 'var(--good)' : 'inherit'}">${pr.ok || 0}</b><span class="faint">/${CONFUSION_CLEAR}</span></td>
         <td class="muted" style="font-size:12.5px">${ago(pr.last)}</td></tr>`;
   }).join('')}
     </tbody></table>
@@ -9524,6 +9592,9 @@ function pickMC(picked) {
   if (!ex || sess.reveal) return;
   const right = picked === ex.answer;
   if (!right) { try { recordConfusion(ex.item.id, picked); } catch (e) {} }
+  // Telling the pair apart is what breaks it. Without this the count only
+  // ever went up and no amount of getting it right could clear anything.
+  else if (ex.discriminate && ex.other) { try { creditConfusion(ex.item.id, ex.other.id); } catch (e) {} }
   const elapsed = Date.now() - exStart;
   const grade = right ? (elapsed < 3200 ? 4 : 3) : 1;
   const line = scoreAnswer(ex, right ? 'right' : 'wrong', elapsed, grade);
@@ -10183,6 +10254,7 @@ function applyHash() {
    --------------------------------------------------------------- */
 load();
 normalizeSettings();
+pruneConfusions();      // drop pairs that have gone quiet and are holding
 applyHash();
 LineAudio.load();
 try {
