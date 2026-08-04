@@ -3170,6 +3170,36 @@ const FX = {
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, r), 0, Math.PI * 2); ctx.fill();
         } else {
+          /* Orbital particles are steered rather than thrown: they carry an
+             angle and a radius instead of a velocity, so they can curl. That
+             is the whole difference between a burst — which every character
+             already had — and a coil, a plume or a ring of letters, which is
+             what makes one character's celebration read as its own. */
+          if (p.orb) {
+            const o = p.orb;
+            o.ang += o.va * dt;
+            o.r += o.dr * dt;
+            o.dr += (o.ddr || 0) * dt;
+            p.x = o.cx + Math.cos(o.ang) * o.r;
+            p.y = o.cy + Math.sin(o.ang) * o.r + (o.rise || 0) * p.life;
+            p.rot += p.vr * dt;
+            if (p.y - p.size > H + 40 || p.x + p.size < -80 || p.x - p.size > W + 80) continue;
+            ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            if (p.kind === 'jamo') {
+              ctx.font = `600 ${p.size * 2}px "Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif`;
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText(p.ch, 0, 0);
+            } else if (p.kind === 'star') star(ctx, p.size);
+            else if (p.kind === 'spark') { ctx.beginPath(); ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2); ctx.fill(); }
+            else ctx.fillRect(-p.size / 2, -p.size * 0.32, p.size, p.size * 0.64);
+            ctx.restore();
+            alive.push(p);
+            continue;
+          }
           const k = dragFor(p.drag);
           p.vy += p.g * dt;
           p.vx *= k; p.vy *= k;
@@ -3270,6 +3300,116 @@ const FX = {
     if (!this.on || this.lite) return;
     this.mount();
     this.add({ kind: 'bloom', x, y, r1: r || 320, life: 0, max: 0.6 });
+  },
+
+  /* ---- motion primitives, so celebrations can differ in shape and not
+     only in colour ---- */
+
+  /* Arms of particles winding outward. `arms` sets how many, and a negative
+     spin reverses the curl — a coil, nine tails, a whirl. */
+  spiral(x, y, opts) {
+    if (!this.on) return;
+    this.mount();
+    opts = opts || {};
+    const arms = opts.arms || 3;
+    let per = opts.per || 10;
+    if (this.lite) per = Math.max(3, Math.round(per * 0.4));
+    const kinds = opts.kinds || ['spark', 'star'];
+    for (let a = 0; a < arms; a++) {
+      const base = (a / arms) * Math.PI * 2 + (opts.phase || 0);
+      for (let i = 0; i < per; i++) {
+        const f = i / per;
+        const kind = kinds[Math.floor(Math.random() * kinds.length)];
+        this.add({
+          kind, x, y,
+          orb: {
+            cx: x, cy: y,
+            ang: base + f * (opts.twist == null ? 1.5 : opts.twist),
+            r: (opts.r0 || 14) + f * 12,
+            va: (opts.spin == null ? 4.2 : opts.spin) * (0.85 + Math.random() * 0.3),
+            dr: (opts.speed || 200) * (0.6 + f * 0.7),
+            ddr: opts.slow == null ? -90 : opts.slow,
+            rise: opts.rise || 0
+          },
+          size: (kind === 'jamo' ? 9 : 7) * (0.75 + Math.random() * 0.7) * (opts.scale || 1),
+          color: opts.color || pickFrom(opts.colors || FX_PALETTE),
+          ch: FX_JAMO[Math.floor(Math.random() * FX_JAMO.length)],
+          rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 10,
+          life: 0, max: (opts.max || 1.4) * (0.8 + Math.random() * 0.45)
+        });
+      }
+    }
+  },
+
+  /* A ring that holds its radius and turns — motes circling something,
+     letters orbiting a light. */
+  orbit(x, y, opts) {
+    if (!this.on) return;
+    this.mount();
+    opts = opts || {};
+    let n = opts.count || 12;
+    if (this.lite) n = Math.max(4, Math.round(n * 0.4));
+    const kinds = opts.kinds || ['spark'];
+    for (let i = 0; i < n; i++) {
+      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      this.add({
+        kind, x, y,
+        orb: {
+          cx: x, cy: y,
+          ang: (i / n) * Math.PI * 2,
+          r: (opts.r || 70) * (0.9 + Math.random() * 0.2),
+          va: (opts.spin == null ? 2.6 : opts.spin),
+          dr: opts.drift == null ? 26 : opts.drift,
+          ddr: 0, rise: opts.rise || 0
+        },
+        size: (kind === 'jamo' ? 10 : 6.5) * (0.8 + Math.random() * 0.5) * (opts.scale || 1),
+        color: opts.color || pickFrom(opts.colors || FX_PALETTE),
+        ch: (opts.chars && opts.chars[i % opts.chars.length]) || FX_JAMO[Math.floor(Math.random() * FX_JAMO.length)],
+        rot: 0, vr: (Math.random() - 0.5) * 3,
+        life: 0, max: opts.max || 1.7
+      });
+    }
+  },
+
+  /* A jet going up: a plume, a geyser, a phoenix taking off. */
+  column(x, y, opts) {
+    if (!this.on) return;
+    this.mount();
+    opts = opts || {};
+    let n = opts.count || 26;
+    if (this.lite) n = Math.round(n * 0.4);
+    const kinds = opts.kinds || ['spark', 'star'];
+    for (let i = 0; i < n; i++) {
+      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      this.add({
+        kind,
+        x: x + (Math.random() - 0.5) * (opts.width || 46),
+        y: y + (Math.random() - 0.5) * 16,
+        vx: (Math.random() - 0.5) * 70,
+        vy: -(opts.power || 460) * (0.6 + Math.random() * 0.7),
+        g: opts.g == null ? 340 : opts.g, drag: 0.985,
+        size: (kind === 'jamo' ? 9 : 7) * (0.7 + Math.random() * 0.8) * (opts.scale || 1),
+        color: opts.color || pickFrom(opts.colors || FX_PALETTE),
+        ch: FX_JAMO[Math.floor(Math.random() * FX_JAMO.length)],
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 12,
+        life: 0, max: (opts.max || 1.5) * (0.7 + Math.random() * 0.6)
+      });
+    }
+  },
+
+  /* Rings one after another, rather than all at once. */
+  ripple(x, y, opts) {
+    if (!this.on) return;
+    opts = opts || {};
+    const n = opts.count || 3;
+    for (let i = 0; i < n; i++) {
+      scheduleFx(() => this.ring(x, y, {
+        r1: (opts.r1 || 130) + i * (opts.step || 55),
+        color: opts.color || '#6ea8fe',
+        w: Math.max(1, (opts.w || 3) - i * 0.6),
+        max: opts.max || 0.75
+      }), i * (opts.gap || 130));
+    }
   },
 
   /* Confetti falling from above the viewport, for real celebrations. */
@@ -4023,6 +4163,95 @@ function commentaryForMiss(shown) {
 }
 
 /* ------------------------------------------------------------
+   SIGNATURES — what makes one character's celebration its own.
+
+   Colour and particle shape were the only things separating them, which
+   meant every character celebrated identically in a different palette.
+   Each one now has a motion of its own on top: the fox throws nine
+   curling tails, the dragon coils, the phoenix goes up in a plume and
+   comes back down, 정음 spells itself in orbiting letters.
+
+   Weighted by rarity rather than given flat. A common should feel like a
+   nice colour; by epic the motion should be the thing you notice, and a
+   mythical should stop you. `w` runs 0-1 across the rarity ladder and
+   scales count and reach, so the same routine reads as a flourish low
+   down and an event at the top.
+   ------------------------------------------------------------ */
+const SIGNATURES = {
+  // ---- common: a small twist, nothing that interrupts you ----
+  slash: (p, c, w) => FX.rays(p.x, p.y, { count: 3, len: 90 + 70 * w, w: 5, color: c.colors[0] }),
+  flit: (p, c, w) => FX.burst(p.x, p.y, { count: 8 + 10 * w, power: 320, spread: 0.7, dir: -0.4, g: 260, colors: c.colors, kinds: ['spark'] }),
+  dash: (p, c, w) => FX.burst(p.x, p.y, { count: 8 + 10 * w, power: 380, spread: 0.35, dir: 0, g: 180, colors: c.colors, kinds: c.kinds }),
+  hop: (p, c, w) => FX.column(p.x, p.y, { count: 8 + 12 * w, power: 380, width: 30, colors: c.colors, kinds: c.kinds }),
+
+  // ---- uncommon ----
+  scatter: (p, c, w) => FX.spiral(p.x, p.y, { arms: 2, per: 5 + 4 * w, speed: 210, spin: 5, colors: c.colors, kinds: ['spark', 'confetti'] }),
+  spring: (p, c, w) => FX.column(p.x, p.y, { count: 10 + 14 * w, power: 520, width: 24, g: 520, colors: c.colors, kinds: ['spark', 'star'] }),
+  drift: (p, c, w) => FX.burst(p.x, p.y, { count: 10 + 14 * w, power: 150, g: 70, spread: Math.PI * 2, dir: 0, max: 2.2, colors: c.colors, kinds: c.kinds }),
+  plop: (p, c, w) => FX.ripple(p.x, p.y, { count: 2, r1: 90 + 60 * w, step: 40, color: c.colors[0], gap: 110 }),
+
+  // ---- rare ----
+  feathers: (p, c, w) => FX.burst(p.x, p.y, { count: 12 + 16 * w, power: 190, g: 60, spread: Math.PI * 1.6, dir: -Math.PI / 2, max: 2.4, colors: c.colors, kinds: ['confetti', 'spark'] }),
+  stomp: (p, c, w) => { FX.ripple(p.x, p.y, { count: 2, r1: 120 + 70 * w, step: 60, color: c.colors[0] }); FX.column(p.x, p.y + 14, { count: 8 + 10 * w, power: 300, width: 90, colors: c.colors, kinds: ['confetti'] }); },
+  upstream: (p, c, w) => FX.spiral(p.x, p.y, { arms: 2, per: 6 + 6 * w, speed: 170, spin: -3.4, rise: -60, colors: c.colors, kinds: ['spark', 'star'] }),
+
+  // ---- epic: the motion becomes the point ----
+  ninetails: (p, c, w) => FX.spiral(p.x, p.y, { arms: 9, per: 4 + 4 * w, speed: 230 + 80 * w, spin: 3.6, twist: 1.1, colors: c.colors, kinds: ['spark', 'star'], scale: 1 + 0.3 * w }),
+  sparkstorm: (p, c, w) => { FX.spiral(p.x, p.y, { arms: 4, per: 5 + 5 * w, speed: 300, spin: 9, colors: c.colors, kinds: ['spark'] }); FX.rays(p.x, p.y, { count: 10, len: 80 + 60 * w, w: 2, color: c.colors[1] || c.colors[0] }); },
+  wardring: (p, c, w) => { FX.ripple(p.x, p.y, { count: 3, r1: 110 + 80 * w, step: 55, color: c.colors[0], w: 3 }); FX.orbit(p.x, p.y, { count: 8 + 6 * w, r: 80, spin: 3, drift: 20, colors: c.colors }); },
+
+  // ---- legendary ----
+  coil: (p, c, w) => FX.spiral(p.x, p.y, { arms: 2, per: 12 + 8 * w, speed: 250, spin: 6.5, twist: 3.4, slow: -40, colors: c.colors, kinds: ['spark', 'star', 'confetti'], scale: 1 + 0.35 * w, max: 1.7 }),
+  plume: (p, c, w) => { FX.column(p.x, p.y + 20, { count: 18 + 16 * w, power: 620, width: 40, g: 420, colors: c.colors, kinds: ['spark', 'star'], scale: 1 + 0.3 * w }); scheduleFx(() => FX.burst(p.x, p.y - 110, { count: 14 + 12 * w, power: 260, spread: Math.PI * 2, dir: 0, colors: c.colors, kinds: c.kinds }), 260); },
+  pounce: (p, c, w) => { FX.rays(p.x, p.y, { count: 4, len: 130 + 90 * w, w: 6, color: c.colors[0] }); FX.ripple(p.x, p.y, { count: 2, r1: 150 + 90 * w, step: 70, color: c.colors[1] || c.colors[0], gap: 90 }); },
+
+  // ---- mythical ----
+  calm: (p, c, w) => { FX.orbit(p.x, p.y, { count: 10 + 8 * w, r: 70, spin: 1.5, drift: 12, max: 2.4, colors: c.colors, kinds: ['spark', 'star'] }); FX.bloom(p.x, p.y, 220 + 140 * w); },
+  rebirth: (p, c, w) => {
+    FX.column(p.x, p.y + 24, { count: 16 + 14 * w, power: 640, width: 44, g: 400, colors: c.colors, kinds: ['spark', 'star'] });
+    scheduleFx(() => FX.spiral(p.x, p.y - 90, { arms: 6, per: 5 + 5 * w, speed: 260, spin: 4.4, colors: c.colors, kinds: c.kinds }), 240);
+    scheduleFx(() => FX.ripple(p.x, p.y - 90, { count: 2, r1: 130, step: 70, color: c.colors[0] }), 320);
+  },
+
+  // ---- secret ----
+  letters: (p, c, w) => {
+    FX.orbit(p.x, p.y, { count: 8, r: 58, spin: 2.2, drift: 8, max: 2.2, colors: c.colors, kinds: ['jamo'], chars: ['ㅈ', 'ㅓ', 'ㅇ', 'ㅇ', 'ㅡ', 'ㅁ', 'ㅎ', 'ㄱ'], scale: 1.2 });
+    FX.bloom(p.x, p.y, 240 + 160 * w);
+    scheduleFx(() => FX.spiral(p.x, p.y, { arms: 3, per: 6, speed: 200, spin: 3.2, colors: c.colors, kinds: ['jamo', 'spark'] }), 300);
+  }
+};
+
+const CHAR_SIGNATURE = {
+  tiger: 'slash', magpie: 'flit', jindo: 'dash', rabbit: 'hop',
+  squirrel: 'scatter', frog: 'spring', sapsali: 'drift', toad: 'plop',
+  crane: 'feathers', bear: 'stomp', carp: 'upstream',
+  gumiho: 'ninetails', dokkaebi: 'sparkstorm', haetae: 'wardring',
+  dragon: 'coil', jujak: 'plume', baekho: 'pounce',
+  sage: 'calm', bonghwang: 'rebirth',
+  jeongeum: 'letters'
+};
+
+/* Rarity sets how loud the signature is; the combo tier sets how loud the
+   base celebration is. A common on a twelve-streak is still a common. */
+function signatureFor(char) {
+  const fn = SIGNATURES[CHAR_SIGNATURE[char.id]];
+  if (!fn) return null;
+  const order = (RARITY[char.rarity] || RARITY.common).order;
+  const top = RARITY_ORDER.length - 1;
+  return { fn, w: top ? order / top : 0, order };
+}
+
+function playSignature(char, p, comboTierN) {
+  if (!FX.on) return;
+  const sig = signatureFor(char);
+  if (!sig) return;
+  // Commons hold back until you have a streak going, so ordinary answers
+  // stay quiet. From epic up it fires every time — that is the reward.
+  if (sig.order < RARITY.epic.order && comboTierN < 1) return;
+  try { sig.fn(p, char.fx, sig.w); } catch (e) {}
+}
+
+/* ------------------------------------------------------------
    The payoff. Tier 0 is a modest spark; tier 4 is the works.
    ------------------------------------------------------------ */
 function celebrateCorrect(ctx) {
@@ -4046,6 +4275,9 @@ function celebrateCorrect(ctx) {
     colors: fx.colors,
     kinds: tier >= 1 ? fx.kinds : fx.kinds.slice(0, 2)
   });
+
+  // Whoever is equipped adds their own motion on top of the base burst.
+  playSignature(equippedChar(), p, tier);
 
   if (tier >= 1) FX.rays(p.x, p.y, { count: 8 + tier * 3, len: 70 + tier * 30 });
   if (tier >= 2) { FX.bloom(p.x, p.y, 260 + tier * 90); flashScreen('good'); }
@@ -9827,6 +10059,10 @@ function revealChar(ov, result) {
     count: 26 + tier * 26, power: 280 + tier * 110, spread: Math.PI * 2, dir: 0,
     colors: c.fx.colors, kinds: c.fx.kinds, scale: 1 + tier * 0.2
   });
+  // First sight of a character should be the fullest version of its signature.
+  if (SIGNATURES[CHAR_SIGNATURE[c.id]]) {
+    try { SIGNATURES[CHAR_SIGNATURE[c.id]](p, c.fx, 1); } catch (e) {}
+  }
   if (tier >= 1) FX.rays(p.x, p.y, { count: 10 + tier * 5, len: 90 + tier * 45 });
   if (tier >= 2) { FX.bloom(p.x, p.y, 300 + tier * 110); flashScreen(tier >= 3 ? 'gold' : 'good'); }
   if (tier >= 3) { edgeGlow('good', 1600); pulseApp(); FX.rain({ count: 70, avoidCenter: true }); }
