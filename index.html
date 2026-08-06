@@ -773,6 +773,31 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 }
 .eggart { flex: none; width: 46px; height: 58px; display: grid; place-items: center; }
 
+/* Blitz — loud enough that you cannot be in one without knowing. */
+.blitzbar {
+  display: flex; align-items: center; gap: 9px;
+  margin: 10px 0 2px; padding: 8px 12px; border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,209,102,.16), rgba(255,160,60,.10));
+  border: 1px solid rgba(255,209,102,.42);
+  animation: bzIn .32s cubic-bezier(.2,1.4,.4,1) both;
+}
+@keyframes bzIn { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: none; } }
+.bz-tag { font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #ffd166; flex: none; }
+.bz-ko { font-size: 13px; color: var(--tx-faint); flex: none; }
+.bz-pips { display: flex; gap: 4px; flex: none; }
+.bz-pips i {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,209,102,.22); border: 1px solid rgba(255,209,102,.5);
+  transition: background .18s, transform .18s;
+}
+.bz-pips i.on { background: #ffd166; transform: scale(1.18); }
+.bz-clock { flex: 1; min-width: 30px; height: 5px; border-radius: 999px; background: rgba(255,209,102,.18); overflow: hidden; }
+.bz-clock i { display: block; height: 100%; background: #ffd166; transition: width .1s linear; }
+.bz-hint { flex: 1; min-width: 0; font-size: 11.5px; color: var(--tx-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-pay { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; color: #ffd166; flex: none; }
+@media (prefers-reduced-motion: reduce) { .blitzbar { animation: none; } }
+
 /* Sits under each rarity heading. Quiet until it can actually be used —
    a permanently lit button you cannot press is just nagging. */
 .fuserow {
@@ -4252,6 +4277,161 @@ function playSignature(char, p, comboTierN) {
 }
 
 /* ------------------------------------------------------------
+   BLITZ — what the rare characters are actually for.
+
+   An epic or better does not just recolour the confetti: it summons
+   things. Mid-session, occasionally, it calls a short challenge that
+   pays coins if you meet it.
+
+   Three rules kept this on the right side of the no-punishment line,
+   and none of them is negotiable:
+
+   1. **Failing costs nothing.** Not a coin, not the combo, not the
+      grade, not the schedule. A missed blitz simply ends. The whole
+      thing is upside or it is a slot machine with a timer.
+   2. **It never touches grading.** A blitz answer is graded exactly as
+      it would have been without one. The clock decides the bonus and
+      nothing else — if you rush and get it wrong, that is a real miss
+      and the scheduler hears about it honestly.
+   3. **You can ignore it.** Answer at your own pace and the worst case
+      is the offer expires.
+
+   The app's standing rule is no timers, because difficulty must never be
+   penalised. A timer that can only ever add is the one shape that does
+   not break it.
+
+   Rare on purpose. An event every few answers is not an event.
+   ------------------------------------------------------------ */
+const BLITZ_TYPES = {
+  blitz: {
+    label: 'BLITZ', ko: '번개',
+    sub: n => `${n} in a row, ${' '}fast`,
+    need: 3, perMs: 7000, wantsFast: true,
+    hint: 'Answer correctly inside the clock',
+    base: 18
+  },
+  streak: {
+    label: 'STREAK CALL', ko: '연승',
+    sub: n => `keep it alive for ${n}`,
+    need: 4, perMs: 0, wantsFast: false,
+    hint: 'Any speed — just do not miss',
+    base: 14
+  },
+  clean: {
+    label: 'CLEAN RUN', ko: '무결',
+    sub: n => `${n} straight, no misses`,
+    need: 3, perMs: 0, wantsFast: false,
+    hint: 'Take all the time you want',
+    base: 12
+  }
+};
+
+/* Chance per answered card, and what the reward is multiplied by. Both
+   climb with rarity, so a mythical is meaningfully better to have
+   equipped than an epic without being better at teaching you anything. */
+const BLITZ_TUNING = {
+  epic: { chance: 0.028, mult: 1 },
+  legendary: { chance: 0.04, mult: 1.5 },
+  mythical: { chance: 0.055, mult: 2 },
+  secret: { chance: 0.075, mult: 3 }
+};
+
+/* Tuned down from a first pass that fired four times in sixty answers with
+   a legendary equipped. That is not an event, that is a mechanic, and the
+   whole appeal is that it interrupts you rarely enough to be welcome. */
+const BLITZ_COOLDOWN = 14;   // answers that must pass between events
+const BLITZ_WARMUP = 4;      // never in the opening moments of a session
+
+function blitzTuning(char) {
+  const t = BLITZ_TUNING[char && char.rarity];
+  if (!t) return null;
+  return RARITY[char.rarity].order >= RARITY.epic.order ? t : null;
+}
+
+function maybeStartBlitz() {
+  if (!sess || sess.blitz || sess.drill) return;
+  if (S.settings.fxLevel === 'off') return;          // opted out of spectacle
+  if (sess.answered < BLITZ_WARMUP) return;
+  if (sess.answered - (sess.lastBlitzAt || 0) < BLITZ_COOLDOWN) return;
+  const char = equippedChar();
+  const tune = blitzTuning(char);
+  if (!tune) return;
+  if (Math.random() > tune.chance) return;
+
+  const keys = Object.keys(BLITZ_TYPES);
+  const type = keys[Math.floor(Math.random() * keys.length)];
+  const def = BLITZ_TYPES[type];
+  sess.blitz = {
+    type, need: def.need, done: 0,
+    reward: Math.round(def.base * tune.mult),
+    deadline: def.perMs ? Date.now() + def.perMs : 0,
+    perMs: def.perMs
+  };
+  sess.lastBlitzAt = sess.answered;
+  announceBlitz(def, sess.blitz, char);
+}
+
+function announceBlitz(def, b, char) {
+  const p = { x: window.innerWidth / 2, y: window.innerHeight * 0.4 };
+  Sfx.play('levelup');
+  flashScreen('gold');
+  edgeGlow('good', 1400);
+  pulseApp();
+  // The character that summoned it does so in its own handwriting.
+  try { const s = signatureFor(char); if (s) s.fn(p, char.fx, 1); } catch (e) {}
+  FX.ring(p.x, p.y, { r1: 260, color: char.fx.colors[0], w: 4, max: 0.9 });
+  bannerFx(def.label, def.ko + ' · ' + def.sub(b.need) + ' · +' + b.reward + ' coins', { hold: 1500 });
+}
+
+/* Called once per graded answer while an event is live. Returns nothing
+   the caller has to act on — the event owns its own ending. */
+function blitzProgress(right, elapsedMs) {
+  if (!sess || !sess.blitz) return;
+  const b = sess.blitz;
+  const def = BLITZ_TYPES[b.type];
+  const inTime = !b.perMs || (b.deadline && Date.now() <= b.deadline);
+  const good = right && (!def.wantsFast || inTime);
+
+  if (!good) { endBlitz(false); return; }
+
+  b.done++;
+  if (b.done >= b.need) { endBlitz(true); return; }
+  if (b.perMs) b.deadline = Date.now() + b.perMs;
+  Sfx.play('pop');
+}
+
+function endBlitz(won) {
+  if (!sess || !sess.blitz) return;
+  const b = sess.blitz;
+  const def = BLITZ_TYPES[b.type];
+  sess.blitz = null;
+  if (won) {
+    earn(b.reward, 'blitz');
+    sess.blitzWon = (sess.blitzWon || 0) + 1;
+    Sfx.play('big');
+    bannerFx(def.label + ' CLEARED', '+' + b.reward + ' coins', { hold: 1300 });
+    const p = { x: window.innerWidth / 2, y: window.innerHeight * 0.42 };
+    FX.rays(p.x, p.y, { count: 14, len: 150 });
+    FX.burst(p.x, p.y, { count: 40, power: 340, spread: Math.PI * 2, dir: 0 });
+    flashScreen('gold');
+  } else {
+    // Nothing is taken. It just stops.
+    sess.blitzMissed = (sess.blitzMissed || 0) + 1;
+    Sfx.play('whoosh');
+    showToast(def.label + ' ended — nothing lost, it just did not land.');
+  }
+}
+
+/* The clock only ever *ends* an event; it can never reach into a grade.
+   Checked on render rather than on a timer so a backgrounded phone does
+   not silently burn somebody's blitz while the screen is off. */
+function blitzExpired() {
+  if (!sess || !sess.blitz) return false;
+  const b = sess.blitz;
+  return !!(b.perMs && b.deadline && Date.now() > b.deadline);
+}
+
+/* ------------------------------------------------------------
    The payoff. Tier 0 is a modest spark; tier 4 is the works.
    ------------------------------------------------------------ */
 function celebrateCorrect(ctx) {
@@ -6049,6 +6229,7 @@ function finishSession(reason) {
   const remaining = Math.max(0, sess.queue.length - sess.pos);
   sess.reason = reason || (remaining ? 'abandoned' : 'complete');
   sess.remaining = remaining;
+  if (sess.blitz) endBlitz(false);     // an unfinished event pays nothing, costs nothing
   const abandoned = sess.reason === 'abandoned';
   const acc = sess.answered ? sess.correct / sess.answered : 0;
   sess.perfect = !abandoned && sess.answered >= 8 && sess.correct === sess.answered;
@@ -6063,6 +6244,7 @@ function finishSession(reason) {
     if (sess.perfect) n += 12;
     if (sess.bestCombo >= 10) n += 5;
     sess.coinBreakdown = { base: 10, accuracy: acc >= 0.9 ? 8 : 0, perfect: sess.perfect ? 12 : 0, combo: sess.bestCombo >= 10 ? 5 : 0 };
+    if (sess.blitzWon) sess.coinBreakdown.blitz = 'already paid';
     S.coins += n; S.coinsEarned += n;
     sess.earned = (sess.earned || 0) + n;
   }
@@ -7169,6 +7351,26 @@ function progressBars() {
 }
 
 /* ---------- Session ---------- */
+/* The event has to be unmissable while it is live — a bonus you did not
+   notice you were in is not a bonus. Sits directly under the progress bar
+   so it is in the same glance as the question. */
+function renderBlitzBar() {
+  if (!sess || !sess.blitz) return '';
+  if (blitzExpired()) { endBlitz(false); return ''; }
+  const b = sess.blitz;
+  const def = BLITZ_TYPES[b.type];
+  const left = b.perMs ? Math.max(0, b.deadline - Date.now()) : 0;
+  const pct = b.perMs ? Math.max(0, Math.min(100, left / b.perMs * 100)) : 100;
+  return `<div class="blitzbar" role="status">
+    <span class="bz-tag">${esc(def.label)}</span>
+    <span class="bz-ko ko">${esc(def.ko)}</span>
+    <span class="bz-pips">${Array.from({ length: b.need }, (_, i) =>
+      `<i class="${i < b.done ? 'on' : ''}"></i>`).join('')}</span>
+    ${b.perMs ? `<span class="bz-clock"><i style="width:${pct.toFixed(1)}%"></i></span>` : `<span class="bz-hint">${esc(def.hint)}</span>`}
+    <span class="bz-pay"><span class="coin"></span>${b.reward}</span>
+  </div>`;
+}
+
 function renderSession() {
   const step = currentStep();
   if (!step) return shell(renderDone());
@@ -7183,7 +7385,8 @@ function renderSession() {
     ${sess.drill ? `<span class="chip" style="flex:none">${esc(sess.drillTitle)}</span>` : ''}
     ${sess.combo >= 2 ? `<span class="combo-chip t${tier}">${tier >= 3 ? '🔥' : ''} ${sess.combo} streak</span>` : ''}
     <span class="count">${done} / ${total}</span>
-  </div>`;
+  </div>
+  ${renderBlitzBar()}`;
 
   if (sess.askStop) {
     return `<div id="app-inner" class="session-wrap">${head}
@@ -7688,6 +7891,7 @@ function renderDone() {
       if (k.accuracy) parts.push('accuracy above 90%');
       if (k.perfect) parts.push('a flawless round');
       if (k.combo) parts.push('a ten-answer streak');
+      if (sess.blitzWon) parts.push(sess.blitzWon + (sess.blitzWon === 1 ? ' blitz cleared' : ' blitzes cleared'));
       return esc(parts.join(' · '));
     })()}</span>
     </div>` : ''}
@@ -9412,6 +9616,23 @@ function afterRender() {
     view === 'session' || view === 'done' || view === 'respond'
     || (view === 'convo' && convo && (convo.mode === 'role' || convo.mode === 'branch')));
 
+  // A timed blitz needs its clock to move. One rAF loop that exists only
+  // while the bar is on screen, rather than a timer running all session.
+  const bz = document.querySelector('.blitzbar .bz-clock i');
+  if (bz && sess && sess.blitz && sess.blitz.perMs) {
+    cancelAnimationFrame(blitzRaf);
+    const tick = () => {
+      if (!sess || !sess.blitz || !document.body.contains(bz)) return;
+      if (blitzExpired()) { endBlitz(false); render(); return; }
+      const left = Math.max(0, sess.blitz.deadline - Date.now());
+      bz.style.width = (left / sess.blitz.perMs * 100).toFixed(1) + '%';
+      blitzRaf = requestAnimationFrame(tick);
+    };
+    blitzRaf = requestAnimationFrame(tick);
+  } else {
+    cancelAnimationFrame(blitzRaf);
+  }
+
   const canvas = document.getElementById('wavecanvas');
   if (canvas) {
     drawWave(canvas);
@@ -9846,6 +10067,11 @@ function scoreAnswer(ex, result, elapsed, grade) {
   gradeCard(ex.key, grade, elapsed);
   sess.lastGradeKey = ex.key;
 
+  /* After the grade is already in, never before it. The blitz reads the
+     outcome; it does not get a vote on it. */
+  if (sess.blitz) blitzProgress(good, elapsed);
+  else if (good) maybeStartBlitz();
+
   if (good) {
     sess.combo++;
     sess.bestCombo = Math.max(sess.bestCombo, sess.combo);
@@ -9983,6 +10209,7 @@ function redeemNearMiss() {
    suspense rather than a lie about what has already been rolled.
    --------------------------------------------------------------- */
 let eggBusy = false;
+let blitzRaf = 0;
 
 function openEgg() {
   if (eggBusy) return;
