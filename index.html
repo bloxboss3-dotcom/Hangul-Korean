@@ -5632,6 +5632,7 @@ function coinFx(n, why) {
    2. STATE
    --------------------------------------------------------------- */
 const DEFAULTS = {
+  lastExport: 0,          // when a backup was last taken out of the browser
   settings: {
     dailyNew: 8,
     reviewCap: 100,
@@ -5784,6 +5785,90 @@ let storageOk = true;
     localStorage.removeItem('hanbit.probe');
   } catch (e) { storageOk = false; }
 })();
+
+/* ------------------------------------------------------------
+   HOW PERMANENT ANY OF THIS ACTUALLY IS.
+
+   localStorage is not storage in the sense most people mean. It is
+   storage the browser is allowed to throw away, and on iOS it is
+   conditionally temporary in a way that will quietly cost somebody a
+   year of study if nobody tells them:
+
+   **Safari deletes all script-writable storage — localStorage included —
+   after seven days without interacting with the site.** Not seven days
+   of not studying. Seven days of Safari being used while you did not
+   open this. A fortnight's holiday is enough.
+
+   The exemption is the thing worth knowing: a web app added to the home
+   screen is not part of Safari, keeps its own use counter, and is not
+   subject to the cap. So "add to home screen" is not a nicety on iOS,
+   it is the difference between your history surviving a holiday and not.
+
+   What this module does about it: ask for persistent storage where the
+   API exists, work out which of those situations the user is actually
+   in, and say so in plain words rather than leaving it to be discovered.
+   ------------------------------------------------------------ */
+const Store = {
+  persisted: null,      // null until asked; true if the browser promised
+  standalone: false,    // launched from the home screen rather than a tab
+  ios: false,
+
+  async init() {
+    const ua = navigator.userAgent || '';
+    // iPadOS reports as a Mac, so touch points are what separate them.
+    this.ios = /iPad|iPhone|iPod/.test(ua)
+      || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+    this.standalone = !!(window.navigator.standalone)
+      || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+    if (navigator.storage && navigator.storage.persisted) {
+      try {
+        this.persisted = await navigator.storage.persisted();
+        // Asking is free and some browsers grant it outright; others weigh
+        // it against how much you use the site, which is a fair test.
+        if (!this.persisted && navigator.storage.persist) {
+          this.persisted = await navigator.storage.persist();
+        }
+      } catch (e) { this.persisted = null; }
+    }
+  },
+
+  /* Rough count of everything answered, used to decide whether there is
+     anything worth warning about yet. */
+  reviewsEver() {
+    return Object.keys(S.days || {}).reduce((n, k) => n + (S.days[k].reviews || 0), 0);
+  },
+
+  /* The one risk that applies right now, or null if there isn't one.
+     Ordered by how much it would cost you, and deliberately quiet when
+     there is nothing to lose or you have already done the fix. */
+  risk() {
+    if (!storageOk) return 'blocked';
+    if (this.ios) {
+      // Installing to the home screen IS the protection on iOS. Somebody who
+      // has done it should not then be told their data is at risk, and
+      // Safari's persist() says little either way.
+      return this.standalone ? null : 'ios7day';
+    }
+    // Elsewhere, eviction only matters once there is a history to evict —
+    // warning a first-time visitor about losing nothing is just noise.
+    if (this.persisted === false && this.reviewsEver() >= 40) return 'evictable';
+    return null;
+  },
+
+  daysSinceBackup() {
+    if (!S.lastExport) return null;
+    return Math.floor((Date.now() - S.lastExport) / DAY);
+  },
+
+  /* Worth nagging about only once there is something to lose. */
+  backupOverdue() {
+    const reviews = Object.keys(S.days || {}).reduce((n, k) => n + (S.days[k].reviews || 0), 0);
+    if (reviews < 60) return false;
+    const d = this.daysSinceBackup();
+    return d === null || d >= 14;
+  }
+};
 
 let saveTimer = null;
 function save() {
@@ -7228,6 +7313,44 @@ const NAV_ICON = {
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
 };
 
+/* Said where it will actually be read — above the app, not buried in
+   Settings — because the cost of not knowing is somebody's study history. */
+function renderStorageWarning() {
+  const risk = Store.risk();
+  const overdue = Store.backupOverdue();
+  if (!risk && !overdue) return '';
+
+  if (risk === 'blocked') return `<div class="notice" style="margin-bottom:14px">
+    <b>This browser will not let Hanbit save.</b> Nothing you study here will survive closing the tab.
+    That usually means a private window, or the page is running inside another app rather than as a browser
+    tab of its own. Open it directly in Chrome, Edge, Firefox or Safari and bookmark it — then progress
+    sticks. Export in Settings still works either way.
+  </div>`;
+
+  if (risk === 'ios7day') return `<div class="notice" style="margin-bottom:14px">
+    <b>Add this to your home screen, or iOS will delete it.</b>
+    Safari erases a website's saved data after seven days without visiting it — seven days of using Safari,
+    not of studying — and that would take your whole history with it. A web app added to the home screen is
+    not part of Safari and is not subject to that. Share → Add to Home Screen, once, and it stops being a risk.
+    <button class="btn ghost" style="margin-top:10px" data-act="export">Back it up now anyway</button>
+  </div>`;
+
+  if (risk === 'evictable') return `<div class="notice" style="margin-bottom:14px">
+    <b>This browser has not promised to keep your progress.</b> It stores it, but may clear it if the device
+    runs short of space. Using the app regularly usually earns permanent status by itself; a backup makes it
+    moot.
+    <button class="btn ghost" style="margin-top:10px" data-act="export">Export a backup</button>
+  </div>`;
+
+  const d = Store.daysSinceBackup();
+  return `<div class="notice" style="margin-bottom:14px">
+    <b>${d === null ? 'You have never taken a backup.' : 'Your last backup was ' + d + ' days ago.'}</b>
+    Everything lives in this browser and nowhere else, so clearing site data — or losing the phone — loses the
+    lot. It is one tap and a small file.
+    <button class="btn ghost" style="margin-top:10px" data-act="export">Export a backup</button>
+  </div>`;
+}
+
 function shell(body) {
   const weakN = weakCards().length;
   const tabs = [['today', 'Today'], ['talk', 'Talk'], ['weak', 'Weak spots' + (weakN ? ' · ' + weakN : '')],
@@ -7250,12 +7373,7 @@ function shell(body) {
     <button class="btn primary" data-act="install">Install</button>
     <button class="iconbtn" data-act="dismissinstall" aria-label="Not now">✕</button>
   </div>` : ''}
-  ${storageOk ? '' : `<div class="notice" style="margin-bottom:14px">
-    <b>This browser will not let Hanbit save.</b> Nothing you study here will survive closing the tab.
-    That usually means a private window, or the page is running inside another app rather than as a browser
-    tab of its own. Open it directly in Chrome, Edge, Firefox or Safari and bookmark it — then progress
-    sticks. Export in Settings still works either way.
-  </div>`}
+  ${renderStorageWarning()}
   ${body}
   <nav class="tabbar">${bottom.map(([k, l, n]) => `<button data-view="${k}" class="${navHere === k ? 'on' : ''}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${NAV_ICON[k]}</svg>
@@ -9544,6 +9662,23 @@ function renderSettings() {
   <div class="card">
     <h2>Your data</h2>
     <p class="sub">Everything lives in this browser and nowhere else — no account, no server, no analytics. That also means clearing site data wipes your progress, so export a backup occasionally.</p>
+    ${(() => {
+      const d = Store.daysSinceBackup();
+      const row = (k, v) => `<div class="field"><div class="lab">${k}</div><div class="ctl"><span class="faint" style="font-size:12.5px">${v}</span></div></div>`;
+      return `<div style="margin:10px 0 4px">
+        ${row('Where it is', 'This browser\u2019s localStorage, under the key <code>hanbit.v1</code>. It never leaves the device.')}
+        ${row('How it is running', Store.standalone
+          ? 'As an installed app from your home screen \u2014 which is what keeps iOS from clearing it.'
+          : 'As a browser tab.' + (Store.ios ? ' <b>On iOS this is the fragile case</b> \u2014 add it to your home screen.' : ''))}
+        ${row('Permanent storage', Store.persisted === true
+          ? 'Granted \u2014 this browser has agreed not to evict it to reclaim space.'
+          : Store.persisted === false
+            ? 'Not granted \u2014 it can be cleared if the device runs short of space.'
+            : 'This browser does not report it.')}
+        ${row('Last backup', d === null ? '<b>Never</b>' : d === 0 ? 'Today' : d + ' day' + (d === 1 ? '' : 's') + ' ago')}
+      </div>
+      <p class="sub" style="margin-top:2px">A backup is a plain <code>.json</code> file you can keep anywhere and import into any browser \u2014 it is also how you move your progress to a new phone.</p>`;
+    })()}
     <div class="row wrap">
       <button class="btn" data-act="export">Export progress (.json)</button>
       <button class="btn" data-act="import">Import a backup</button>
@@ -10392,7 +10527,9 @@ function doExport() {
   a.download = 'hanbit-progress-' + todayKey() + '.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  showToast('Backup downloaded.');
+  S.lastExport = Date.now();
+  save();
+  showToast('Backup downloaded. Keep it somewhere that is not this phone.');
 }
 
 function doImport(file) {
@@ -10717,6 +10854,7 @@ function applyHash() {
    --------------------------------------------------------------- */
 load();
 normalizeSettings();
+Store.init().then(() => { if (Store.risk() || Store.backupOverdue()) render(); });
 pruneConfusions();      // drop pairs that have gone quiet and are holding
 applyHash();
 LineAudio.load();
