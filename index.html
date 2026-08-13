@@ -802,6 +802,11 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
   padding: 14px; border-radius: var(--radius-sm);
   background: var(--bg-raise); border: 1px solid var(--line-soft);
 }
+/* Courses without photographed portraits show the animated rig instead —
+   better than a broken image, and the rig is the character anyway. */
+.cf-rig { display: block; width: 64px; height: 64px; }
+.cf-rig svg { width: 100%; height: 100%; display: block; }
+
 .eggart { flex: none; width: 46px; height: 58px; display: grid; place-items: center; }
 
 /* Blitz — loud enough that you cannot be in one without knowing. */
@@ -3872,18 +3877,32 @@ const CH_SAME_SOUND = [];
 const COURSES = {
   ko: {
     id: 'ko', name: 'Hanbit', native: '\ud55c\ube5b', label: 'Korean',
+    openBlurb: 'You will be reading Korean words out loud inside twenty minutes. Hangul is a designed alphabet, not a memorisation slog — the shapes tell you what your mouth should do.',
+    bands: [
+      { label: 'Hangul — reading', stage: 'hangul' },
+      { label: 'Units 1–4 — foundations', units: ['U1', 'U1b', 'U2', 'U3', 'U4'] },
+      { label: 'Units 5–8 — everyday life', units: ['U5', 'U6', 'U7', 'U8'] },
+      { label: 'Units 9–12 — real sentences', units: ['U9', 'U10', 'U11', 'U12'] }
+    ],
     writePrompt: 'Write this in Korean.', sayPrompt: 'Say this in Korean, out loud.',
     buildPrompt: 'Build this sentence in Korean.', rulePrompt: 'This is the spelling. How is it actually pronounced?',
     tagline: 'Korean, on a forgetting curve',
     mark: '\ud55c', openTitle: 'Start with the alphabet',
-    store: 'hanbit.v1',
+    store: 'hanbit.v1', portraits: true,
     voice: 'ko-KR',
     stageTitle: 'Learn to read',
+    cast: () => ({ chars: KO_CHARACTERS, rigs: KO_RIGS, sigs: KO_CHAR_SIGNATURE }),
     sounds: KO_SOUNDS, unitsA: KO_UNITS_A, unitsB: KO_UNITS_B,
     conversations: KO_CONVERSATIONS, sameSound: () => KO_SAME_SOUND
   },
   chess: {
     id: 'chess', name: 'Gambit', native: 'Gambit', label: 'Chess',
+    openBlurb: 'Six pieces, sixty-four squares, and one notation that every player in the world reads. Start with what each piece does and how a move is written; the tactics that decide most games are five patterns, and they are further down.',
+    bands: [
+      { label: 'Pieces and notation', stage: 'hangul' },
+      { label: 'Openings and tactics', units: ['U1', 'U2'] },
+      { label: 'Endgames and repertoire', units: ['U3', 'U4'] }
+    ],
     writePrompt: 'Write the notation.', sayPrompt: 'Say it out loud.',
     buildPrompt: 'Build the line, move by move.', rulePrompt: 'How is this move written?',
     tagline: 'Chess, on a forgetting curve',
@@ -3891,6 +3910,7 @@ const COURSES = {
     store: 'gambit.chess.v1',
     voice: 'en-GB',
     stageTitle: 'The board and the notation',
+    cast: () => ({ chars: CH_CHARACTERS, rigs: CH_RIGS, sigs: CH_CHAR_SIGNATURE }),
     sounds: CH_SOUNDS, unitsA: CH_UNITS_A, unitsB: CH_UNITS_B,
     conversations: CH_CONVERSATIONS, sameSound: () => CH_SAME_SOUND, branches: {},
     /* Notation is typed, never composed from a Hangul keyboard, and saying
@@ -3901,6 +3921,12 @@ const COURSES = {
 
   es: {
     id: 'es', name: 'Chispa', native: 'Chispa', label: 'Spanish',
+    openBlurb: 'Spanish says exactly what it spells, every time — five vowels, five sounds, no exceptions. Twenty minutes from now you will be reading it aloud and getting it right, which is a thing English never lets you do.',
+    bands: [
+      { label: 'Sounds and spelling', stage: 'hangul' },
+      { label: 'Units 1–3 — people and things', units: ['U1', 'U2', 'U3'] },
+      { label: 'Units 4–6 — doing and asking', units: ['U4', 'U5', 'U6'] }
+    ],
     writePrompt: 'Write this in Spanish.', sayPrompt: 'Say this in Spanish, out loud.',
     buildPrompt: 'Build this sentence in Spanish.', rulePrompt: 'This is the spelling. How is it actually pronounced?',
     tagline: 'Spanish, on a forgetting curve',
@@ -3908,6 +3934,7 @@ const COURSES = {
     store: 'chispa.es.v1',
     voice: 'es-ES',
     stageTitle: 'Sounds and spelling',
+    cast: () => ({ chars: ES_CHARACTERS, rigs: ES_RIGS, sigs: ES_CHAR_SIGNATURE }),
     sounds: ES_SOUNDS, unitsA: ES_UNITS_A, unitsB: ES_UNITS_B,
     conversations: ES_CONVERSATIONS, sameSound: () => ES_SAME_SOUND, branches: {}
   }
@@ -4720,7 +4747,7 @@ const FACE = `
 /* Per-character shapes. `back` draws behind the head (tails, plumes, auras),
    `ears` must keep the tg-ear-l / tg-ear-r classes to inherit the flick, and
    `face` is whatever sits under the eyes — a muzzle, a beak, a beard. */
-const RIGS = {
+const KO_RIGS = {
   tiger: {
     c: ['#ffc384', '#ef9a4e', '#4a2c17', '#33210f', '#f79fae', '#f2828f'],
     ears: `<g class="tg-ear tg-ear-l"><circle cx="26" cy="30" r="15" fill="var(--m-fur)"/><circle cx="26" cy="31" r="7.5" fill="#e8757f"/></g>
@@ -4991,15 +5018,189 @@ const RIGS = {
   }
 };
 
+
+/* ============================================================
+   CASTS — one per course.
+
+   The Korean set is Korean mythology, which was right for Korean and
+   faintly absurd everywhere else: a Spanish course handing you 호랑이
+   for a correct answer, and a chess course doing the same, is the app
+   forgetting what it is teaching.
+
+   Chess gets the obvious set — the pieces — and the rarity ladder is
+   simply what they are worth. A pawn is common because there are eight
+   of them; the king is mythical because there is one and losing it ends
+   everything.
+
+   Deliberately small. Six each rather than twenty, because a collection
+   you can finish in a week is better than one padded to look bigger.
+   ============================================================ */
+const ES_CHARACTERS = [
+  { id: 'gato', ko: 'el gato', en: 'Cat', rarity: 'common', starter: true,
+    blurb: 'On every windowsill in every village, entirely unimpressed by your conjugations.',
+    accent: { dark: ['#ffb457', '#6b4517', '#ffd166'], light: ['#8a5a1b', '#ffe0bf', '#8a6100'] },
+    fx: { colors: ['#ffb457', '#ffd166', '#fff0c4'], kinds: ['confetti', 'spark'] } },
+  { id: 'gorrion', ko: 'el gorrión', en: 'Sparrow', rarity: 'common',
+    blurb: 'Lives on café terraces and has no fear of anybody. Will take your bread.',
+    accent: { dark: ['#c9b79a', '#4a4136', '#8fd3ff'], light: ['#6b5a3f', '#efe6d6', '#175f8c'] },
+    fx: { colors: ['#c9b79a', '#8fd3ff', '#fff0c4'], kinds: ['spark', 'star'] } },
+  { id: 'toro', ko: 'el toro', en: 'Bull', rarity: 'uncommon',
+    blurb: 'Black silhouette on a hill by the motorway. Originally an advert for brandy, now simply Spain.',
+    accent: { dark: ['#3a3f4a', '#1b1f27', '#f0736a'], light: ['#2a2f38', '#d8dee9', '#c8362c'] },
+    fx: { colors: ['#f0736a', '#e8ecf2', '#3a3f4a'], kinds: ['confetti', 'spark'] } },
+  { id: 'lechuza', ko: 'la lechuza', en: 'Barn Owl', rarity: 'rare',
+    blurb: 'Turns up in every folk tale on both sides of the Atlantic, and never means the same thing twice.',
+    accent: { dark: ['#e8ddc4', '#5a4f36', '#ffd166'], light: ['#7a6a45', '#f5eeda', '#8a6100'] },
+    fx: { colors: ['#e8ddc4', '#ffd166', '#e8ecf2'], kinds: ['spark', 'star'] } },
+  { id: 'lince', ko: 'el lince', en: 'Iberian Lynx', rarity: 'epic',
+    blurb: 'Was down to a hundred animals. Now there are thousands, which almost never happens.',
+    accent: { dark: ['#d8a86b', '#5a3f20', '#7ee8c0'], light: ['#8a5f1b', '#f5e2c8', '#0f7a63'] },
+    fx: { colors: ['#d8a86b', '#7ee8c0', '#ffd166'], kinds: ['spark', 'star', 'confetti'] } },
+  { id: 'quetzal', ko: 'el quetzal', en: 'Quetzal', rarity: 'legendary',
+    blurb: 'Sacred from Mexico to Guatemala, and said to refuse to live in a cage.',
+    accent: { dark: ['#4fd6a0', '#14503a', '#f0736a'], light: ['#0f7a5a', '#cdf3e4', '#c8362c'] },
+    fx: { colors: ['#4fd6a0', '#f0736a', '#ffe08a'], kinds: ['spark', 'star', 'jamo'] } },
+  { id: 'alebrije', ko: 'el alebrije', en: 'Alebrije', rarity: 'mythical',
+    blurb: 'Dreamt by a fevered artist in Mexico City in 1936 — part lizard, part butterfly, painted in colours nothing in nature agreed to.',
+    accent: { dark: ['#d5a6ff', '#3f2b5c', '#4fd6a0'], light: ['#6b3aa8', '#ead9ff', '#0f7a5a'] },
+    fx: { colors: ['#d5a6ff', '#4fd6a0', '#ffd166'], kinds: ['spark', 'star', 'confetti', 'jamo'] } }
+];
+
+const CH_CHARACTERS = [
+  { id: 'pawn', ko: 'Peón', en: 'Pawn', rarity: 'common', starter: true,
+    blurb: 'Cannot go back, cannot be spared, and is the only one that can become something else entirely.',
+    accent: { dark: ['#c9d2e0', '#3a4150', '#8fd3ff'], light: ['#4a5568', '#e2e8f0', '#175f8c'] },
+    fx: { colors: ['#c9d2e0', '#8fd3ff', '#e8ecf2'], kinds: ['confetti', 'spark'] } },
+  { id: 'knight', ko: 'Caballo', en: 'Knight', rarity: 'uncommon',
+    blurb: 'The only piece that jumps, and the only one whose attack you cannot see coming in a straight line.',
+    accent: { dark: ['#a8845c', '#4a3520', '#ffd166'], light: ['#6b4a20', '#f0e0cc', '#8a6100'] },
+    fx: { colors: ['#a8845c', '#ffd166', '#e8ecf2'], kinds: ['spark', 'star'] } },
+  { id: 'bishop', ko: 'Alfil', en: 'Bishop', rarity: 'rare',
+    blurb: 'Stuck on one colour for the whole of its life. A pair of them covers everything, which is why the pair is worth more than the sum.',
+    accent: { dark: ['#b39ddb', '#3f2b5c', '#8fd3ff'], light: ['#5f43a6', '#ead9ff', '#175f8c'] },
+    fx: { colors: ['#b39ddb', '#8fd3ff', '#e8ecf2'], kinds: ['spark', 'star'] } },
+  { id: 'rook', ko: 'Torre', en: 'Rook', rarity: 'epic',
+    blurb: 'Useless for twenty moves, then decisive. Give it an open file and the endgame belongs to you.',
+    accent: { dark: ['#8fb3d9', '#1b3a5c', '#ffd166'], light: ['#1f5a8c', '#d6e6f5', '#8a6100'] },
+    fx: { colors: ['#8fb3d9', '#ffd166', '#e8ecf2'], kinds: ['confetti', 'spark', 'star'] } },
+  { id: 'queen', ko: 'Dama', en: 'Queen', rarity: 'legendary',
+    blurb: 'A rook and a bishop in one body. Worth nine pawns, and worth more games than any other single piece.',
+    accent: { dark: ['#f0a8d0', '#5c1f45', '#ffd166'], light: ['#a8206b', '#fbd9ec', '#8a6100'] },
+    fx: { colors: ['#f0a8d0', '#ffd166', '#e8ecf2'], kinds: ['spark', 'star', 'confetti'] } },
+  { id: 'king', ko: 'Rey', en: 'King', rarity: 'mythical',
+    blurb: 'Slow, nearly helpless, and the entire point. Everything else on the board exists because of this one.',
+    accent: { dark: ['#ffd166', '#6b5417', '#f0736a'], light: ['#8a6100', '#fff0c4', '#c8362c'] },
+    fx: { colors: ['#ffd166', '#f0736a', '#fff0c4'], kinds: ['spark', 'star', 'jamo', 'confetti'] } }
+];
+
+/* Both new casts reuse the shared FACE, so each character is a silhouette
+   plus a colour and nothing else has to be redrawn. */
+const ES_RIGS = {
+  gato: { c: ['#ffb457', '#e08f35', '#4a2c17', '#33210f', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l"><path d="M28 34c-4-16 0-24 8-26 3 12 0 20-8 26z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r"><path d="M92 34c4-16 0-24-8-26-3 12 0 20 8 26z" fill="var(--m-fur)"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="40" ry="38" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="#4a2c17" stroke-width="3.6" stroke-linecap="round" opacity=".55"><path d="M52 26v10"/><path d="M60 24v12"/><path d="M68 26v10"/></g>`,
+    face: `<ellipse cx="60" cy="76" rx="23" ry="17" fill="var(--m-muz)"/>
+           <path d="M60 67c4 0 6.5 2.2 6.5 4.4 0 2.4-3 4-6.5 4s-6.5-1.6-6.5-4c0-2.2 2.5-4.4 6.5-4.4z" fill="#e8757f"/>`,
+    extra: `<g stroke="#a06a3a" stroke-width="2" stroke-linecap="round" opacity=".6"><path d="M30 74h13"/><path d="M31 82l12-4"/><path d="M90 74H77"/><path d="M89 82l-12-4"/></g>` },
+  gorrion: { c: ['#c9b79a', '#a08d6c', '#4a4136', '#2f2a22', '#f79fae', '#f2828f'],
+    back: `<path d="M88 76c18 8 24 22 21 34-13-5-22-16-26-27z" fill="#8d7a5c"/>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:46px 26px"><path d="M46 26c-3-10 1-15 6-16-1 8-2 13-6 16z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:74px 26px"><path d="M74 26c3-10-1-15-6-16 1 8 2 13 6 16z" fill="var(--m-fur)"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="38" ry="37" fill="var(--m-fur)"/>`,
+    marks: `<ellipse cx="60" cy="88" rx="24" ry="12" fill="#efe6d6" opacity=".65"/>
+            <path d="M34 40c8-6 16-8 24-7-9 3-17 6-24 7z" fill="#8d7a5c" opacity=".5"/>`,
+    face: `<path d="M60 64l8 8-8 9-8-9z" fill="#7a6a45"/>` },
+  toro: { c: ['#3a3f4a', '#20242c', '#0d0f13', '#0a0c0f', '#f0736a', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l"><path d="M22 34c-8-8-6-18 2-22 6 8 5 17-2 22z" fill="#e8ddc4"/></g>
+           <g class="tg-ear tg-ear-r"><path d="M98 34c8-8 6-18-2-22-6 8-5 17 2 22z" fill="#e8ddc4"/></g>`,
+    head: `<ellipse cx="60" cy="62" rx="39" ry="38" fill="var(--m-fur)"/>`,
+    marks: `<path d="M60 22c8 0 14 4 16 10-6-3-11-4-16-4s-10 1-16 4c2-6 8-10 16-10z" fill="#20242c"/>`,
+    face: `<ellipse cx="60" cy="80" rx="24" ry="17" fill="#5a606c"/>
+           <g fill="#20242c"><ellipse cx="52" cy="79" rx="4" ry="5"/><ellipse cx="68" cy="79" rx="4" ry="5"/></g>` },
+  lechuza: { c: ['#e8ddc4', '#c9b79a', '#5a4f36', '#3a3226', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:38px 26px"><path d="M38 26c-4-12 0-18 6-19-1 9-2 15-6 19z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:82px 26px"><path d="M82 26c4-12 0-18-6-19 1 9 2 15 6 19z" fill="var(--m-fur)"/></g>`,
+    head: `<path d="M60 18c24 0 40 17 40 40 0 24-18 42-40 42s-40-18-40-42c0-23 16-40 40-40z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M43 40c9 0 15 8 15 20s-6 20-15 20-15-8-15-20 6-20 15-20z" fill="#f7f2e4" opacity=".85"/>
+            <path d="M77 40c9 0 15 8 15 20s-6 20-15 20-15-8-15-20 6-20 15-20z" fill="#f7f2e4" opacity=".85"/>`,
+    face: `<path d="M60 62l7 8-7 12-7-12z" fill="#c99a4a"/>` },
+  lince: { c: ['#d8a86b', '#b8843f', '#4a3520', '#33240f', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l"><path d="M28 32c-4-18 0-26 8-28 3 14 0 22-8 28z" fill="var(--m-fur)"/><path d="M30 12c-2-8-1-11 1-12 1 5 1 9-1 12z" fill="#2b1f12"/></g>
+           <g class="tg-ear tg-ear-r"><path d="M92 32c4-18 0-26-8-28-3 14 0 22 8 28z" fill="var(--m-fur)"/><path d="M90 12c2-8 1-11-1-12-1 5-1 9 1 12z" fill="#2b1f12"/></g>`,
+    head: `<ellipse cx="60" cy="62" rx="40" ry="37" fill="var(--m-fur)"/>`,
+    marks: `<g fill="#6b4a20" opacity=".5"><circle cx="34" cy="50" r="4"/><circle cx="86" cy="50" r="4"/><circle cx="42" cy="34" r="3.4"/><circle cx="78" cy="34" r="3.4"/><circle cx="28" cy="68" r="3"/><circle cx="92" cy="68" r="3"/></g>
+            <g fill="#f5e2c8" opacity=".8"><path d="M22 74c6 10 6 18 3 24-6-7-7-16-3-24z"/><path d="M98 74c-6 10-6 18-3 24 6-7 7-16 3-24z"/></g>`,
+    face: `<ellipse cx="60" cy="78" rx="23" ry="17" fill="var(--m-muz)"/>
+           <path d="M60 69c4 0 6.5 2.2 6.5 4.4 0 2.4-3 4-6.5 4s-6.5-1.6-6.5-4c0-2.2 2.5-4.4 6.5-4.4z" fill="#7a4a2a"/>` },
+  quetzal: { c: ['#4fd6a0', '#22a877', '#0e3d2c', '#082a1e', '#f0736a', '#f2828f'],
+    back: `<path d="M74 84c16 16 18 34 10 34-10-4-16-20-16-30z" fill="#22a877"/>
+           <path d="M80 82c13 14 15 28 9 30-8-4-12-18-13-26z" fill="#7ef0c0"/>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:50px 20px"><path d="M50 20c-2-12 2-18 7-19-1 10-3 16-7 19z" fill="#ffd166"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:70px 20px"><path d="M70 20c2-12-2-18-7-19 1 10 3 16 7 19z" fill="#ffd166"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="38" ry="38" fill="var(--m-fur)"/>`,
+    marks: `<ellipse cx="60" cy="86" rx="22" ry="12" fill="#f0736a" opacity=".85"/>
+            <ellipse cx="58" cy="32" rx="18" ry="7" fill="#7ef0c0" opacity=".5"/>`,
+    face: `<path d="M60 62l8 8-8 10-8-10z" fill="#ffd166"/>` },
+  alebrije: { c: ['#d5a6ff', '#9a5cd8', '#3f2b5c', '#28174a', '#7ef0c0', '#f2828f'],
+    back: `<g><path d="M18 40c12 4 20 14 21 24-13-2-20-12-21-24z" fill="#4fd6a0"/>
+          <path d="M102 40c-12 4-20 14-21 24 13-2 20-12 21-24z" fill="#ffd166"/>
+          <path d="M60 6c5 12 4 22-2 28-4-10-3-20 2-28z" fill="#f0736a"/></g>`,
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:40px 24px"><path d="M40 24c-4-14 0-21 6-22-1 10-2 17-6 22z" fill="#4fd6a0"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:80px 24px"><path d="M80 24c4-14 0-21-6-22 1 10 2 17 6 22z" fill="#ffd166"/></g>`,
+    head: `<ellipse cx="60" cy="60" rx="39" ry="38" fill="var(--m-fur)"/>`,
+    marks: `<g opacity=".75"><ellipse cx="34" cy="48" rx="9" ry="6" fill="#4fd6a0"/><ellipse cx="86" cy="48" rx="9" ry="6" fill="#ffd166"/>
+            <ellipse cx="60" cy="30" rx="11" ry="6" fill="#f0736a"/><circle cx="30" cy="72" r="4" fill="#8fd3ff"/><circle cx="90" cy="72" r="4" fill="#8fd3ff"/></g>`,
+    face: `<path d="M60 64l8 9-8 11-8-11z" fill="#ffd166"/>` }
+};
+
+/* The pieces, each a silhouette with a face. Nothing else needed drawing. */
+const CH_RIGS = {
+  pawn: { c: ['#e2e8f2', '#b9c4d6', '#2a2f38', '#1b1f27', '#f79fae', '#f2828f'],
+    head: `<circle cx="60" cy="44" r="24" fill="var(--m-fur)"/>
+           <path d="M42 78c0-10 8-16 18-16s18 6 18 16l6 24H36z" fill="var(--m-fur)"/>`,
+    marks: `<ellipse cx="60" cy="70" rx="22" ry="5" fill="#b9c4d6" opacity=".7"/>` },
+  knight: { c: ['#a8845c', '#7d5f3c', '#2b1f12', '#1b1409', '#f79fae', '#f2828f'],
+    ears: `<g class="tg-ear tg-ear-l" style="transform-origin:44px 20px"><path d="M44 20c-2-12 2-17 7-18-1 9-3 15-7 18z" fill="var(--m-fur)"/></g>
+           <g class="tg-ear tg-ear-r" style="transform-origin:70px 18px"><path d="M70 18c2-12-1-16-6-17 1 9 2 14 6 17z" fill="var(--m-fur)"/></g>`,
+    head: `<path d="M38 100c-4-24 0-42 10-54 6-8 16-14 26-14 8 0 14 6 14 16 0 14-8 22-20 28-8 4-12 12-12 24z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M74 40c6 2 9 6 9 11-5-1-8-5-9-11z" fill="#5c452a" opacity=".7"/>` },
+  bishop: { c: ['#b39ddb', '#8a6fc4', '#2b1f45', '#1b1330', '#f79fae', '#f2828f'],
+    head: `<path d="M60 12c12 10 20 26 20 42 0 18-9 30-20 30s-20-12-20-30c0-16 8-32 20-42z" fill="var(--m-fur)"/>
+           <path d="M40 86h40l6 16H34z" fill="var(--m-fur)"/>`,
+    marks: `<g stroke="#efe6ff" stroke-width="3" stroke-linecap="round" opacity=".8"><path d="M54 30l12 12"/><path d="M66 30L54 42"/></g>` },
+  rook: { c: ['#8fb3d9', '#5f88b5', '#12283f', '#0b1a2b', '#f79fae', '#f2828f'],
+    head: `<path d="M30 20h12v10h12V20h12v10h12V20h12v22l-8 8v42l8 12H30l8-12V50l-8-8z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M38 58h44v6H38z" fill="#5f88b5" opacity=".7"/>` },
+  queen: { c: ['#f0a8d0', '#d171a8', '#4a1030', '#33071f', '#ffd166', '#f2828f'],
+    back: `<g fill="#ffd166"><circle cx="24" cy="16" r="6"/><circle cx="60" cy="8" r="7"/><circle cx="96" cy="16" r="6"/></g>`,
+    head: `<path d="M24 20l12 34h48l12-34 8 30-10 12v40H26V62L16 50z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M30 74h60v6H30z" fill="#d171a8" opacity=".7"/>` },
+  king: { c: ['#ffd166', '#d9a428', '#5c3f00', '#3f2b00', '#f0736a', '#f2828f'],
+    back: `<g fill="#fff0c4"><rect x="55" y="2" width="10" height="24" rx="2"/><rect x="47" y="10" width="26" height="9" rx="2"/></g>`,
+    head: `<path d="M28 34c10-6 22-8 32-8s22 2 32 8l-6 26-6 12v34H40V72l-6-12z" fill="var(--m-fur)"/>`,
+    marks: `<path d="M34 76h52v6H34z" fill="#d9a428" opacity=".75"/>` }
+};
+
+const ES_CHAR_SIGNATURE = {
+  gato: 'slash', gorrion: 'flit', toro: 'stomp', lechuza: 'feathers',
+  lince: 'ninetails', quetzal: 'plume', alebrije: 'rebirth'
+};
+const CH_CHAR_SIGNATURE = {
+  pawn: 'hop', knight: 'dash', bishop: 'drift', rook: 'wardring',
+  queen: 'coil', king: 'calm'
+};
+
 /* Assemble one character. Colours ride as custom properties so the shared
    face reads correctly on fur, scales, green skin or an old man's cheeks. */
 function mascotSvg(id) {
-  const r = RIGS[id] || RIGS.tiger;
+  const r = RIGS[id] || RIGS[CHARACTERS[0].id];
   const [fur, fur2, ink, eye, blush, tongue] = r.c;
   // Gradient ids are namespaced per character: two rigs on one page — the
   // corner and a preview, say — would otherwise share the first definition
   // and the second would silently wear the first one's colours.
-  const g = 'fur-' + (RIGS[id] ? id : 'tiger'), m = 'muz-' + (RIGS[id] ? id : 'tiger');
+  const g = 'fur-' + (RIGS[id] ? id : CHARACTERS[0].id), m = 'muz-' + (RIGS[id] ? id : CHARACTERS[0].id);
   return `
 <svg viewBox="0 0 120 124" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
      style="--m-fur:url(#${g});--m-muz:url(#${m});--m-ink:${ink};--m-eye:${eye};--m-blush:${blush};--m-tongue:${tongue}">
@@ -5023,7 +5224,6 @@ function mascotSvg(id) {
 </svg>`;
 }
 
-const MASCOT_SVG = mascotSvg('tiger');
 
 const Mascot = {
   el: null,
@@ -5266,7 +5466,7 @@ const SIGNATURES = {
   }
 };
 
-const CHAR_SIGNATURE = {
+const KO_CHAR_SIGNATURE = {
   tiger: 'slash', magpie: 'flit', jindo: 'dash', rabbit: 'hop',
   squirrel: 'scatter', frog: 'spring', sapsali: 'drift', toad: 'plop',
   crane: 'feathers', bear: 'stomp', carp: 'upstream',
@@ -6379,7 +6579,7 @@ const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic
 
 /* accent: [base, dim, second] for dark and light. fx: the particle palette
    and shapes a correct answer throws when this character is equipped. */
-const CHARACTERS = [
+const KO_CHARACTERS = [
   { id: 'tiger', ko: '호랑이', en: 'Tiger', rarity: 'common', starter: true,
     blurb: 'The one who was here first. Stubborn, encouraging, faintly smug.',
     accent: { dark: ['#6ea8fe', '#2b4d80', '#4ec9a5'], light: ['#2563eb', '#c7dbff', '#0e8f6e'] },
@@ -6491,12 +6691,22 @@ const CHARACTERS = [
     fx: { colors: ['#ffffff', '#8fd3ff', '#ffe08a'], kinds: ['jamo', 'star', 'spark'] } }
 ];
 
+const _cast = COURSE.cast();
+const CHARACTERS = _cast.chars;
+const RIGS = _cast.rigs;
+const CHAR_SIGNATURE = _cast.sigs;
+
 const CHAR_BY_ID = {};
 CHARACTERS.forEach(c => CHAR_BY_ID[c.id] = c);
 
 const charById = id => CHAR_BY_ID[id] || CHAR_BY_ID.tiger;
 const ownsChar = id => !!(S.chars && S.chars.owned && S.chars.owned[id]);
-const equippedChar = () => charById(S.chars && S.chars.equipped);
+const STARTER = CHARACTERS.find(c => c.starter) || CHARACTERS[0];
+
+/* 'tiger' is the default in DEFAULTS and only one cast has a tiger, so every
+   other course booted with an equipped character that did not exist and
+   fell over on the first repaint. */
+const equippedChar = () => charById(S.chars && S.chars.equipped) || STARTER;
 const charsOfRarity = r => CHARACTERS.filter(c => c.rarity === r);
 
 /* Roll one egg. Pity is checked before the random draw rather than after,
@@ -6519,7 +6729,17 @@ function rollEgg() {
     rarity = rarity || 'common';
   }
 
-  const pool = charsOfRarity(rarity);
+  /* A small cast may not fill every tier — chess stops at mythical. Step
+     down to the nearest tier that actually has somebody in it rather than
+     drawing from an empty pool. */
+  let pool = charsOfRarity(rarity);
+  if (!pool.length) {
+    for (let i = RARITY_ORDER.indexOf(rarity) - 1; i >= 0; i--) {
+      pool = charsOfRarity(RARITY_ORDER[i]);
+      if (pool.length) { rarity = RARITY_ORDER[i]; break; }
+    }
+  }
+  if (!pool.length) return null;
   const pick = pool[Math.floor(Math.random() * pool.length)];
 
   ch.opened++;
@@ -6688,7 +6908,7 @@ const DEFAULTS = {
   unlocked: ['default'],   // palettes owned
   chars: {                 // the collection
     owned: { tiger: 1 },   // id -> how many times pulled
-    equipped: 'tiger',
+    equipped: '',        // resolved to the course's starter on load
     opened: 0,             // eggs opened, ever
     sinceEpic: 0,          // pity counters
     sinceLegendary: 0
@@ -7755,7 +7975,7 @@ function voiceScore(v) {
 function refreshVoices() {
   if (!('speechSynthesis' in window)) return;
   voices = window.speechSynthesis.getVoices()
-    .filter(v => /^ko/i.test(v.lang))
+    .filter(v => v.lang && v.lang.toLowerCase().startsWith(COURSE.voice.slice(0, 2).toLowerCase()))
     .sort((a, b) => voiceScore(b) - voiceScore(a));
 }
 if ('speechSynthesis' in window) {
@@ -8464,7 +8684,7 @@ function renderToday() {
   <div class="card hero">
     <h2>${first ? COURSE.openTitle : 'Today'}</h2>
     <p class="sub">${first
-      ? 'You will be reading Korean words out loud inside twenty minutes. Hangul is a designed alphabet, not a memorisation slog — the shapes tell you what your mouth should do.'
+      ? COURSE.openBlurb
       : total === 0
         ? 'Nothing is due. That is the schedule working, not a failure — come back tomorrow rather than grinding ahead.'
         : 'Reviews come first, new material is threaded through them.'}</p>
@@ -8515,12 +8735,17 @@ function renderToday() {
 }
 
 function progressBars() {
-  const groups = [
-    { label: 'Hangul — reading', ids: SEQUENCE.filter(id => ITEMS[id].stage === 'hangul') },
-    { label: 'Units 1–4 — foundations', ids: SEQUENCE.filter(id => ['U1', 'U2', 'U3', 'U4'].includes(ITEMS[id].unit)) },
-    { label: 'Units 5–8 — everyday life', ids: SEQUENCE.filter(id => ['U5', 'U6', 'U7', 'U8'].includes(ITEMS[id].unit)) },
-    { label: 'Units 9–12 — real sentences', ids: SEQUENCE.filter(id => ['U9', 'U10', 'U11', 'U12'].includes(ITEMS[id].unit)) }
-  ];
+  // Each course names its own bands, and an empty one is not drawn — a chess
+  // course showing "Hangul — reading  0/25" was the giveaway that this was
+  // hardcoded.
+  const groups = COURSE.bands
+    .map(g => ({
+      label: g.label,
+      ids: g.stage
+        ? SEQUENCE.filter(id => ITEMS[id].stage === g.stage)
+        : SEQUENCE.filter(id => g.units.includes(ITEMS[id].unit))
+    }))
+    .filter(g => g.ids.length);
   return groups.map(g => {
     const seen = g.ids.filter(id => S.introduced[id]).length;
     const held = g.ids.filter(id => { const c = S.cards[ck(id, ladderFor(ITEMS[id])[0])]; return c && (c.S || 0) >= 3; }).length;
@@ -9146,7 +9371,7 @@ function renderCollection() {
       return `<button class="charcard r-${c.rarity} ${have ? '' : 'locked'} ${ch.equipped === c.id ? 'on' : ''}"
         ${have ? `data-equip="${c.id}"` : 'disabled'}>
         <span class="cf">${have
-        ? `<img src="./icons/chars/${c.id}.webp" width="64" height="64" alt="" loading="lazy">`
+        ? (COURSE.portraits ? `<img src="./icons/chars/${c.id}.webp" width="64" height="64" alt="" loading="lazy">` : `<span class="cf-rig">${mascotSvg(c.id)}</span>`)
         : '<span class="qm">?</span>'}</span>
         <span class="cn ko">${have ? esc(c.ko) : '???'}</span>
         <span class="ce">${have ? esc(c.en) : RARITY[c.rarity].label}</span>
@@ -9186,7 +9411,7 @@ function renderCollection() {
       <div class="prose" style="font-size:12.5px;margin-top:8px">
         <p style="margin:0 0 6px">Printed here rather than hidden, because an unpublished rate is just a way of hoping you will not do the arithmetic.</p>
         <ul style="margin:0;padding-left:18px;line-height:1.8">
-          ${RARITY_ORDER.map(r => {
+          ${RARITY_ORDER.filter(r => charsOfRarity(r).length).map(r => {
             const pctTxt = RARITY[r].odds * 100 >= 1 ? (RARITY[r].odds * 100).toFixed(0) : (RARITY[r].odds * 100).toFixed(1);
             return `<li><b style="color:${RARITY[r].color}">${RARITY[r].label}</b> — ${pctTxt}% base, duplicate refunds ${RARITY[r].refund} coins${RARITY[r].hidden ? ' <span class="faint">(what this is stays unsaid — the rate does not)</span>' : ''}</li>`;
           }).join('')}
@@ -11434,6 +11659,7 @@ function openEgg() {
   eggBusy = true;
 
   const result = rollEgg();
+  if (!result) { eggBusy = false; showToast('Nothing to find in this collection yet.'); return; }
   save();
 
   const tier = RARITY[result.rarity].order;
@@ -11515,7 +11741,7 @@ function revealChar(ov, result) {
   ov.querySelector('.eggstage').innerHTML = `
     <div class="reveal r${tier}" style="--rv:${pal[0]}">
       <div class="rv-rar" style="color:${col}">${RARITY[result.rarity].reveal || RARITY[result.rarity].label}</div>
-      <div class="rv-art"><img src="./icons/chars/${c.id}.webp" width="180" height="180" alt=""></div>
+      <div class="rv-art">${COURSE.portraits ? `<img src="./icons/chars/${c.id}.webp" width="180" height="180" alt="">` : `<span class="cf-rig" style="display:block;width:180px;height:180px">${mascotSvg(c.id)}</span>`}</div>
       <div class="rv-ko ko">${esc(c.ko)}</div>
       <div class="rv-en">${esc(c.en)}</div>
       <div class="rv-blurb">${esc(c.blurb)}</div>
