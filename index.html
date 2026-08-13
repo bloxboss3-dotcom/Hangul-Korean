@@ -122,6 +122,37 @@ header.top {
 }
 :root.light .brand .mark { color: #fff; }
 .brand small { color: var(--tx-faint); font-weight: 400; font-size: 12px; }
+/* The brand is the course switcher. It has to read as pressable without
+   turning the top of every screen into a button. */
+.brand { background: none; border: 0; padding: 4px 6px 4px 4px; margin: -4px -6px -4px -4px;
+  border-radius: 12px; color: inherit; font-size: inherit; text-align: left; cursor: pointer;
+  transition: background .14s; }
+.brand:hover, .brand:focus-visible { background: var(--bg-raise); }
+.brand .bd-txt { line-height: 1.25; }
+.brand .bd-caret { align-self: center; font-size: 11px; color: var(--tx-faint); margin-left: 1px; }
+.coursepop {
+  position: fixed; inset: 0; z-index: 120; display: grid; place-items: end center;
+  background: rgba(6,8,12,.55); padding: 0 12px calc(14px + var(--sab)) 12px;
+  animation: cpIn .18s ease-out both;
+}
+@media (min-width: 720px) { .coursepop { place-items: center; padding-bottom: 0; } }
+@keyframes cpIn { from { opacity: 0; } to { opacity: 1; } }
+.coursepop .cp-card {
+  width: 100%; max-width: 420px; background: var(--bg-card);
+  border: 1px solid var(--line); border-radius: 18px; padding: 14px;
+  animation: cpUp .22s cubic-bezier(.2,1.2,.4,1) both;
+}
+@keyframes cpUp { from { transform: translateY(14px); } to { transform: none; } }
+.cp-row { display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px; border-radius: 14px; background: var(--bg-raise);
+  border: 1px solid transparent; text-align: left; margin-top: 8px; cursor: pointer; }
+.cp-row.on { border-color: var(--accent); }
+.cp-row .cp-mark { flex: none; width: 40px; height: 40px; border-radius: 11px;
+  display: grid; place-items: center; font-size: 19px; font-weight: 700;
+  background: linear-gradient(140deg, var(--accent), var(--accent-2, var(--accent))); color: #0b1220; }
+.cp-row .cp-n { font-weight: 650; }
+.cp-row .cp-s { font-size: 12.5px; color: var(--tx-faint); }
+.cp-row .cp-here { margin-left: auto; font-size: 11px; letter-spacing: .1em; color: var(--accent); flex: none; }
 .spacer { flex: 1; }
 .iconbtn {
   width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
@@ -3501,6 +3532,331 @@ const ES_SAME_SOUND = [
   ['b', 'v']
 ];
 
+
+/* ============================================================
+   CHESS — the same engine, pointed at a board.
+
+   This maps further than it has any right to. A conversation is a
+   sequence of turns between two speakers; a game is a sequence of moves
+   between White and Black. So an annotated game IS a dialogue, the
+   roleplay screen becomes "you have Black — what is your move?", and
+   Respond becomes the same question with the move hidden.
+
+   Notation goes where romanisation went, which is exactly right: typing
+   "Nf3" is the chess equivalent of typing a word out from memory, and
+   the strict grading already refuses anything off by a character. Nf3
+   and Nc3 are different moves in the same way 밥 and 밤 are different
+   words.
+   ============================================================ */
+const CH_SOUNDS = [
+  {
+    id: 'P1', title: 'The pieces, and what each one can do',
+    letters: [
+      { ch: '♔', rom: 'K', type: 'piece', sound: 'King — one square in any direction', tip: 'It cannot be taken, only trapped. Everything else exists to protect it or to hunt the other one.' },
+      { ch: '♕', rom: 'Q', type: 'piece', sound: 'Queen — any distance, any straight line', tip: 'A rook and a bishop in one. Worth about nine pawns, and worth losing a game over.' },
+      { ch: '♖', rom: 'R', type: 'piece', sound: 'Rook — any distance, ranks and files', tip: 'Almost useless early, decisive late. Rooks want open files and the seventh rank.' },
+      { ch: '♗', rom: 'B', type: 'piece', sound: 'Bishop — any distance, diagonals only', tip: 'Each bishop is stuck on one colour forever. That is why a pair of them is worth more than two of anything else.' },
+      { ch: '♘', rom: 'N', type: 'piece', sound: 'Knight — an L: two then one', tip: 'The only piece that jumps. N, not K — the king already took that letter.' },
+      { ch: '♙', rom: '(pawn)', type: 'piece', sound: 'Pawn — forward one, captures diagonally', tip: 'The only piece that cannot go backwards, and the only one that captures differently from how it moves. Reach the far side and it becomes a queen.' }
+    ],
+    words: [
+      { ko: 'K', rom: 'King', en: 'the king' },
+      { ko: 'Q', rom: 'Queen', en: 'the queen' },
+      { ko: 'R', rom: 'Rook', en: 'the rook' },
+      { ko: 'B', rom: 'Bishop', en: 'the bishop' },
+      { ko: 'N', rom: 'Knight', en: 'the knight (N, because K is taken)' }
+    ]
+  },
+  {
+    id: 'P2', title: 'Reading a square',
+    letters: [
+      { ch: 'a–h', rom: 'file', type: 'coord', sound: 'the columns, left to right from White’s side', tip: 'Always lower case, always the letter first: e4, never 4e.' },
+      { ch: '1–8', rom: 'rank', type: 'coord', sound: 'the rows, counting up from White', tip: 'Rank 1 is White’s back row, rank 8 is Black’s. So Black’s pawns start on rank 7 and march downward.' },
+      { ch: 'e4', rom: 'square', type: 'coord', sound: 'file then rank — one square, named exactly', tip: 'Every square has one name and both players use it. e4 is e4 whichever side of the board you are sitting on.' },
+      { ch: 'x', rom: 'captures', type: 'mark', sound: 'takes — Nxe5 is "knight takes e5"', tip: 'Slots between the piece and the square.' },
+      { ch: '+', rom: 'check', type: 'mark', sound: 'check — the king is attacked', tip: 'Written after the move. ++ or # means checkmate.' },
+      { ch: 'O-O', rom: 'castles', type: 'mark', sound: 'castling short, on the king’s side', tip: 'O-O-O is the long one, on the queen’s side. Letter O, not zero.' }
+    ],
+    rules: [
+      { name: 'Piece then square', spelled: 'Nf3', spoken: 'knight to f3', gloss: 'a knight moves to f3', why: 'Capital letter for the piece, lower case for the square. A pawn move is just the square: e4.' },
+      { name: 'Captures', spelled: 'Nxe5', spoken: 'knight takes e5', gloss: 'a knight captures on e5', why: 'The x goes between. A pawn capture names the file it left: exd5.' },
+      { name: 'Check and mate', spelled: 'Qh5+', spoken: 'queen h5 check', gloss: 'a check', why: '+ is check, # is checkmate. Neither changes the move, only what it does.' },
+      { name: 'Two pieces could go there', spelled: 'Nbd2', spoken: 'knight b to d2', gloss: 'disambiguation', why: 'When either knight could reach d2, name the file it came from.' }
+    ],
+    words: [
+      { ko: 'e4', rom: 'e-four', en: "king's pawn two squares — the most played first move there is" },
+      { ko: 'Nf3', rom: 'knight f3', en: 'knight to f3, developing and hitting e5' },
+      { ko: 'O-O', rom: 'castles short', en: 'castling kingside' },
+      { ko: 'Qxd8+', rom: 'queen takes d8 check', en: 'queen captures on d8 with check' }
+    ]
+  }
+];
+
+const CH_UNITS_A = [
+  {
+    id: 'U1', title: 'The opening: three jobs, twenty moves',
+    goal: 'Know what an opening is for, and stop losing games before move fifteen.',
+    grammar: [
+      {
+        id: 'g_centre', name: 'Take the centre',
+        pattern: 'e4 · d4 · c4 · Nf3',
+        explain: 'A knight on e4 touches eight squares; on a1 it touches two. Every piece is worth more in the middle, so the first fight is over who gets to stand there.',
+        examples: [
+          { ko: 'e4', rom: 'e-four', en: 'Claims the centre and frees the bishop and queen at once.' },
+          { ko: 'd4', rom: 'd-four', en: 'The other main way in, usually a slower game.' },
+          { ko: 'Nf3', rom: 'knight f3', en: 'Develops and attacks e5 without committing a pawn.' }
+        ]
+      },
+      {
+        id: 'g_develop', name: 'Get the pieces out — knights before bishops',
+        pattern: 'Nf3 · Nc3 · Bc4 · Be2',
+        explain: 'Knights have fewer good squares than bishops, so their best home is obvious sooner. Bring out the piece whose square you already know, and keep the choice you have not made yet.',
+        examples: [
+          { ko: 'Nf3', rom: 'knight f3', en: 'Almost always right in an e4 or d4 game.' },
+          { ko: 'Bc4', rom: 'bishop c4', en: 'Points at f7, the weakest square in Black’s camp.' },
+          { ko: 'Nc3', rom: 'knight c3', en: 'Develops toward the centre, not the rim.' }
+        ]
+      },
+      {
+        id: 'g_king', name: 'Castle early, and stop moving the same piece',
+        pattern: 'O-O by about move ten',
+        explain: 'Castling does two jobs in one move: the king leaves the middle, where all the lines open, and a rook arrives near the centre. Moving one piece three times while the other side develops three pieces is how most short games are lost.',
+        examples: [
+          { ko: 'O-O', rom: 'castles', en: 'King to safety, rook into the game.' },
+          { ko: 'Re1', rom: 'rook e1', en: 'The rook now belongs on the open file.' },
+          { ko: 'd3', rom: 'd-three', en: 'A small move that lets the last bishop out.' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: 'e4', rom: 'e-four', en: "king's pawn opening", pos: 'move', ex: { ko: '1. e4 e5', rom: 'e-four e-five', en: 'The oldest argument in chess.' } },
+      { ko: 'd4', rom: 'd-four', en: "queen's pawn opening", pos: 'move' },
+      { ko: 'Nf3', rom: 'knight f3', en: 'knight to f3', pos: 'move' },
+      { ko: 'Nc3', rom: 'knight c3', en: 'knight to c3', pos: 'move' },
+      { ko: 'Bc4', rom: 'bishop c4', en: 'bishop to c4, aiming at f7', pos: 'move' },
+      { ko: 'Bb5', rom: 'bishop b5', en: 'bishop to b5, pinning the knight', pos: 'move' },
+      { ko: 'O-O', rom: 'castles short', en: 'castle kingside', pos: 'move' },
+      { ko: 'O-O-O', rom: 'castles long', en: 'castle queenside', pos: 'move' },
+      { ko: 'development', rom: 'development', en: 'getting pieces off the back rank and doing something', pos: 'term' },
+      { ko: 'tempo', rom: 'tempo', en: 'one move of time — gaining a tempo means making them react', pos: 'term' },
+      { ko: 'the centre', rom: 'the centre', en: 'e4, d4, e5, d5 — where pieces are worth the most', pos: 'term' },
+      { ko: 'open file', rom: 'open file', en: 'a column with no pawns on it, which is where rooks belong', pos: 'term' }
+    ]
+  },
+  {
+    id: 'U2', title: 'Tactics: the patterns that win material',
+    goal: 'Recognise the five motifs that decide most games below master level.',
+    grammar: [
+      {
+        id: 'g_fork', name: 'The fork — one piece, two targets',
+        pattern: 'a knight on the right square hits both',
+        explain: 'They can only save one. Knights fork best because nothing they attack can attack them back, and a knight check that also hits the queen is the most common way a game ends abruptly.',
+        examples: [
+          { ko: 'Nc7+', rom: 'knight c7 check', en: 'The family fork: king and rook at once.' },
+          { ko: 'Nf6+', rom: 'knight f6 check', en: 'Check, and the queen behind it falls next move.' },
+          { ko: 'd5', rom: 'd-five', en: 'A pawn fork — one pawn attacking two pieces.' }
+        ]
+      },
+      {
+        id: 'g_pin', name: 'The pin — it cannot move without exposing something worse',
+        pattern: 'Bg5 pinning a knight to the queen',
+        explain: 'Absolute if the thing behind is the king, because then the move is simply illegal. Relative if it is merely the queen, in which case it can move and you have to decide whether they will.',
+        examples: [
+          { ko: 'Bg5', rom: 'bishop g5', en: 'Pins the f6 knight against the queen.' },
+          { ko: 'Bb5', rom: 'bishop b5', en: 'Pins the c6 knight against the king — that one is absolute.' },
+          { ko: 'Re1', rom: 'rook e1', en: 'Pins anything on the e-file against the king behind it.' }
+        ]
+      },
+      {
+        id: 'g_skewer', name: 'Skewer and discovered attack',
+        pattern: 'a pin backwards · move one piece, a second one attacks',
+        explain: 'A skewer is a pin with the values reversed: the valuable piece is in front and has to move, so you take what was behind it. A discovered attack moves one piece out of the way so the piece behind it does the work, and the moving piece can be doing something of its own at the same time.',
+        examples: [
+          { ko: 'Rd8+', rom: 'rook d8 check', en: 'Skewer: the king moves, the rook behind it falls.' },
+          { ko: 'Nxe5', rom: 'knight takes e5', en: 'Discovered attack: the knight moves and a bishop behind it hits the queen.' },
+          { ko: 'Qh5', rom: 'queen h5', en: 'Two threats at once is the whole idea.' }
+        ]
+      },
+      {
+        id: 'g_backrank', name: 'The back rank',
+        pattern: 'Re8#',
+        explain: 'A castled king with three pawns still in front of it has no escape square. A rook or queen arriving on that rank is mate on the spot. The prevention is one quiet pawn move, and forgetting it costs more games than any opening mistake.',
+        examples: [
+          { ko: 'Re8#', rom: 'rook e8 mate', en: 'Back rank mate — nowhere to go.' },
+          { ko: 'h3', rom: 'h-three', en: 'The luft: one square for the king, and the whole problem disappears.' },
+          { ko: 'Qxd8+', rom: 'queen takes d8 check', en: 'Trading into a back rank mate.' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: 'fork', rom: 'fork', en: 'one piece attacking two things at once', pos: 'term' },
+      { ko: 'pin', rom: 'pin', en: 'a piece that cannot move without exposing something worse', pos: 'term' },
+      { ko: 'skewer', rom: 'skewer', en: 'a pin with the values the other way round', pos: 'term' },
+      { ko: 'discovered attack', rom: 'discovered attack', en: 'moving one piece so the one behind it attacks', pos: 'term' },
+      { ko: 'back rank mate', rom: 'back rank mate', en: 'mate on the first rank, king trapped by its own pawns', pos: 'term' },
+      { ko: 'luft', rom: 'luft', en: 'a pawn move giving the king an escape square', pos: 'term' },
+      { ko: 'hanging', rom: 'hanging', en: 'undefended and attacked', pos: 'term' },
+      { ko: 'Nc7+', rom: 'knight c7 check', en: 'the family fork — king and rook together', pos: 'move' },
+      { ko: 'Bg5', rom: 'bishop g5', en: 'the standard pin against a knight on f6', pos: 'move' },
+      { ko: 'Re8#', rom: 'rook e8 mate', en: 'back rank mate', pos: 'move' },
+      { ko: 'Qh5', rom: 'queen h5', en: 'early queen sortie hitting e5 and f7', pos: 'move' }
+    ]
+  }
+];
+
+const CH_UNITS_B = [
+  {
+    id: 'U3', title: 'Endgames: the ones you must not lose',
+    goal: 'Convert a won endgame and hold a drawn one.',
+    grammar: [
+      {
+        id: 'g_krk', name: 'King and rook against king',
+        pattern: 'cut the king off, then squeeze',
+        explain: 'The rook draws a line the enemy king cannot cross; then the king walks up and the box gets smaller one rank at a time. Mate arrives on the edge. This is the first endgame worth knowing cold, because you will reach it and it is a full point.',
+        examples: [
+          { ko: 'Ra6', rom: 'rook a6', en: 'Cuts the king off along the sixth rank.' },
+          { ko: 'Kd5', rom: 'king d5', en: 'The king does the work; the rook only holds the line.' },
+          { ko: 'Ra8#', rom: 'rook a8 mate', en: 'The box finally closes.' }
+        ]
+      },
+      {
+        id: 'g_opposition', name: 'The opposition',
+        pattern: 'kings facing, one square apart, the wrong player to move',
+        explain: 'With kings directly facing each other and a gap of one square, whoever has to move must give way. In a king and pawn endgame that single idea decides win from draw, and it is the reason a whole extra pawn is sometimes worth nothing.',
+        examples: [
+          { ko: 'Ke5', rom: 'king e5', en: 'Taking the opposition — now they must step aside.' },
+          { ko: 'Kd6', rom: 'king d6', en: 'The defending king holds the square in front of the pawn.' },
+          { ko: 'Kf6', rom: 'king f6', en: 'Outflanking: go round the side once they are forced back.' }
+        ]
+      },
+      {
+        id: 'g_promote', name: 'Pawn endings: the king leads',
+        pattern: 'king in front of the pawn, not behind it',
+        explain: 'Pushing the pawn first is the classic way to draw a won position. The king goes ahead to clear the road, and the pawn follows. A rook pawn is the exception that draws far more often than it should, because the defending king can sit in the corner.',
+        examples: [
+          { ko: 'Kd5', rom: 'king d5', en: 'King first, ahead of the pawn.' },
+          { ko: 'd4', rom: 'd-four', en: 'The pawn only advances once the road is clear.' },
+          { ko: 'd8=Q', rom: 'd8 equals queen', en: 'Promotion — written with an equals sign and the piece.' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: 'opposition', rom: 'opposition', en: 'kings facing with one square between, and the mover loses ground', pos: 'term' },
+      { ko: 'zugzwang', rom: 'zugzwang', en: 'every legal move makes your position worse', pos: 'term' },
+      { ko: 'promotion', rom: 'promotion', en: 'a pawn reaching the eighth rank becomes any piece', pos: 'term' },
+      { ko: 'd8=Q', rom: 'd8 equals queen', en: 'promoting to a queen', pos: 'move' },
+      { ko: 'stalemate', rom: 'stalemate', en: 'no legal move and not in check — a draw, and a tragedy if you were winning', pos: 'term' },
+      { ko: 'passed pawn', rom: 'passed pawn', en: 'no enemy pawn can stop it on its file or beside it', pos: 'term' },
+      { ko: 'triangulation', rom: 'triangulation', en: 'losing a move on purpose to hand the other side the zugzwang', pos: 'term' },
+      { ko: 'Ra8#', rom: 'rook a8 mate', en: 'the finish of king and rook against king', pos: 'move' }
+    ]
+  },
+  {
+    id: 'U4', title: 'Openings worth knowing by name',
+    goal: 'Recognise what you are in, and what the plan is.',
+    grammar: [
+      {
+        id: 'g_italian', name: 'The Italian Game',
+        pattern: '1. e4 e5 2. Nf3 Nc6 3. Bc4',
+        explain: 'The most natural opening there is: centre, knight, bishop pointing at f7. Every move does exactly what the opening principles say, which is why it is the best first opening to actually learn.',
+        examples: [
+          { ko: '1. e4 e5', rom: 'e4 e5', en: 'Both claim the centre.' },
+          { ko: '2. Nf3 Nc6', rom: 'Nf3 Nc6', en: 'Attack the pawn, defend the pawn.' },
+          { ko: '3. Bc4 Bc5', rom: 'Bc4 Bc5', en: 'Bishops out, mirrored — the Giuoco Piano.' }
+        ]
+      },
+      {
+        id: 'g_ruylopez', name: 'The Ruy Lopez',
+        pattern: '1. e4 e5 2. Nf3 Nc6 3. Bb5',
+        explain: 'The bishop hits the knight that defends e5. It does not win a pawn — 4. Bxc6 dxc6 5. Nxe5 loses to Qd4 — but the pressure is real and lasting, which is why it has been played for four hundred years.',
+        examples: [
+          { ko: '3. Bb5 a6', rom: 'Bb5 a6', en: 'The Morphy Defence: ask the bishop what it intends.' },
+          { ko: '4. Ba4 Nf6', rom: 'Ba4 Nf6', en: 'Keeping the pin, developing with a threat.' },
+          { ko: '4. Bxc6 dxc6', rom: 'Bxc6 dxc6', en: 'The Exchange Variation, trading structure for the bishop pair.' }
+        ]
+      },
+      {
+        id: 'g_sicilian', name: 'The Sicilian Defence',
+        pattern: '1. e4 c5',
+        explain: 'Black declines the symmetry. Instead of meeting e4 with e5, the c-pawn takes a centre square from the side and trades a wing pawn for a centre pawn. The most played and most winning answer to e4 at every level.',
+        examples: [
+          { ko: '1. e4 c5', rom: 'e4 c5', en: 'The Sicilian.' },
+          { ko: '2. Nf3 d6', rom: 'Nf3 d6', en: 'Heading for the Najdorf or the Dragon.' },
+          { ko: '3. d4 cxd4', rom: 'd4 cxd4', en: 'The trade that defines the whole opening.' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: 'Italian Game', rom: 'Italian', en: '1. e4 e5 2. Nf3 Nc6 3. Bc4', pos: 'opening' },
+      { ko: 'Ruy Lopez', rom: 'Ruy Lopez', en: '1. e4 e5 2. Nf3 Nc6 3. Bb5', pos: 'opening' },
+      { ko: 'Sicilian Defence', rom: 'Sicilian', en: '1. e4 c5', pos: 'opening' },
+      { ko: 'French Defence', rom: 'French', en: '1. e4 e6', pos: 'opening' },
+      { ko: 'Caro-Kann', rom: 'Caro-Kann', en: '1. e4 c6', pos: 'opening' },
+      { ko: "Queen's Gambit", rom: 'Queens Gambit', en: '1. d4 d5 2. c4 — not really a gambit, the pawn comes back', pos: 'opening' },
+      { ko: 'London System', rom: 'London', en: '1. d4 and 2. Bf4 — the same setup against almost anything', pos: 'opening' },
+      { ko: 'gambit', rom: 'gambit', en: 'a pawn offered for time or position', pos: 'term' },
+      { ko: 'fianchetto', rom: 'fianchetto', en: 'a bishop developed to g2 or b2, on the long diagonal', pos: 'term' },
+      { ko: 'transposition', rom: 'transposition', en: 'reaching a known position by a different order of moves', pos: 'term' }
+    ]
+  }
+];
+
+/* Games as dialogues. White speaks, Black answers, and the roleplay screen
+   becomes "you have Black — what is your move?" The chunks carry the idea
+   behind each move the way they carried the pieces of a Korean sentence. */
+const CH_CONVERSATIONS = [
+  {
+    id: 'C1', unit: 'U2', title: "Scholar's Mate",
+    en: 'The four-move mate, and how to refuse it',
+    goal: 'Recognise the fastest trap in chess from the Black side.',
+    scene: 'Every beginner meets this once. You are Black, and White is going for f7.',
+    cast: { A: 'White', B: 'Black' }, castEn: { A: 'White', B: 'Black (you)' }, you: 'B',
+    lines: [
+      { w: 'A', ko: 'e4', rom: 'e-four', en: 'Pawn to e4.', lit: 'Claims the centre and opens two lines.', c: [['e4', 'pawn to e4']] },
+      { w: 'B', ko: 'e5', rom: 'e-five', en: 'Pawn to e5.', lit: 'Mirrors it. Neither side concedes the centre.', c: [['e5', 'pawn to e5']] },
+      { w: 'A', ko: 'Bc4', rom: 'bishop c4', en: 'Bishop to c4.', lit: 'Points straight at f7 — the square only the king defends.', c: [['Bc4', 'bishop to c4']] },
+      { w: 'B', ko: 'Nc6', rom: 'knight c6', en: 'Knight to c6.', lit: 'Develops and defends e5. Correct, and does nothing about f7 yet.', c: [['Nc6', 'knight to c6']] },
+      { w: 'A', ko: 'Qh5', rom: 'queen h5', en: 'Queen to h5.', lit: 'The threat: Qxf7 is mate, because the bishop guards the escape.', c: [['Qh5', 'queen to h5']] },
+      { w: 'B', ko: 'g6', rom: 'g-six', en: 'Pawn to g6.', lit: 'Attacks the queen and blocks the mate in one move. This is the refutation.', c: [['g6', 'pawn to g6']] },
+      { w: 'A', ko: 'Qf3', rom: 'queen f3', en: 'Queen to f3.', lit: 'Still eyeing f7. Stubborn, and now the queen has moved three times.', c: [['Qf3', 'queen to f3']] },
+      { w: 'B', ko: 'Nf6', rom: 'knight f6', en: 'Knight to f6.', lit: 'Develops and covers everything. Black is simply better now.', c: [['Nf6', 'knight to f6']] }
+    ],
+    notes: [
+      { t: 'Why it works at all', b: 'f7 is defended only by the king. A queen and a bishop both hitting it is mate before anything else is developed.' },
+      { t: 'Why it fails against anyone', b: 'White has moved the queen three times and developed one piece. Once the mate is stopped, Black is ahead in everything that lasts.' },
+      { t: 'The rule underneath', b: 'Do not bring the queen out early. It is not a moral position — it is that every developing move your opponent makes also attacks her.' }
+    ]
+  },
+  {
+    id: 'C2', unit: 'U2', title: 'Légal’s Mate',
+    en: 'The prettiest trap in the opening',
+    goal: 'See why a pin is not absolute unless the king is behind it.',
+    scene: 'Paris, 1750. You have White, and Black has pinned your knight.',
+    cast: { A: 'White', B: 'Black' }, castEn: { A: 'White (you)', B: 'Black' }, you: 'A',
+    lines: [
+      { w: 'A', ko: 'e4', rom: 'e-four', en: 'Pawn to e4.', lit: 'The centre.', c: [['e4', 'pawn to e4']] },
+      { w: 'B', ko: 'e5', rom: 'e-five', en: 'Pawn to e5.', lit: 'Symmetry.', c: [['e5', 'pawn to e5']] },
+      { w: 'A', ko: 'Nf3', rom: 'knight f3', en: 'Knight to f3.', lit: 'Develops with a threat to e5.', c: [['Nf3', 'knight to f3']] },
+      { w: 'B', ko: 'd6', rom: 'd-six', en: 'Pawn to d6.', lit: 'Defends the pawn, shuts in the bishop.', c: [['d6', 'pawn to d6']] },
+      { w: 'A', ko: 'Bc4', rom: 'bishop c4', en: 'Bishop to c4.', lit: 'The usual square, aiming at f7.', c: [['Bc4', 'bishop to c4']] },
+      { w: 'B', ko: 'Bg4', rom: 'bishop g4', en: 'Bishop to g4.', lit: 'Pins the knight to the queen. It looks like the knight cannot move.', c: [['Bg4', 'bishop to g4']] },
+      { w: 'A', ko: 'Nxe5', rom: 'knight takes e5', en: 'Knight takes e5!', lit: 'It can move. The pin was only to the queen, and the queen is worth less than what follows.', c: [['Nxe5', 'knight captures e5']] },
+      { w: 'B', ko: 'Bxd1', rom: 'bishop takes d1', en: 'Bishop takes the queen.', lit: 'Greedy, and losing. Taking the knight instead was fine.', c: [['Bxd1', 'bishop captures the queen']] },
+      { w: 'A', ko: 'Bxf7+', rom: 'bishop takes f7 check', en: 'Bishop takes f7, check.', lit: 'The king must step forward.', c: [['Bxf7+', 'bishop captures f7 with check']] },
+      { w: 'B', ko: 'Ke7', rom: 'king e7', en: 'King to e7.', lit: 'Forced — the only square.', c: [['Ke7', 'king to e7']] },
+      { w: 'A', ko: 'Nd5#', rom: 'knight d5 mate', en: 'Knight to d5, mate.', lit: 'Two minor pieces and a knight, with the queen still sitting captured on d1.', c: [['Nd5#', 'knight to d5, checkmate']] }
+    ],
+    notes: [
+      { t: 'Absolute and relative pins', b: 'A pin against the king is illegal to break. A pin against the queen is a suggestion — and here breaking it wins.' },
+      { t: 'Count what you got', b: 'White gave up a queen and finished with mate. Material only matters until the king is trapped.' },
+      { t: 'The lesson that transfers', b: 'When something looks pinned, ask what happens if it moves anyway. Half the tactics in chess live in that question.' }
+    ]
+  }
+];
+
+/* Nothing here sounds identical to anything else. */
+const CH_SAME_SOUND = [];
+
 /* ============================================================
    WHICH COURSE THIS IS.
 
@@ -3516,6 +3872,8 @@ const ES_SAME_SOUND = [
 const COURSES = {
   ko: {
     id: 'ko', name: 'Hanbit', native: '\ud55c\ube5b', label: 'Korean',
+    writePrompt: 'Write this in Korean.', sayPrompt: 'Say this in Korean, out loud.',
+    buildPrompt: 'Build this sentence in Korean.', rulePrompt: 'This is the spelling. How is it actually pronounced?',
     tagline: 'Korean, on a forgetting curve',
     mark: '\ud55c', openTitle: 'Start with the alphabet',
     store: 'hanbit.v1',
@@ -3524,8 +3882,27 @@ const COURSES = {
     sounds: KO_SOUNDS, unitsA: KO_UNITS_A, unitsB: KO_UNITS_B,
     conversations: KO_CONVERSATIONS, sameSound: () => KO_SAME_SOUND
   },
+  chess: {
+    id: 'chess', name: 'Gambit', native: 'Gambit', label: 'Chess',
+    writePrompt: 'Write the notation.', sayPrompt: 'Say it out loud.',
+    buildPrompt: 'Build the line, move by move.', rulePrompt: 'How is this move written?',
+    tagline: 'Chess, on a forgetting curve',
+    mark: '\u265e', openTitle: 'Start with the pieces',
+    store: 'gambit.chess.v1',
+    voice: 'en-GB',
+    stageTitle: 'The board and the notation',
+    sounds: CH_SOUNDS, unitsA: CH_UNITS_A, unitsB: CH_UNITS_B,
+    conversations: CH_CONVERSATIONS, sameSound: () => CH_SAME_SOUND, branches: {},
+    /* Notation is typed, never composed from a Hangul keyboard, and saying
+       "knight f3" aloud to a phone is not a skill worth grading. */
+    typed: true, noSpeaking: true, caseSensitive: true,
+    convLabel: 'Games', convOne: 'game', convVerb: 'Play it through'
+  },
+
   es: {
     id: 'es', name: 'Chispa', native: 'Chispa', label: 'Spanish',
+    writePrompt: 'Write this in Spanish.', sayPrompt: 'Say this in Spanish, out loud.',
+    buildPrompt: 'Build this sentence in Spanish.', rulePrompt: 'This is the spelling. How is it actually pronounced?',
     tagline: 'Spanish, on a forgetting curve',
     mark: '\u00f1', openTitle: 'Start with the sounds',
     store: 'chispa.es.v1',
@@ -5901,6 +6278,7 @@ function letterSyllable(item) {
    given — phrases and sentences by default, where speaking pays most,
    and everything if you want the full production load. */
 function speakRungFor(item) {
+  if (COURSE.noSpeaking) return false;
   const mode = S && S.settings ? S.settings.speakRung : 'phrases';
   if (mode === 'off') return false;
   if (item.kind === 'grammar') return true;
@@ -7068,7 +7446,7 @@ function makeExercise(key, step) {
     }
     // No romanisation here on purpose — printing the sounds of the answer
     // above the microphone would make this a reading exercise.
-    ex.prompt = 'Say this in Korean, out loud.';
+    ex.prompt = COURSE.sayPrompt;
     ex.targetEn = true;
     ex.speakAfter = ex.answer;
     return ex;
@@ -7104,7 +7482,7 @@ function makeExercise(key, step) {
   else if (item.kind === 'hword') {
     if (skill === 'read') {
       ex.type = 'text';
-      ex.prompt = 'Read this out loud, then type it in letters (romanisation).';
+      ex.prompt = COURSE.typed ? 'Type it.' : 'Read this out loud, then type it in letters (romanisation).';
       ex.target = item.ko;
       ex.answer = item.rom;
       ex.romInput = true;
@@ -7122,7 +7500,7 @@ function makeExercise(key, step) {
 
   else if (item.kind === 'rule') {
     ex.type = 'mc';
-    ex.prompt = 'This is the spelling. How is it actually pronounced?';
+    ex.prompt = COURSE.rulePrompt;
     ex.target = item.spelled;
     ex.sub = item.gloss;
     ex.answer = item.spoken;
@@ -7154,11 +7532,12 @@ function makeExercise(key, step) {
       ex.revealKo = item.ko;
     } else if (skill === 'recall') {
       ex.type = 'text';
-      ex.prompt = 'Write this in Korean.';
+      ex.prompt = COURSE.writePrompt;
       ex.target = item.en;
       ex.targetEn = true;
       ex.answer = item.ko;
-      ex.koInput = true;
+      ex.koInput = !COURSE.typed;
+      ex.romInput = !!COURSE.typed;
       ex.hint = item.pos === 'verb' || item.pos === 'adj' ? 'dictionary form' : null;
       ex.speakAfter = item.ko;
     } else if (skill === 'cloze' && item.ex) {
@@ -7167,13 +7546,14 @@ function makeExercise(key, step) {
       ex.sentence = item.ex.ko;
       ex.gapWord = pickGapWord(item);
       ex.answer = ex.gapWord;
-      ex.koInput = true;
+      ex.koInput = !COURSE.typed;
+      ex.romInput = !!COURSE.typed;
       ex.translation = item.ex.en;
       ex.speakAfter = item.ex.ko;
       if (!ex.gapWord) {
         // No clean surface form to blank out — fall back to plain production.
         ex.sentence = null;
-        ex.prompt = 'Write this in Korean.';
+        ex.prompt = COURSE.writePrompt;
         ex.target = item.en;
         ex.targetEn = true;
         ex.answer = item.ko;
@@ -7182,11 +7562,12 @@ function makeExercise(key, step) {
     } else {
       // Unknown skill for this item — degrade to production rather than throw.
       ex.type = 'text';
-      ex.prompt = 'Write this in Korean.';
+      ex.prompt = COURSE.writePrompt;
       ex.target = item.en;
       ex.targetEn = true;
       ex.answer = item.ko;
-      ex.koInput = true;
+      ex.koInput = !COURSE.typed;
+      ex.romInput = !!COURSE.typed;
       ex.speakAfter = item.ko;
     }
   }
@@ -7195,7 +7576,7 @@ function makeExercise(key, step) {
     const pickIdx = Math.floor(Math.random() * item.examples.length);
     const sample = item.examples[pickIdx];
     ex.type = 'build';
-    ex.prompt = 'Build this sentence in Korean.';
+    ex.prompt = COURSE.buildPrompt;
     ex.target = sample.en;
     ex.targetEn = true;
     ex.answer = sample.ko;
@@ -7285,9 +7666,16 @@ function levenshtein(a, b) {
    instead of shrugging, and it is the one thing a near-miss token can
    redeem. `close` survives only for a real linguistic equivalence:
    giving the dictionary form where the conjugated one was wanted. */
+/* Chess notation is case-carrying — bxc6 is a pawn capture and Bxc6 is a
+   bishop, two different moves — so a course can ask not to be lowercased.
+   Everywhere else lowercasing is the right kindness. */
+const normTyped = s => COURSE.caseSensitive
+  ? stripPunct(String(s)).replace(/[-\s]/g, '')
+  : normRom(s);
+
 function checkText(ex, input) {
   if (ex.romInput) {
-    const a = normRom(input), b = normRom(ex.answer);
+    const a = normTyped(input), b = normTyped(ex.answer);
     if (a === b) return 'right';
     if (a && levenshtein(a, b) === 1) return 'near';
     return 'wrong';
@@ -7960,6 +8348,39 @@ const NAV_ICON = {
 
 /* Said where it will actually be read — above the app, not buried in
    Settings — because the cost of not knowing is somebody's study history. */
+/* Deliberately a sheet rather than a silent swap: switching course also
+   switches save file, and that is worth showing rather than doing behind
+   somebody's back. Each row says how far along that course you are, read
+   from its own save. */
+function openCoursePicker() {
+  if (document.querySelector('.coursepop')) return;
+  const ov = document.createElement('div');
+  ov.className = 'coursepop';
+  ov.innerHTML = `<div class="cp-card" role="dialog" aria-label="Choose a course">
+    <div style="font-weight:650;margin:2px 4px 2px">Course</div>
+    <div class="faint" style="font-size:12.5px;margin:0 4px 4px">Each keeps its own progress. Switching never touches the other.</div>
+    ${Object.values(COURSES).map(c => {
+      let seen = 0, coins = 0;
+      try {
+        const raw = localStorage.getItem(c.store);
+        if (raw) { const d = JSON.parse(raw); seen = Object.keys(d.introduced || {}).length; coins = d.coins || 0; }
+      } catch (e) {}
+      const here = c.id === COURSE.id;
+      return `<button class="cp-row ${here ? 'on' : ''}" data-course="${c.id}">
+        <span class="cp-mark">${esc(c.mark)}</span>
+        <span style="min-width:0">
+          <span class="cp-n">${esc(c.name)}</span>
+          <span class="cp-s" style="display:block">${esc(c.label)} · ${seen ? seen + ' items met' : 'not started'}${coins ? ' · ' + coins + ' coins' : ''}</span>
+        </span>
+        ${here ? '<span class="cp-here">HERE</span>' : ''}
+      </button>`;
+    }).join('')}
+    <button class="btn ghost" style="width:100%;margin-top:12px" data-act="closecourses">Cancel</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
 function renderStorageWarning() {
   const risk = Store.risk();
   const overdue = Store.backupOverdue();
@@ -8004,7 +8425,8 @@ function shell(body) {
   const bottom = [['today', 'Today'], ['talk', 'Talk'], ['weak', 'Weak', weakN], ['progress', 'Progress'], ['settings', 'Settings']];
   return `
   <header class="top">
-    <div class="brand"><span class="mark ko">${esc(COURSE.mark)}</span><span>${esc(COURSE.name)}<br><small>${esc(COURSE.tagline)}</small></span></div>
+    <button class="brand" data-act="courses" aria-haspopup="true" aria-expanded="false"
+      title="Switch course"><span class="mark ko">${esc(COURSE.mark)}</span><span class="bd-txt">${esc(COURSE.name)}<br><small>${esc(COURSE.tagline)}</small></span><span class="bd-caret" aria-hidden="true">\u25be</span></button>
     <div class="spacer"></div>
     <button class="wallet" data-view="collection" title="Coins, eggs and your collection">
       <span class="coin"></span><b>${S.coins || 0}</b>
@@ -10452,7 +10874,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch],[data-course]');
   if (!t) return;
 
   Sfx.resume();
@@ -10470,6 +10892,7 @@ document.addEventListener('click', e => {
   if (t.dataset.view) { cancelFx(); Voice.cancel(); LineAudio.stop(); clearTimeout(playTimer); view = t.dataset.view; sess = null; convo = null; render(); return; }
   if (t.dataset.conv) { openConvo(t.dataset.conv); return; }
   if (t.dataset.selfgrade) { saySelfGrade(parseInt(t.dataset.selfgrade, 10)); return; }
+  if (t.dataset.course) { switchCourse(t.dataset.course); return; }
   if (t.dataset.settheme) { S.accent = t.dataset.settheme; save(); render(); return; }
   if (t.dataset.equip) { equipChar(t.dataset.equip); return; }
   if (t.dataset.buytheme) { buyTheme(t.dataset.buytheme); return; }
@@ -10508,6 +10931,8 @@ document.addEventListener('click', e => {
     setTimeout(() => Mascot.show(view === 'session' || view === 'done'), 4200);
     return;
   }
+  if (act === 'courses') { openCoursePicker(); return; }
+  if (act === 'closecourses') { const o = document.querySelector('.coursepop'); if (o) o.remove(); return; }
   if (act === 'export') { doExport(); return; }
   if (act === 'setlang') { return; }        // handled on change, not click
   if (act === 'import') { document.getElementById('importfile').click(); return; }
