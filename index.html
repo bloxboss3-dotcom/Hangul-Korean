@@ -86,7 +86,7 @@ html { -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
 }
-button, a, .chunk, .conv-card, .opt, .tile, .kb-key {
+button, a, .chunk, .conv-card, .opt, .tile, .kb-key, .acc-key {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 body {
@@ -287,6 +287,18 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .typedisplay .caret { display: inline-block; width: 2px; height: 1.05em; background: var(--accent); margin-left: 2px; animation: blink 1.1s step-end infinite; vertical-align: -.14em; }
 @keyframes blink { 50% { opacity: 0; } }
 .typedisplay .ph { color: var(--tx-faint); font-size: 15px; font-family: inherit; }
+
+/* the characters a phone keyboard hides behind a long press */
+.accents { display: flex; gap: 5px; justify-content: center; margin-top: 8px; }
+.acc-key {
+  /* Flexed rather than fixed so the row never wraps on a narrow phone —
+     a second row of two keys reads as a mistake. */
+  flex: 1 1 0; min-width: 0; max-width: 46px; height: 38px; border-radius: 8px;
+  background: var(--bg-raise); border: 1px solid var(--line);
+  font-size: 18px; font-family: var(--mono); display: grid; place-items: center;
+  user-select: none;
+}
+.acc-key:active { background: var(--accent); color: #0b1220; }
 
 /* on-screen hangul keyboard */
 .kb { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: center; }
@@ -3889,7 +3901,16 @@ const COURSES = {
     tagline: 'Korean, on a forgetting curve',
     mark: '\ud55c', openTitle: 'Start with the alphabet',
     store: 'hanbit.v1', portraits: true,
-    voice: 'ko-KR',
+    voice: 'ko-KR', voiceSample: '\uc548\ub155\ud558\uc138\uc694. \ud55c\uad6d\uc5b4 \uacf5\ubd80\ub294 \uc7ac\ubbf8\uc788\uc5b4\uc694.',
+    /* Only Korean composes its answers from jamo. Everywhere else the
+       phone's own keyboard is the right one, and handing a Spanish
+       learner a Hangul keypad \u2014 which is exactly what this used to do \u2014
+       makes the exercise unanswerable. */
+    hangul: true,
+    langName: 'Korean',
+    typeHint: 'type the sounds, e.g. go-gi',
+    fxGlyphs: ['\u3131', '\u3134', '\u3137', '\u3139', '\u3141', '\u3142', '\u3145', '\u3147', '\u3148', '\u314e',
+      '\u314f', '\u3153', '\u3157', '\u315c', '\u3163', '\ud55c', '\ube5b'],
     stageTitle: 'Learn to read',
     cast: () => ({ chars: KO_CHARACTERS, rigs: KO_RIGS, sigs: KO_CHAR_SIGNATURE }),
     sounds: KO_SOUNDS, unitsA: KO_UNITS_A, unitsB: KO_UNITS_B,
@@ -3904,11 +3925,38 @@ const COURSES = {
       { label: 'Endgames and repertoire', units: ['U3', 'U4'] }
     ],
     writePrompt: 'Write the notation.', sayPrompt: 'Say it out loud.',
-    buildPrompt: 'Build the line, move by move.', rulePrompt: 'How is this move written?',
+    buildPrompt: 'Build the line, move by move.', buildOnePrompt: 'Which move does this?',
+    /* The target of a rule card IS the written move, so asking how it is
+       written showed the answer in the question. What is being tested is
+       the reading. */
+    rulePrompt: 'This is the move. How is it read aloud?',
+    /* A term is not notation. "Write the notation." over an answer of
+       "zugzwang" is nonsense, so the prompt follows the answer. */
+    writePromptFor: it => isNotation(it.ko) ? 'Write the notation.' : 'What is this called?',
     tagline: 'Chess, on a forgetting curve',
     mark: '\u265e', openTitle: 'Start with the pieces',
     store: 'gambit.chess.v1',
-    voice: 'en-GB',
+    voice: 'en-GB', voiceSample: 'Knight f3, bishop c4, castles short.',
+    itemWord: 'Moves',
+    langName: 'chess notation',
+    typeHint: 'e.g. Nf3, exd5, O-O',
+    fxGlyphs: ['\u2654', '\u2655', '\u2656', '\u2657', '\u2658', '\u2659', '+', '#', '\u00d7'],
+    /* Reading notation aloud is a real skill; typing out "knight takes e5"
+       from memory is a typing test. So the read rung runs the other way \u2014
+       you are shown the spoken move and write the notation, which is the
+       one place case genuinely carries meaning. */
+    readWritesNative: true,
+    /* Nothing in chess is learned by ear. The rung existed only because the
+       ladder is shared, and it played "e4" through an English voice. */
+    noListening: true,
+    letterPrompt: (dir, twins) => dir === 'sound'
+      ? 'How is this written?'
+      : 'Which one does this stand for?',
+    skillLabels: {
+      sound: 'Symbol \u2192 notation', find: 'Notation \u2192 symbol',
+      read: 'Write the notation', rule: 'How is it read aloud',
+      recall: 'Write it', build: 'Play the line'
+    },
     stageTitle: 'The board and the notation',
     cast: () => ({ chars: CH_CHARACTERS, rigs: CH_RIGS, sigs: CH_CHAR_SIGNATURE }),
     sounds: CH_SOUNDS, unitsA: CH_UNITS_A, unitsB: CH_UNITS_B,
@@ -3929,10 +3977,19 @@ const COURSES = {
     ],
     writePrompt: 'Write this in Spanish.', sayPrompt: 'Say this in Spanish, out loud.',
     buildPrompt: 'Build this sentence in Spanish.', rulePrompt: 'This is the spelling. How is it actually pronounced?',
+    readPrompt: 'Read this out loud, then type how it sounds.',
     tagline: 'Spanish, on a forgetting curve',
     mark: '\u00f1', openTitle: 'Start with the sounds',
     store: 'chispa.es.v1',
-    voice: 'es-ES',
+    voice: 'es-ES', voiceSample: 'Hola, buenos d\u00edas. Estudiar espa\u00f1ol es divertido.',
+    langName: 'Spanish',
+    typeHint: 'type it, e.g. buenos d\u00edas',
+    /* Spanish is typed on the phone's own keyboard, which does not offer
+       \u00e1 \u00e9 \u00ed \u00f3 \u00fa \u00f1 \u00bf \u00a1 without a long press. Accents are content here \u2014
+       "el" and "\u00e9l" are different words \u2014 so the strip is not a nicety. */
+    accents: ['\u00e1', '\u00e9', '\u00ed', '\u00f3', '\u00fa', '\u00f1', '\u00fc', '\u00bf', '\u00a1'],
+    fxGlyphs: ['\u00e1', '\u00e9', '\u00ed', '\u00f3', '\u00fa', '\u00f1', '\u00bf', '\u00a1', 'll', 'rr'],
+    skillLabels: { recall: 'Write it in Spanish' },
     stageTitle: 'Sounds and spelling',
     cast: () => ({ chars: ES_CHARACTERS, rigs: ES_RIGS, sigs: ES_CHAR_SIGNATURE }),
     sounds: ES_SOUNDS, unitsA: ES_UNITS_A, unitsB: ES_UNITS_B,
@@ -3976,7 +4033,9 @@ function switchCourse(id) {
 
 const FX_PALETTE = ['#6ea8fe', '#4ec9a5', '#ffd166', '#f78fb3', '#b39ddb', '#7ee8c0', '#ffb457'];
 const pickFrom = a => a[Math.floor(Math.random() * a.length)];
-const FX_JAMO = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅎ', 'ㅏ', 'ㅓ', 'ㅗ', 'ㅜ', 'ㅣ', '한', '빛'];
+/* What the letter-shaped particles are made of. Raining Hangul over a
+   Spanish session was the same category of mistake as speaking it. */
+const FX_JAMO = COURSE.fxGlyphs;
 
 /* ------------------------------------------------------------
    Sound: a tiny WebAudio synth. Browsers block audio until the
@@ -5308,10 +5367,88 @@ const Mascot = {
    mechanism, so it must never be punished.
    ============================================================ */
 
-const COMMENTARY = {
+/* Every line the app says back to you, in the language you are studying.
+   ------------------------------------------------------------
+   This used to be one table with Korean in it, which meant a Spanish
+   session congratulated you with 잘했어요 and — worse — the spoken praise
+   handed Hangul to a Spanish voice, which reads it as nothing at all.
+
+   Chess gets English, because chess is played in English here and a
+   celebratory 대박 over a knight fork is just noise. */
+const COURSE_LINES = {
+  ko: {
+    correct: ['좋아요!', '맞아요!', '정확해요!'],
+    fast: ['빨라요!'],
+    production: ['Typed it out cold. 잘했어요!'],
+    listening: ['들었어요! Ear training is working.'],
+    comeback: ['다시 좋아요!'],
+    combo3: ['잘하고 있어요!'], combo5: ['대박!'], combo8: ['완벽해요!'],
+    combo12: ['불이야! You are on fire.', '최고예요!!'],
+    wrong: ['괜찮아요 — this one just moved up the queue.'],
+    spoken: ['잘했어요', '좋아요', '완벽해요', '최고예요', '대박'],
+    mascot: {
+      happy: ['좋아요!', '맞아요!', 'Nice!', '잘했어요!', 'Yes!'],
+      wow: ['대박!', '완벽해요!', 'WOW!', '최고예요!', '불이야!'],
+      oops: ['괜찮아요', 'Hmm…', '다시!', 'It happens'],
+      think: ['음…', 'Thinking…']
+    },
+    done: { perfect: '완벽해요!', great: '잘했어요!', ok: '수고했어요!' },
+    head: { stopped: '중단했어요', perfect: '완벽!', strong: '잘했어요!', good: '좋아요!', ok: '수고했어요!' },
+    blitz: { blitz: '번개', streak: '연승', clean: '무결' }
+  },
+  es: {
+    correct: ['¡Eso es!', '¡Correcto!', '¡Muy bien!'],
+    fast: ['¡Rapidísimo!'],
+    production: ['Escrito de memoria. ¡Muy bien!'],
+    listening: ['¡Lo entendiste de oído!'],
+    comeback: ['¡Otra vez bien!'],
+    combo3: ['¡Vas muy bien!'], combo5: ['¡Increíble!'], combo8: ['¡Perfecto!'],
+    combo12: ['¡Estás en racha!', '¡Imparable!'],
+    wrong: ['Tranquilo — this one just moved up the queue.'],
+    spoken: ['muy bien', 'perfecto', 'excelente', 'eso es', 'genial'],
+    mascot: {
+      happy: ['¡Bien!', '¡Eso es!', 'Nice!', '¡Muy bien!', 'Yes!'],
+      wow: ['¡Increíble!', '¡Perfecto!', 'WOW!', '¡Genial!', '¡En racha!'],
+      oops: ['Tranquilo', 'Hmm…', '¡Otra vez!', 'It happens'],
+      think: ['Mmm…', 'Thinking…']
+    },
+    done: { perfect: '¡Perfecto!', great: '¡Muy bien!', ok: '¡Buen trabajo!' },
+    head: { stopped: 'Lo dejaste', perfect: '¡Perfecto!', strong: '¡Muy bien!', good: '¡Bien!', ok: '¡Buen trabajo!' },
+    blitz: { blitz: 'relámpago', streak: 'racha', clean: 'impecable' }
+  },
+  chess: {
+    correct: ['Book move.', 'Accurate.', 'Correct.'],
+    fast: ['Instant.'],
+    production: ['Written out cold — that is the notation working.'],
+    listening: [],
+    comeback: ['Back on it.'],
+    combo3: ['Three accurate.'], combo5: ['Five clean.'], combo8: ['Eight straight.'],
+    combo12: ['Twelve. Grandmaster hours.', 'Nothing dropped.'],
+    wrong: ['Blunders are free here — this one just moved up the queue.'],
+    spoken: ['good move', 'accurate', 'well played', 'clean', 'book move'],
+    mascot: {
+      happy: ['Good move.', 'Accurate.', 'Nice!', 'Clean.', 'Yes!'],
+      wow: ['Brilliant!', 'Winning.', 'WOW!', 'Crushing.', 'On fire!'],
+      oops: ['No harm', 'Hmm…', 'Again!', 'It happens'],
+      think: ['Calculating…', 'Thinking…']
+    },
+    done: { perfect: 'Flawless!', great: 'Well played!', ok: 'Good session.' },
+    head: { stopped: 'Adjourned', perfect: 'Flawless!', strong: 'Well played!', good: 'Good game.', ok: 'Good session.' },
+    blitz: { blitz: 'lightning', streak: 'streak', clean: 'clean sheet' }
+  }
+};
+
+const LINES = COURSE_LINES[COURSE.id] || COURSE_LINES.ko;
+
+/* Merge the course's own lines into the shared English ones rather than
+   replacing them, so a course only has to write what is language-specific
+   and every course keeps the full spread of commentary. */
+const withLines = (base, key) => base.concat(LINES[key] || []);
+
+const COMMENTARY_BASE = {
   correct: [
     'Nice.', 'That’s it.', 'Correct.', 'Clean.', 'Got it.', 'Yes.',
-    '좋아요!', '맞아요!', '정확해요!', 'Locked in.', 'Solid.'
+    'Locked in.', 'Solid.'
   ],
   close: [
     'Close enough — spelling slipped, the memory is there.',
@@ -5319,23 +5456,21 @@ const COMMENTARY = {
     'Almost exact. Look at the spelling once more.'
   ],
   fast: [
-    'Instant.', 'No hesitation.', '빨라요!', 'Didn’t even think about it.',
+    'Instant.', 'No hesitation.', 'Didn’t even think about it.',
     'That was automatic — exactly what you want.', 'Reflex speed.'
   ],
   production: [
     'You produced that from nothing. That is the hard skill.',
     'Written from memory, not recognised. That counts double.',
-    'That is the difference between knowing it and being able to use it.',
-    'Typed it out cold. 잘했어요!'
+    'That is the difference between knowing it and being able to use it.'
   ],
   listening: [
     'Understood by ear — the skill that transfers to real conversation.',
-    'Heard it and knew it. That is the one most learners never train.',
-    '들었어요! Ear training is working.'
+    'Heard it and knew it. That is the one most learners never train.'
   ],
   comeback: [
     'Recovered.', 'That’s the one you just missed. Now it’s yours.',
-    'Straight back into it.', 'Second time was the charm.', '다시 좋아요!'
+    'Straight back into it.', 'Second time was the charm.'
   ],
   nemesis: [
     'That one has been fighting you for a while. You won.',
@@ -5343,20 +5478,19 @@ const COMMENTARY = {
     'Your worst card, answered correctly. Good.'
   ],
   combo3: [
-    'Three straight.', 'On a roll.', '잘하고 있어요!', 'Rhythm found.', 'Three for three.'
+    'Three straight.', 'On a roll.', 'Rhythm found.', 'Three for three.'
   ],
   combo5: [
-    'Five in a row!', '대박!', 'Nothing is getting through.', 'Five straight — that is a real streak.', 'Untouchable.'
+    'Five in a row!', 'Nothing is getting through.', 'Five straight — that is a real streak.', 'Untouchable.'
   ],
   combo8: [
-    'EIGHT.', 'This is getting silly.', '완벽해요!', 'Eight consecutive. Show off.', 'Somebody has been studying.'
+    'EIGHT.', 'This is getting silly.', 'Eight consecutive. Show off.', 'Somebody has been studying.'
   ],
   combo12: [
-    'TWELVE STRAIGHT.', '불이야! You are on fire.', 'Absurd.', 'Twelve. Genuinely impressive.', '최고예요!!'
+    'TWELVE STRAIGHT.', 'Absurd.', 'Twelve. Genuinely impressive.'
   ],
   wrong: [
     'That happens. It comes back sooner now.',
-    '괜찮아요 — this one just moved up the queue.',
     'Forgetting once is how the schedule learns. No harm done.',
     'Missing it is the point of testing. You will see it again shortly.',
     'Now you get to relearn it, which sticks better than getting it right did.'
@@ -5368,14 +5502,15 @@ const COMMENTARY = {
   ]
 };
 
-const PRAISE_KO = ['잘했어요', '좋아요', '완벽해요', '최고예요', '대박'];
+const COMMENTARY = Object.fromEntries(Object.keys(COMMENTARY_BASE)
+  .map(k => [k, withLines(COMMENTARY_BASE[k], k)]));
 
-const MASCOT_LINES = {
-  happy: ['좋아요!', '맞아요!', 'Nice!', '잘했어요!', 'Yes!'],
-  wow: ['대박!', '완벽해요!', 'WOW!', '최고예요!', '불이야!'],
-  oops: ['괜찮아요', 'Hmm…', '다시!', 'It happens'],
-  think: ['음…', 'Thinking…']
-};
+/* Spoken out loud, so it must be text the course's own voice can read.
+   Handing '잘했어요' to a Spanish voice is the bug this replaces. */
+const PRAISE_WORDS = LINES.spoken;
+
+const MASCOT_LINES = LINES.mascot;
+const DONE_LINES = LINES.done;
 
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
@@ -5524,21 +5659,21 @@ function playSignature(char, p, comboTierN) {
    ------------------------------------------------------------ */
 const BLITZ_TYPES = {
   blitz: {
-    label: 'BLITZ', ko: '번개',
+    label: 'BLITZ',
     sub: n => `${n} in a row, ${' '}fast`,
     need: 3, perMs: 7000, wantsFast: true,
     hint: 'Answer correctly inside the clock',
     base: 18
   },
   streak: {
-    label: 'STREAK CALL', ko: '연승',
+    label: 'STREAK CALL',
     sub: n => `keep it alive for ${n}`,
     need: 4, perMs: 0, wantsFast: false,
     hint: 'Any speed — just do not miss',
     base: 14
   },
   clean: {
-    label: 'CLEAN RUN', ko: '무결',
+    label: 'CLEAN RUN',
     sub: n => `${n} straight, no misses`,
     need: 3, perMs: 0, wantsFast: false,
     hint: 'Take all the time you want',
@@ -5600,7 +5735,7 @@ function announceBlitz(def, b, char) {
   // The character that summoned it does so in its own handwriting.
   try { const s = signatureFor(char); if (s) s.fn(p, char.fx, 1); } catch (e) {}
   FX.ring(p.x, p.y, { r1: 260, color: char.fx.colors[0], w: 4, max: 0.9 });
-  bannerFx(def.label, def.ko + ' · ' + def.sub(b.need) + ' · +' + b.reward + ' coins', { hold: 1500 });
+  bannerFx(def.label, LINES.blitz[b.type] + ' · ' + def.sub(b.need) + ' · +' + b.reward + ' coins', { hold: 1500 });
 }
 
 /* Called once per graded answer while an event is live. Returns nothing
@@ -6489,17 +6624,21 @@ function speakRungFor(item) {
 function ladderFor(item) {
   let l = LADDER[item.kind].slice();
   if (item.kind === 'word' && !item.ex) l = l.filter(s => s !== 'cloze');
+  // Nothing in chess is learned by ear. Cards already on the retired rung
+  // are dropped by dueCards(), which is why this is safe to remove.
+  if (COURSE.noListening) l = l.filter(s => s !== 'listen');
   if (speakRungFor(item)) l.push('say');
   return l;
 }
 
-const SKILL_LABEL = {
+const SKILL_LABEL = Object.assign({
   sound: 'Letter → sound', find: 'Sound → letter',
   read: 'Read it aloud', meaning: 'What does it mean',
   rule: 'How is it pronounced',
-  recog: 'Meaning', listen: 'Listening', recall: 'Write it in Korean', cloze: 'Fill the gap',
+  recog: 'Meaning', listen: 'Listening', recall: 'Write it in ' + (COURSE.langName || COURSE.label),
+  cloze: 'Fill the gap',
   build: 'Build the sentence', say: 'Say it out loud'
-};
+}, COURSE.skillLabels || {});
 
 /* ---------------------------------------------------------------
    1b. COINS, COSMETICS, AND THE ONE POWER-UP
@@ -6524,20 +6663,25 @@ const NEAR_MISS_COST = 25;
 
 /* Palettes recolour the accent only. --good and --bad stay put in every
    theme, because "correct" and "wrong" must never change colour. */
+/* The palettes are shared across courses, but their names were not: every
+   swatch carried a Korean subtitle, so the Spanish shop sold 무궁화. The
+   colours are the same six either way — only the label follows the course. */
 const THEMES = [
-  { id: 'default', name: 'Hanbit Blue', ko: '한빛', cost: 0,
+  { id: 'default', name: 'Hanbit Blue', ko: '한빛', es: 'Chispa', chess: 'Opening', cost: 0,
     dark: ['#6ea8fe', '#2b4d80', '#4ec9a5'], light: ['#2563eb', '#c7dbff', '#0e8f6e'] },
-  { id: 'celadon', name: 'Celadon', ko: '청자', cost: 150,
+  { id: 'celadon', name: 'Celadon', ko: '청자', es: 'Celadón', chess: 'Green board', cost: 150,
     dark: ['#5fd3b2', '#1e5346', '#8fe8d0'], light: ['#0e8f6e', '#cdeee4', '#0f7a63'] },
-  { id: 'sunrise', name: 'Sunrise', ko: '해돋이', cost: 350,
+  { id: 'sunrise', name: 'Sunrise', ko: '해돋이', es: 'Amanecer', chess: 'Endgame', cost: 350,
     dark: ['#ffb457', '#6b4517', '#f78fb3'], light: ['#b8600a', '#ffe0bf', '#b03a68'] },
-  { id: 'hanji', name: 'Hanji', ko: '한지', cost: 550,
+  { id: 'hanji', name: 'Hanji', ko: '한지', es: 'Arena', chess: 'Boxwood', cost: 550,
     dark: ['#ffd166', '#6b5417', '#ffb457'], light: ['#8a6100', '#fff0c4', '#8f5000'] },
-  { id: 'mugunghwa', name: 'Mugunghwa', ko: '무궁화', cost: 800,
+  { id: 'mugunghwa', name: 'Mugunghwa', ko: '무궁화', es: 'Hibisco', chess: 'Gambit', cost: 800,
     dark: ['#f78fb3', '#5c2a3d', '#b39ddb'], light: ['#b03a68', '#ffd9e5', '#5f43a6'] },
-  { id: 'neon', name: 'Neon', ko: '네온', cost: 1200,
+  { id: 'neon', name: 'Neon', ko: '네온', es: 'Neón', chess: 'Blitz', cost: 1200,
     dark: ['#8fd3ff', '#1b4a63', '#e59cff'], light: ['#175f8c', '#cfeaff', '#7a3ca8'] }
 ];
+
+const themeSub = t => t[COURSE.id] || t.ko;
 
 /* ---------------------------------------------------------------
    THE COLLECTION
@@ -7590,6 +7734,22 @@ function pool(pred, exclude, n) {
   return ids.slice(0, n).map(id => ITEMS[id]);
 }
 
+/* Which input a production exercise gets. This used to read `!COURSE.typed`,
+   which is only the same question by accident: chess declared `typed` and
+   Spanish did not, so every Spanish recall card rendered the 두벌식 jamo
+   keypad and could not be answered at all. The real question is whether the
+   answers are composed from jamo, and exactly one course's are. */
+function setTypedInput(ex) {
+  ex.koInput = !!COURSE.hangul;
+  ex.romInput = !COURSE.hangul;
+}
+
+/* "Write the notation." is right for Nf3 and wrong for zugzwang, so a
+   course may decide per item rather than once for all of them. */
+function writePromptFor(item) {
+  return COURSE.writePromptFor ? COURSE.writePromptFor(item) : COURSE.writePrompt;
+}
+
 function makeExercise(key, step) {
   const item = cardItem(key);
   const skill = cardSkill(key);
@@ -7683,7 +7843,8 @@ function makeExercise(key, step) {
       // If a letter that sounds exactly the same is sitting in the options,
       // "which sound is this" has two right answers. Ask for the spelling.
       const twins = soundTwins(item.ch).filter(c => ex.options.includes((ITEMS['L:' + c] || {}).rom));
-      ex.prompt = twins.length ? 'Which romanisation is this letter?' : 'Which sound is this letter?';
+      ex.prompt = COURSE.letterPrompt ? COURSE.letterPrompt('sound', twins)
+        : twins.length ? 'Which romanisation is this letter?' : 'Which sound is this letter?';
       if (twins.length) ex.sub = 'Careful: ' + twins.join(' ') + ' sound identical to this one. Go by how it is written.';
     } else {
       ex.type = 'mc';
@@ -7693,7 +7854,8 @@ function makeExercise(key, step) {
       ex.options = uniqBy([item.ch].concat(pool(i => i.kind === 'letter' && i.type === item.type, item.id, 6).map(i => i.ch)), x => x).slice(0, 4);
       ex.koOptions = true;
       const twins = soundTwins(item.ch).filter(c => ex.options.includes(c));
-      ex.prompt = twins.length ? 'Which letter is written this way?' : 'Which letter makes this sound?';
+      ex.prompt = COURSE.letterPrompt ? COURSE.letterPrompt('find', twins)
+        : twins.length ? 'Which letter is written this way?' : 'Which letter makes this sound?';
       if (twins.length) ex.sub = 'Careful: ' + twins.join(' ') + ' sound identical to this one. Go by the spelling above.';
     }
     ex.speakAfter = letterSyllable(item) || '';
@@ -7702,9 +7864,19 @@ function makeExercise(key, step) {
   else if (item.kind === 'hword') {
     if (skill === 'read') {
       ex.type = 'text';
-      ex.prompt = COURSE.typed ? 'Type it.' : 'Read this out loud, then type it in letters (romanisation).';
-      ex.target = item.ko;
-      ex.answer = item.rom;
+      if (COURSE.readWritesNative) {
+        /* Reversed on purpose. Showing "K" under the words "Type it." and
+           wanting "King" is a memory test for a caption, and it failed on
+           a lower-case k. Showing "King" and wanting "K" is the skill. */
+        ex.prompt = 'Write this in notation.';
+        ex.target = item.rom;
+        ex.targetEn = true;
+        ex.answer = item.ko;
+      } else {
+        ex.prompt = COURSE.readPrompt || 'Read this out loud, then type it in letters (romanisation).';
+        ex.target = item.ko;
+        ex.answer = item.rom;
+      }
       ex.romInput = true;
       ex.speakAfter = item.ko;
     } else {
@@ -7752,12 +7924,11 @@ function makeExercise(key, step) {
       ex.revealKo = item.ko;
     } else if (skill === 'recall') {
       ex.type = 'text';
-      ex.prompt = COURSE.writePrompt;
+      ex.prompt = writePromptFor(item);
       ex.target = item.en;
       ex.targetEn = true;
       ex.answer = item.ko;
-      ex.koInput = !COURSE.typed;
-      ex.romInput = !!COURSE.typed;
+      setTypedInput(ex);
       ex.hint = item.pos === 'verb' || item.pos === 'adj' ? 'dictionary form' : null;
       ex.speakAfter = item.ko;
     } else if (skill === 'cloze' && item.ex) {
@@ -7766,14 +7937,13 @@ function makeExercise(key, step) {
       ex.sentence = item.ex.ko;
       ex.gapWord = pickGapWord(item);
       ex.answer = ex.gapWord;
-      ex.koInput = !COURSE.typed;
-      ex.romInput = !!COURSE.typed;
+      setTypedInput(ex);
       ex.translation = item.ex.en;
       ex.speakAfter = item.ex.ko;
       if (!ex.gapWord) {
         // No clean surface form to blank out — fall back to plain production.
         ex.sentence = null;
-        ex.prompt = COURSE.writePrompt;
+        ex.prompt = writePromptFor(item);
         ex.target = item.en;
         ex.targetEn = true;
         ex.answer = item.ko;
@@ -7782,12 +7952,11 @@ function makeExercise(key, step) {
     } else {
       // Unknown skill for this item — degrade to production rather than throw.
       ex.type = 'text';
-      ex.prompt = COURSE.writePrompt;
+      ex.prompt = writePromptFor(item);
       ex.target = item.en;
       ex.targetEn = true;
       ex.answer = item.ko;
-      ex.koInput = !COURSE.typed;
-      ex.romInput = !!COURSE.typed;
+      setTypedInput(ex);
       ex.speakAfter = item.ko;
     }
   }
@@ -7796,7 +7965,9 @@ function makeExercise(key, step) {
     const pickIdx = Math.floor(Math.random() * item.examples.length);
     const sample = item.examples[pickIdx];
     ex.type = 'build';
-    ex.prompt = COURSE.buildPrompt;
+    // "Build the line, move by move" over a one-move answer is a single tap
+    // wearing the costume of a sentence builder. Ask what it actually is.
+    ex.prompt = /\s/.test(sample.ko.trim()) ? COURSE.buildPrompt : (COURSE.buildOnePrompt || COURSE.buildPrompt);
     ex.target = sample.en;
     ex.targetEn = true;
     ex.answer = sample.ko;
@@ -7888,14 +8059,26 @@ function levenshtein(a, b) {
    giving the dictionary form where the conjugated one was wanted. */
 /* Chess notation is case-carrying — bxc6 is a pawn capture and Bxc6 is a
    bishop, two different moves — so a course can ask not to be lowercased.
-   Everywhere else lowercasing is the right kindness. */
-const normTyped = s => COURSE.caseSensitive
+   Everywhere else lowercasing is the right kindness.
+
+   But "case-sensitive course" was too blunt a hammer. Half of what the
+   chess course asks you to type is prose — fork, zugzwang, Ruy Lopez —
+   where case carries nothing, and marking "Fork" wrong (which is what a
+   phone's own auto-capitalisation produces) is a grading bug wearing the
+   costume of strictness. So case is enforced on the answers that ARE
+   notation and on nothing else. */
+function isNotation(s) {
+  return /^(O-O(-O)?|[KQRBN]|[KQRBN][a-h1-8]?x?[a-h][1-8](=[QRBN])?[+#]?|[a-h](x[a-h])?[1-8](=[QRBN])?[+#]?)$/
+    .test(stripPunct(String(s || '')));
+}
+
+const normTyped = (s, answer) => COURSE.caseSensitive && isNotation(answer === undefined ? s : answer)
   ? stripPunct(String(s)).replace(/[-\s]/g, '')
   : normRom(s);
 
 function checkText(ex, input) {
   if (ex.romInput) {
-    const a = normTyped(input), b = normTyped(ex.answer);
+    const a = normTyped(input, ex.answer), b = normTyped(ex.answer, ex.answer);
     if (a === b) return 'right';
     if (a && levenshtein(a, b) === 1) return 'near';
     return 'wrong';
@@ -7968,7 +8151,9 @@ function voiceScore(v) {
   // better-sounding one. It also needs a connection, hence the modest weight.
   if (v.localService === false) s += 25;
   if (/compact|espeak|저품질/i.test(n)) s -= 70;
-  if (/^ko-KR$/i.test(v.lang)) s += 10;
+  // An exact locale match beats a cousin: es-ES over es-MX in a course
+  // written in peninsular Spanish, ko-KR over a ko-* fallback.
+  if (v.lang && v.lang.replace('_', '-').toLowerCase() === COURSE.voice.toLowerCase()) s += 10;
   return s;
 }
 
@@ -8028,26 +8213,30 @@ const IS_IOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
    help them, which is worse than admitting the ceiling. */
 function voiceFixSteps() {
   const ua = navigator.userAgent;
+  // The steps are per platform AND per course: the language you go and
+  // download is whichever one this course is teaching.
+  const L = COURSE.label;
+  const named = COURSE.id === 'ko' ? ' — <b>Yuna (Premium)</b>' : '';
   if (IS_IOS()) return {
     where: 'iPhone / iPad',
     futile: true,
     steps: [
-      'Safari only lets a web page use the Korean voice that came with iOS.',
-      'The Enhanced and Premium versions of 유나 (Yuna) that you can download under <b>Settings → Accessibility → Spoken Content → Voices</b> do work in Apple\'s own apps — but Safari never exposes them to a web page, so Hanbit cannot reach them. This is a WebKit limitation and every iPhone browser shares it, because they are all Safari underneath.',
+      `Safari only lets a web page use the ${L} voice that came with iOS.`,
+      `The Enhanced and Premium ${L} voices you can download under <b>Settings → Accessibility → Spoken Content → Voices</b> do work in Apple's own apps — but Safari never exposes them to a web page, so ${COURSE.name} cannot reach them. This is a WebKit limitation and every iPhone browser shares it, because they are all Safari underneath.`,
       'Nothing you can install will change this. If you want better audio, the same app on a computer or an Android phone will sound noticeably better; on iPhone the speech rate in this panel is the only lever that helps.'
     ]
   };
   if (/Macintosh|Mac OS X/.test(ua)) return {
     where: 'Mac',
-    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', 'Korean → <b>Yuna (Premium)</b> → download', 'Reload this page, then pick it in the list above']
+    steps: ['System Settings → Accessibility → <b>Spoken Content</b>', 'System Voice → <b>Manage Voices…</b>', `${L}${named} → download`, 'Reload this page, then pick it in the list above']
   };
   if (/Android/.test(ua)) return {
     where: 'Android',
-    steps: ['Settings → System → Languages &amp; input', '<b>Text-to-speech output</b>', 'Preferred engine → <b>Google Speech Services</b>', 'Install voice data → <b>Korean</b>', 'Reload this page']
+    steps: ['Settings → System → Languages &amp; input', '<b>Text-to-speech output</b>', 'Preferred engine → <b>Google Speech Services</b>', `Install voice data → <b>${L}</b>`, 'Reload this page']
   };
   return {
     where: 'Windows',
-    steps: ['Settings → Time &amp; language → <b>Speech</b>', 'Manage voices → <b>Add voices</b> → Korean', 'Or use Chrome, which has a good Korean voice built in', 'Reload this page']
+    steps: ['Settings → Time &amp; language → <b>Speech</b>', `Manage voices → <b>Add voices</b> → ${L}`, `Or use Chrome, which has a good ${L} voice built in`, 'Reload this page']
   };
 }
 
@@ -8129,8 +8318,25 @@ function speakLine(convId, lineIndex, text, btn) {
   });
 }
 
+/* A voice must never be handed text from another language.
+   ------------------------------------------------------------
+   Everything spoken here used to come from a Korean course, so the
+   text and the voice always agreed. Once the same engine ran Spanish
+   and chess, any Korean string that survived in shared code — the
+   praise words, a mascot line, the voice sample — went to an es-ES or
+   en-GB voice, which reads Hangul as silence or as garbage.
+
+   Fixing the strings is the actual fix; this is the guard that stops
+   the next one from shipping. Cheap, and it is checked in the tests. */
+const HANGUL_RE = /[ᄀ-ᇿ㄰-㆏ꥠ-꥿가-퟿]/;
+
+function speakable(text) {
+  return !(COURSE.id !== 'ko' && HANGUL_RE.test(String(text)));
+}
+
 function speak(text, btn) {
   if (!text || !('speechSynthesis' in window)) return;
+  if (!speakable(text)) return;
   refreshVoices();
   try {
     window.speechSynthesis.cancel();
@@ -8156,7 +8362,7 @@ function sampleVoice(name, btn) {
   const v = voices.find(x => x.name === name);
   try {
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance('안녕하세요. 한국어 공부는 재미있어요.');
+    const u = new SpeechSynthesisUtterance(COURSE.voiceSample);
     u.lang = COURSE.voice;
     u.rate = S.settings.ttsRate;
     if (v) u.voice = v;
@@ -8714,7 +8920,7 @@ function renderToday() {
   </div>
 
   <div class="grid four" style="margin-top:14px">
-    <div class="stat"><div class="n">${st.wordsKnown}</div><div class="l">Words holding</div><div class="h">Recall is above the 3-day mark</div></div>
+    <div class="stat"><div class="n">${st.wordsKnown}</div><div class="l">${esc(COURSE.itemWord || 'Words')} holding</div><div class="h">Recall is above the 3-day mark</div></div>
     <div class="stat"><div class="n">${st.speakable}</div><div class="l">Fast enough to speak</div><div class="h">Comes back without digging for it</div></div>
     <div class="stat"><div class="n">${st.reviewsAll ? pct(st.measuredR) : '—'}</div><div class="l">Real retention</div><div class="h">Measured, not predicted</div></div>
     <div class="stat"><div class="n">${st.introduced}/${st.courseTotal}</div><div class="l">Course seen</div><div class="h">${fmtMin(st.totalMs)} total</div></div>
@@ -8979,8 +9185,11 @@ function renderExercise(step) {
     }).join('')}</div>`;
   } else if (ex.type === 'text') {
     if (ex.romInput) {
-      answerBlock = `<input class="typebox rom" id="ansbox" autocomplete="off" autocapitalize="off" spellcheck="false"
-        placeholder="type the sounds, e.g. go-gi" ${sess.reveal ? 'disabled' : ''} value="${esc(sess.reveal ? sess.reveal.raw : '')}">`;
+      answerBlock = `<input class="typebox rom" id="ansbox" autocomplete="off" autocapitalize="off"
+        autocorrect="off" spellcheck="false" lang="${esc(COURSE.voice)}"
+        placeholder="${esc(COURSE.typeHint || 'type your answer')}"
+        ${sess.reveal ? 'disabled' : ''} value="${esc(sess.reveal ? sess.reveal.raw : '')}">${
+        sess.reveal ? '' : renderAccentRow()}`;
     } else {
       answerBlock = `<div class="typedisplay ko ${sess.reveal ? '' : 'focus'}" id="kodisplay">${
         composer.value ? esc(composer.value) + (sess.reveal ? '' : '<span class="caret"></span>')
@@ -9175,6 +9384,26 @@ function drawWave(canvas) {
   }
 }
 
+/* One tap row for the characters a phone keyboard hides behind a long
+   press. Only courses that declare them get it, and it inserts at the
+   caret rather than appending, so fixing a missed accent mid-word works. */
+function renderAccentRow() {
+  if (!COURSE.accents || !COURSE.accents.length) return '';
+  return `<div class="accents">${COURSE.accents.map(c =>
+    `<button class="acc-key" type="button" data-acc="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
+}
+
+function insertAccent(ch) {
+  const box = document.getElementById('ansbox');
+  if (!box) return;
+  const a = box.selectionStart == null ? box.value.length : box.selectionStart;
+  const b = box.selectionEnd == null ? a : box.selectionEnd;
+  box.value = box.value.slice(0, a) + ch + box.value.slice(b);
+  box.focus();
+  const at = a + ch.length;
+  try { box.setSelectionRange(at, at); } catch (e) {}
+}
+
 function renderKeyboard() {
   const rows = KB_ROWS.map(r => `<div class="kb-row">${r.map(c => {
     const jamo = kbShift && KB_SHIFTABLE.has(c) ? QWERTY_MAP[c.toUpperCase()] : QWERTY_MAP[c];
@@ -9262,8 +9491,9 @@ function renderDone() {
   const best = sess ? sess.bestCombo : 0;
   const CIRC = 351.86;                                  // 2πr for r = 56
   const abandoned = sess && sess.reason === 'abandoned';
-  const headline = abandoned ? '중단했어요'
-    : sess && sess.perfect ? '완벽!' : acc >= 0.9 ? '잘했어요!' : acc >= 0.7 ? '좋아요!' : '수고했어요!';
+  const H = LINES.head;
+  const headline = abandoned ? H.stopped
+    : sess && sess.perfect ? H.perfect : acc >= 0.9 ? H.strong : acc >= 0.7 ? H.good : H.ok;
   const headSub = abandoned ? 'session abandoned'
     : sess && sess.perfect ? 'a flawless session'
       : acc >= 0.9 ? 'that was a strong round'
@@ -9306,7 +9536,7 @@ function renderDone() {
     })()}</span>
     </div>` : ''}
     <div class="grid four" style="margin-top:6px">
-      <div class="stat"><div class="n">${st.wordsKnown}</div><div class="l">Words holding</div></div>
+      <div class="stat"><div class="n">${st.wordsKnown}</div><div class="l">${esc(COURSE.itemWord || 'Words')} holding</div></div>
       <div class="stat"><div class="n">${best}</div><div class="l">Best streak</div></div>
       <div class="stat"><div class="n">${st.forecast[1] || 0}</div><div class="l">Due tomorrow</div></div>
       <div class="stat"><div class="n">${fmtMin(rec.ms)}</div><div class="l">Time today</div></div>
@@ -9450,7 +9680,7 @@ function renderShop() {
       <div>
         <h2 style="margin-bottom:2px">Coins</h2>
         <p class="sub" style="margin:0">Earned by finishing sessions, hitting milestones and running conversations.
-        You can never lose them, and nothing here makes the Korean easier.</p>
+        You can never lose them, and nothing here makes the course easier.</p>
       </div>
       <div class="bigcoin"><span class="coin lg"></span><b>${S.coins || 0}</b></div>
     </div>
@@ -9460,24 +9690,24 @@ function renderShop() {
       <p style="margin:0">When you are off by exactly one character, you can buy the answer back for
       <b>${NEAR_MISS_COST}</b> coins. It restores your streak and the session credit — but the card is still
       scheduled as one you missed, because a power-up that lied to the forgetting curve would just be selling you
-      worse Korean. ${S.redeemed ? `You have used it <b>${S.redeemed}</b> time${S.redeemed === 1 ? '' : 's'}.` : ''}</p>
+      worse ${esc(COURSE.label)}. ${S.redeemed ? `You have used it <b>${S.redeemed}</b> time${S.redeemed === 1 ? '' : 's'}.` : ''}</p>
     </div>
 
     <h3>Palettes</h3>
     <div class="themegrid">
       <button class="themecard ${S.accent === 'char' ? 'on' : ''}" data-settheme="char">
         <span class="sw" style="background:linear-gradient(135deg,var(--accent),var(--accent2))"></span>
-        <span class="tc-n">Follow character</span><span class="tc-k ko">${esc(equippedChar().ko)}</span>
+        <span class="tc-n">Follow character</span><span class="tc-k ${COURSE.id === 'ko' ? 'ko' : ''}">${esc(equippedChar().ko)}</span>
         <span class="tc-c">${S.accent === 'char' ? 'in use' : 'auto'}</span>
       </button>
       ${owned.map(t => `<button class="themecard ${S.accent === t.id ? 'on' : ''}" data-settheme="${t.id}">
-        ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ko">${esc(t.ko)}</span>
+        ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ${COURSE.id === 'ko' ? 'ko' : ''}">${esc(themeSub(t))}</span>
         <span class="tc-c">${S.accent === t.id ? 'in use' : 'owned'}</span>
       </button>`).join('')}
       ${next.map(t => {
     const can = (S.coins || 0) >= t.cost;
     return `<button class="themecard locked ${can ? 'can' : ''}" data-buytheme="${t.id}" ${can ? '' : 'disabled'}>
-        ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ko">${esc(t.ko)}</span>
+        ${swatch(t)}<span class="tc-n">${esc(t.name)}</span><span class="tc-k ${COURSE.id === 'ko' ? 'ko' : ''}">${esc(themeSub(t))}</span>
         <span class="tc-c"><span class="coin"></span>${t.cost}</span>
       </button>`;
   }).join('')}
@@ -10069,7 +10299,7 @@ function renderRespondDone() {
       </div>
       <div class="grid" style="margin-top:14px">
         <div class="stat"><div class="n">${clean}</div><div class="l">Got the line</div></div>
-        <div class="stat"><div class="n">${kept}</div><div class="l">Kept it alive</div><div class="h">asked for help in Korean</div></div>
+        <div class="stat"><div class="n">${kept}</div><div class="l">Kept it alive</div><div class="h">asked for help in ${esc(COURSE.langName || COURSE.label)}</div></div>
       </div>
       <p class="muted" style="margin-top:14px">
         This is the only place in the app where nothing tells you what to say.
@@ -10128,7 +10358,7 @@ function renderTalk() {
       <div class="prose"><p>Everything else in this app tells you what to say before it asks you to say it — even the
       roleplay puts the English of your line on the screen. Here somebody speaks and you answer, with nothing in front
       of you. You can ask to see what they said, but it costs you the clean pass.</p>
-      <p>If you did not catch it, ask them to repeat it <em>in Korean</em>. That is not giving up — it is the move a
+      <p>If you did not catch it, ask them to repeat it <em>in ${esc(COURSE.langName || COURSE.label)}</em>. That is not giving up — it is the move a
       real conversation runs on, and it counts as an answer here.</p></div>
       ${pool
         ? `<button class="btn primary" data-act="respondstart" style="margin-top:6px">Answer cold</button>`
@@ -10377,7 +10607,7 @@ function renderRead(c) {
     <button class="btn ghost" data-act="convplay">${SPEAKER_SVG} Play it through</button>
   </div>
   <p class="sub" style="margin:10px 0 0;font-size:12.5px">${
-    lit ? 'Word for word, in Korean order. Clumsy English on purpose — this is where the grammar becomes visible.'
+    lit ? `Word for word, in ${COURSE.langName || COURSE.label} order. Clumsy English on purpose — this is where the grammar becomes visible.`
       : chunked ? 'Every chunk of Korean sits above the English it corresponds to. Tap either side to light up the pair.'
         : 'How it would actually be said in English.'}</p>`;
 
@@ -10432,7 +10662,7 @@ function renderRead(c) {
   </div>` : ''}
   <div class="card">
     <h3 style="margin-top:0">Now take a side</h3>
-    <p class="sub">You are ${esc(c.castEn[c.you])}. Hanbit plays the other part and waits for your lines —
+    <p class="sub">You are ${esc(c.castEn[c.you])}. ${esc(COURSE.name)} plays the other part and waits for your lines —
     you say them out loud and it tells you how close you got.</p>
     <button class="btn primary big" data-act="convrole">Start roleplay</button>
     ${BRANCHES[c.id] ? `<button class="btn big" data-act="convbranch">Take it your way
@@ -10484,7 +10714,7 @@ function renderRoleplay(c) {
     ${history ? `<div class="card" style="margin-bottom:12px">${history}</div>` : ''}
     <div class="q-card">
       <div class="q-kind">Your line</div>
-      <div class="q-prompt">Say this in Korean.</div>
+      <div class="q-prompt">${esc(COURSE.sayPrompt)}</div>
       <div class="q-target en ${l.en.length > 24 ? 'small' : ''}">${esc(l.en)}</div>
       ${shown ? `<div class="q-rom ko" style="font-size:20px;margin-top:10px">${chunkSpans(l, pos, 'ko')}</div>
         <div class="maplit" style="margin-top:8px">${chunkSpans(l, pos, 'en')}</div>` : ''}
@@ -10720,8 +10950,10 @@ function renderMethod() {
     <p>Vocabulary learned one word at a time comes back one word at a time. Each unit therefore has a dialogue that uses only what that unit and the ones before it have taught, and the Talk tab presents it whole before taking it apart. Every chunk of Korean is colour-linked to the English it corresponds to, and a literal word-for-word reading sits alongside the natural translation. That mapping does something a translation cannot: it shows you that 저는 is one piece meaning "as for me" and that 이에요 is carrying "am", without anyone having to explain the topic marker. Nobody needs the rule once they have watched it line up twenty times.</p>
     <p>Then you take a side. The app plays the other part and waits for your lines, which you say out loud and it scores. The gap between understanding a sentence and producing it on demand is enormous, and roleplay is the cheapest way to close it without another person in the room. Roleplay scores stay out of the scheduler on purpose — a noisy room should not be allowed to bury a card you actually know.</p>
 
-    <h4>Typing Korean, on the Korean layout</h4>
-    <p>Production exercises use a real 두벌식 keyboard rather than word tiles wherever possible. Free recall beats recognition, and you pick up the layout every Korean phone uses as a side effect.</p>
+    ${COURSE.hangul ? `<h4>Typing Korean, on the Korean layout</h4>
+    <p>Production exercises use a real 두벌식 keyboard rather than word tiles wherever possible. Free recall beats recognition, and you pick up the layout every Korean phone uses as a side effect.</p>`
+    : `<h4>Typing it out, not tapping tiles</h4>
+    <p>Production exercises give you an empty box rather than word tiles wherever possible. Free recall beats recognition by a wide margin, and a tile you can pick out of four is a much easier question than the same word from nothing.${COURSE.accents ? ' The accented characters your keyboard hides behind a long press sit in a row under the box, because an accent is content here — <em>el</em> and <em>él</em> are different words.' : ''}</p>`}
 
     <h4>Sound before sight</h4>
     <p>Hangul is taught through the shapes of your mouth, in an order that lets you read real words from the second unit onward, and the alphabet stage ends with the eight sound-change rules that make spoken Korean diverge from its spelling. Skipping those rules is the main reason learners who can read still cannot follow speech.</p>
@@ -10759,7 +10991,7 @@ function renderMethod() {
     <p>The daily plan is capped and tells you when you are done. Retention per minute falls off inside a long session, and the second most common way to fail at a language is burning out in month two. The most common is stopping in week one, which is why the daily target is deliberately small.</p>
 
     <h4>What you should do outside the app</h4>
-    <p>Spaced repetition builds the parts you can drill. It cannot give you fluency on its own. Once you are past Unit 6, add fifteen minutes a day of Korean you barely understand — a drama with Korean subtitles, a podcast for learners, a webtoon — and let the app carry the vocabulary load underneath it. Say every card out loud; silent recognition trains a much narrower skill than speech.</p>
+    <p>Spaced repetition builds the parts you can drill. It cannot give you fluency on its own. Once you are past Unit 6, add fifteen minutes a day of ${esc(COURSE.label)} you barely understand — a drama with subtitles, a podcast for learners, a comic — and let the app carry the vocabulary load underneath it. Say every card out loud; silent recognition trains a much narrower skill than speech.</p>
 
     <h4>Tuning it</h4>
     <p>If your measured retention sits well above 90%, your intervals are too short and you are wasting minutes: lower target retention. If it sits below 80%, you are adding new material faster than it sticks: lower the daily new count for a week. Roughly 0.85–0.90 is where most people get the most memory per minute of study.</p>
@@ -10769,7 +11001,7 @@ function renderMethod() {
 /* The voice panel earns its own function because the useful thing it does
    is diagnose: it names the voice actually in use, rates it honestly, and
    when the best one available is poor it says so and gives the fix rather
-   than letting the learner conclude that Korean sounds like a robot. */
+   than letting the learner conclude that the language sounds like a robot. */
 function renderVoiceCard() {
   const cur = chosenVoice();
   const tier = voiceTier(cur);
@@ -10778,12 +11010,12 @@ function renderVoiceCard() {
 
   return `
   <div class="card">
-    <h2>Korean voice</h2>
-    <p class="sub">Browsers ship several Korean voices and they are not equally good. Hanbit picks the best one it can
+    <h2>${esc(COURSE.label)} voice</h2>
+    <p class="sub">Browsers ship several ${esc(COURSE.label)} voices and they are not equally good. ${esc(COURSE.name)} picks the best one it can
     find, but the best one is often behind a download the operating system never mentions.</p>
 
     ${!voices.length ? `<div class="notice">
-      <b>No Korean voice is installed at all</b>, so nothing will play.
+      <b>No ${esc(COURSE.label)} voice is installed at all</b>, so nothing will play.
       <div style="margin-top:10px"><b>${esc(fix.where)}</b></div>
       <ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">${fix.steps.map(x => `<li>${x}</li>`).join('')}</ol>
     </div>` : `
@@ -10811,7 +11043,7 @@ function renderVoiceCard() {
     ${tier === 'basic' && !better ? `<div class="notice" style="margin-top:12px">
       ${fix.futile
       ? `<b>This is as good as it gets on this device, and that is not your fault.</b>`
-      : `<b>This is the robotic one.</b> Your device only has the small, low-quality Korean voice installed — the good one is a
+      : `<b>This is the robotic one.</b> Your device only has the small, low-quality ${esc(COURSE.label)} voice installed — the good one is a
          free download the operating system does not prompt you for. It takes a minute and the difference is not subtle.`}
       <div style="margin-top:10px"><b>${esc(fix.where)}</b></div>
       ${fix.futile
@@ -10827,12 +11059,12 @@ function renderVoiceCard() {
       <summary class="faint" style="cursor:pointer;font-size:12.5px">What this browser actually reports</summary>
       <div class="prose" style="font-size:12.5px;margin-top:8px">
         <p style="margin:0 0 6px">If you went looking for a voice in your system settings and could not find it here, this is
-        why — the list below is everything the browser is willing to hand a web page, and Hanbit cannot use anything that is
+        why — the list below is everything the browser is willing to hand a web page, and ${esc(COURSE.name)} cannot use anything that is
         not on it.</p>
         ${voices.length
       ? `<ul style="margin:0;padding-left:18px;line-height:1.7">${voices.map(v =>
         `<li><code>${esc(v.name)}</code> · ${esc(v.lang)} · ${v.localService === false ? 'online' : 'on-device'} · ${VOICE_TIER_SHORT[voiceTier(v)]}</li>`).join('')}</ul>`
-      : '<p style="margin:0"><em>None. The browser reports no Korean voice at all.</em></p>'}
+      : `<p style="margin:0"><em>None. The browser reports no ${esc(COURSE.label)} voice at all.</em></p>`}
         <p style="margin:8px 0 0" class="faint">${('speechSynthesis' in window)
       ? `${window.speechSynthesis.getVoices().length} voices total across all languages.`
       : 'This browser has no speech synthesis at all.'}</p>
@@ -10923,7 +11155,7 @@ function renderSettings() {
       <div class="ctl"><input type="range" min="0" max="1" step="0.05" value="${S.settings.volume}" data-set="volume">
       <span class="faint" style="font-size:12px;margin-left:8px">${Math.round(Number(S.settings.volume) * 100)}</span></div></div>
     <div class="field"><div class="lab">Spoken praise
-      <small>Has the Korean voice say 잘했어요 or 대박 when you are on a streak. Extra listening exposure, though it wears thin fast for some people — off by default.</small></div>
+      <small>Has the ${esc(COURSE.label)} voice say ${esc(PRAISE_WORDS[0])} or ${esc(PRAISE_WORDS[PRAISE_WORDS.length - 1])} when you are on a streak. Extra listening exposure, though it wears thin fast for some people — off by default.</small></div>
       <div class="ctl"><button class="switch ${S.settings.spokenPraise ? 'on' : ''}" data-toggle="spokenPraise"><i></i></button></div></div>
     <div class="field"><div class="lab">Try it</div>
       <div class="ctl"><button class="btn" data-act="demofx">Fire the big one</button></div></div>
@@ -11010,18 +11242,18 @@ function afterRender() {
         bannerFx('PERFECT', 'not a single miss', { hold: 1700 });
         edgeGlow('good', 1700);
         Mascot.mood('wow', 3200);
-        Mascot.say('완벽해요!', 3000);
+        Mascot.say(DONE_LINES.perfect, 3000);
       } else if (kind === 'great') {
         Sfx.play('big');
         FX.rain({ count: 70, avoidCenter: true });
         FX.fireworks(2);
         Mascot.mood('wow', 2400);
-        Mascot.say('잘했어요!', 2200);
+        Mascot.say(DONE_LINES.great, 2200);
       } else {
         Sfx.play('milestone');
         FX.rain({ count: 35, avoidCenter: true });
         Mascot.mood('happy', 2200);
-        Mascot.say('수고했어요!', 2000);
+        Mascot.say(DONE_LINES.ok, 2000);
       }
     }, 220);
   }
@@ -11032,7 +11264,7 @@ function afterRender() {
     if (fx.kind === 'good') {
       celebrateCorrect(fx.ctx);
       if (S.settings.spokenPraise && comboTier(fx.ctx.combo) >= 1) {
-        scheduleFx(() => speak(PRAISE_KO[Math.floor(Math.random() * PRAISE_KO.length)]), 520);
+        scheduleFx(() => speak(pick(PRAISE_WORDS)), 520);
       }
     } else {
       celebrateWrong(fx.ctx);
@@ -11099,10 +11331,13 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch],[data-course]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-acc],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch],[data-course]');
   if (!t) return;
 
   Sfx.resume();
+  // Before anything that re-renders: the input keeps its own value, so
+  // inserting must not go through render() or the typing so far is lost.
+  if (t.dataset.acc) { Sfx.play('key'); insertAccent(t.dataset.acc); return; }
   if (t.dataset.sample) { sampleVoice(t.dataset.sample, t); return; }
   if (t.dataset.line && t.dataset.speak) {
     const [cid, idx] = t.dataset.line.split(':');
@@ -11920,6 +12155,7 @@ function playThrough() {
       LineAudio.play(c.id, idx).then(after).catch(after);
       return;
     }
+    if (!speakable(l.ko)) { after(); return; }   // same guard as speak()
     const u = new SpeechSynthesisUtterance(l.ko);
     u.lang = COURSE.voice;
     u.rate = S.settings.ttsRate;
