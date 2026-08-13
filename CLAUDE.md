@@ -54,6 +54,32 @@ npx http-server -p 8899 -s .   # serve it; SW and microphone need http, not file
 Playwright is at `/opt/node22/lib/node_modules/playwright`. Chromium cannot
 reach the public internet from the sandbox, so test against a local server.
 
+## Three courses, one engine — where that leaks
+
+`index.html` runs Korean (`?lang=ko`), Spanish (`es`) and chess (`chess`) off
+the same scheduler. Everything below the `COURSES` registry is meant never to
+know which one it is teaching, and every bug in this area has been the same
+bug: a Korean assumption left in shared code.
+
+- **Anything the app says out loud lives in `COURSE_LINES`.** Praise words,
+  mascot bubbles, the finish headline, the blitz banner. A Korean literal in
+  shared code reaches an `es-ES` or `en-GB` voice, which reads Hangul as
+  silence. `speak()` refuses off-script text as a backstop, and
+  `tools/check.mjs` fails the build if a non-Korean course's lines carry
+  Hangul.
+- **`COURSE.hangul`, not `COURSE.typed`, decides the jamo keypad.** They are
+  not the same question. Getting this wrong once put the 두벌식 keyboard under
+  132 Spanish cards, which cannot be answered at all. The test asserts the real
+  invariant: the input on screen must be able to produce the answer.
+- **Chess case-sensitivity binds on notation only.** `Bxc6` and `bxc6` are
+  different moves; `Fork` and `fork` are the same word, and a phone
+  auto-capitalises. `isNotation()` draws the line.
+- **A rung the course cannot use should leave the ladder** (`noSpeaking`,
+  `noListening`). `dueCards()` retires cards off a removed rung, so this is
+  safe.
+- When adding a course, grep for `Korean`, `한`, and `ko-KR` before shipping —
+  the leaks are always in prose and label strings, not in logic.
+
 ## Design commitments — do not quietly break these
 
 - **No punishment mechanics.** No hearts, no lives, no timers, no loss framing.
