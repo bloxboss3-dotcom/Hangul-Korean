@@ -8148,6 +8148,27 @@ let voices = [];
 const V_BEST = /premium|프리미엄/i;
 const V_GOOD = /enhanced|neural|natural|wavenet|향상된|고품질/i;
 
+/* The voice each course asks for by name.
+   ------------------------------------------------------------
+   Ranking alone picks whatever scores highest, which on a machine with
+   several installed voices is a lottery between several decent ones. Each
+   course now names the one it wants — the voice the course was written
+   against — and the ranking still decides everything else.
+
+   Deliberately a preference and not a hard setting: the bonus is large
+   enough to win among comparable voices and NOT large enough to survive the
+   compact penalty, so the small robotic Yuna still loses to a good
+   alternative. Naming a voice must not be able to make the app sound worse
+   than it did before. */
+const PREFERRED_VOICE = {
+  ko: /yuna|유나/i,
+  es: /m[oó]nica/i,
+  // No single name for chess: en-GB has several good voices and which of
+  // them is installed varies, so ask for the quality tier instead and let
+  // the ranking choose among them.
+  chess: /daniel|serena|kate|arthur|martha|jamie/i
+};
+
 function voiceScore(v) {
   let s = 0;
   const n = v.name || '';
@@ -8162,7 +8183,15 @@ function voiceScore(v) {
   // An exact locale match beats a cousin: es-ES over es-MX in a course
   // written in peninsular Spanish, ko-KR over a ko-* fallback.
   if (v.lang && v.lang.replace('_', '-').toLowerCase() === COURSE.voice.toLowerCase()) s += 10;
+  const want = PREFERRED_VOICE[COURSE.id];
+  if (want && want.test(n)) s += 90;
   return s;
+}
+
+/* What "best available" is currently reaching for, in words — so the
+   dropdown can say it instead of leaving it a black box. */
+function preferredVoiceLabel() {
+  return { ko: 'Yuna', es: 'Mónica', chess: 'an enhanced British voice' }[COURSE.id] || '';
 }
 
 function refreshVoices() {
@@ -11038,8 +11067,9 @@ function renderVoiceCard() {
   return `
   <div class="card">
     <h2>${esc(COURSE.label)} voice</h2>
-    <p class="sub">Browsers ship several ${esc(COURSE.label)} voices and they are not equally good. ${esc(COURSE.name)} picks the best one it can
-    find, but the best one is often behind a download the operating system never mentions.</p>
+    <p class="sub">Browsers ship several ${esc(COURSE.label)} voices and they are not equally good. Left on "best available",
+    ${esc(COURSE.name)} reaches for <b>${esc(preferredVoiceLabel())}</b> — the voice this course was written against — and falls back to the
+    best-ranked alternative when it is not installed. The good version is often behind a download the operating system never mentions.</p>
 
     ${!voices.length ? `<div class="notice">
       <b>No ${esc(COURSE.label)} voice is installed at all</b>, so nothing will play.
@@ -11053,7 +11083,7 @@ function renderVoiceCard() {
     <div class="field"><div class="lab">Which voice
       <small>Listed best-first. Tap a name to hear the same sentence through it — picking by ear beats picking by name.</small></div>
       <div class="ctl"><select data-set="ttsVoice">
-        <option value="" ${S.settings.ttsVoice === '' ? 'selected' : ''}>Best available (recommended)</option>
+        <option value="" ${S.settings.ttsVoice === '' ? 'selected' : ''}>Best available — prefers ${esc(preferredVoiceLabel())}</option>
         ${voices.map(v => `<option value="${esc(v.name)}" ${S.settings.ttsVoice === v.name ? 'selected' : ''}>${esc(v.name)} — ${VOICE_TIER_SHORT[voiceTier(v)]}</option>`).join('')}
       </select></div></div>
 
