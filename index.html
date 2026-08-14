@@ -3079,23 +3079,23 @@ const ES_SOUNDS = [
    ============================================================ */
 const ES_UNITS_A = [
   {
-    id: 'U1', title: 'Hello, and who you are',
-    goal: 'Greet someone, give your name, say where you are from, and part politely.',
+    id: 'U1', title: 'Who you are, and how to open a conversation',
+    goal: 'Introduce yourself, ask someone their name, and greet them at the right time of day.',
     grammar: [
       {
         id: 'g_soy', name: 'soy / eres / es  ("I am")',
-        pattern: 'yo soy · tú eres · él/ella es',
+        pattern: 'soy · eres · es · somos · son',
         explain: 'Spanish drops the pronoun most of the time, because the verb ending already says who. "Soy Kevin" is a complete sentence — adding "yo" only puts weight on the I, the way English does with stress.',
         examples: [
           { ko: 'Soy Kevin.', rom: 'soy KE-vin', en: 'I am Kevin.' },
-          { ko: '¿Eres estudiante?', rom: 'E-res es-tu-DIAN-te', en: 'Are you a student?' },
-          { ko: 'Ella es de México.', rom: 'E-ya es de ME-hi-ko', en: 'She is from Mexico.' }
+          { ko: '¿Eres estudiante?', rom: 'E-res es-tu-DYAN-te', en: 'Are you a student?' },
+          { ko: 'Ella es profesora.', rom: 'E-ya es pro-fe-SO-ra', en: 'She is a teacher.' }
         ]
       },
       {
         id: 'g_llamo', name: 'me llamo  ("I call myself")',
         pattern: 'me llamo · te llamas · se llama',
-        explain: 'Literally "I call myself". It is the ordinary way to give your name — more common than "mi nombre es", which sounds like filling in a form.',
+        explain: 'Spanish does not say "my name is". It says "I call myself" — and the little word in front (me, te, se) is what changes, not the verb ending you already know. That me/te/se pattern comes back everywhere later, so it is worth noticing now.',
         examples: [
           { ko: 'Me llamo Ana.', rom: 'me YA-mo A-na', en: 'My name is Ana.' },
           { ko: '¿Cómo te llamas?', rom: 'KO-mo te YA-mas', en: 'What is your name?' },
@@ -3103,73 +3103,87 @@ const ES_UNITS_A = [
         ]
       },
       {
-        id: 'g_questions', name: '¿ ? and ¡ ! — the upside-down marks',
-        pattern: '¿Cómo estás? · ¡Mucho gusto!',
-        explain: 'Spanish opens a question or an exclamation as well as closing it, so you know how to read the sentence before you start it. Skipping the opening mark is a spelling mistake, not a style choice.',
+        id: 'g_pregunta', name: 'Asking: the words, and the marks',
+        pattern: '¿qué? ¿quién? ¿cómo? ¿dónde? — and ¿ … ?',
+        explain: 'Spanish opens a question with an upside-down mark so you know from the first character that a question is coming — English makes you wait for the end. The question words all carry a written accent when they are asking, and that accent is the whole difference between "que" (that) and "qué" (what).',
         examples: [
           { ko: '¿Cómo estás?', rom: 'KO-mo es-TAS', en: 'How are you?' },
-          { ko: '¡Mucho gusto!', rom: 'MU-cho GUS-to', en: 'Very pleased to meet you!' },
+          { ko: '¿Qué es esto?', rom: 'ke es ES-to', en: 'What is this?' },
           { ko: '¿De dónde eres?', rom: 'de DON-de E-res', en: 'Where are you from?' }
         ]
       }
     ],
     vocab: [
-      { ko: 'hola', rom: 'O-la', en: 'hello', pos: 'phrase' },
-      { ko: 'buenos días', rom: 'BUE-nos DEE-as', en: 'good morning', pos: 'phrase', note: 'Plural in Spanish — literally "good days".' },
-      { ko: 'buenas tardes', rom: 'BUE-nas TAR-des', en: 'good afternoon', pos: 'phrase' },
-      { ko: 'buenas noches', rom: 'BUE-nas NO-ches', en: 'good evening / good night', pos: 'phrase' },
-      { ko: 'adiós', rom: 'a-DIOS', en: 'goodbye', pos: 'phrase' },
-      { ko: 'hasta luego', rom: 'AS-ta LUE-go', en: 'see you later', pos: 'phrase', note: 'Far more common than adiós, which can sound final.' },
+      { ko: 'hola', rom: 'O-la', en: 'hello', pos: 'phrase', ex: { ko: 'Hola, me llamo Ana.', rom: 'O-la me YA-mo A-na', en: 'Hello, my name is Ana.' } },
+      { ko: 'buenos días', rom: 'BWE-nos DEE-as', en: 'good morning', pos: 'phrase' },
+      { ko: 'buenas tardes', rom: 'BWE-nas TAR-des', en: 'good afternoon', pos: 'phrase' },
+      { ko: 'buenas noches', rom: 'BWE-nas NO-ches', en: 'good evening, good night', pos: 'phrase' },
+      { ko: 'adiós', rom: 'a-DYOS', en: 'goodbye', pos: 'phrase' },
+      { ko: 'hasta luego', rom: 'AS-ta LWE-go', en: 'see you later', pos: 'phrase' },
       { ko: 'mucho gusto', rom: 'MU-cho GUS-to', en: 'pleased to meet you', pos: 'phrase' },
       { ko: 'por favor', rom: 'por fa-VOR', en: 'please', pos: 'phrase' },
-      { ko: 'gracias', rom: 'GRA-sias', en: 'thank you', pos: 'phrase' },
-      { ko: 'de nada', rom: 'de NA-da', en: "you're welcome", pos: 'phrase', note: 'Literally "of nothing".' },
+      { ko: 'gracias', rom: 'GRA-syas', en: 'thank you', pos: 'phrase' },
+      { ko: 'de nada', rom: 'de NA-da', en: "you're welcome", pos: 'phrase' },
+      { ko: 'perdón', rom: 'per-DON', en: 'sorry, excuse me', pos: 'phrase' },
       { ko: 'sí', rom: 'see', en: 'yes', pos: 'adv' },
-      { ko: 'no', rom: 'no', en: 'no', pos: 'adv' },
+      { ko: 'no', rom: 'no', en: 'no, not', pos: 'adv', ex: { ko: 'No soy estudiante.', rom: 'no soy es-tu-DYAN-te', en: 'I am not a student.' } },
       { ko: 'yo', rom: 'yo', en: 'I', pos: 'pron' },
       { ko: 'tú', rom: 'too', en: 'you', pos: 'pron' },
+      { ko: 'usted', rom: 'us-TED', en: 'you (polite)', pos: 'pron', note: 'Takes the same verb form as él/ella, which is why "es" can mean "you are" as well as "he is".' },
       { ko: 'él', rom: 'el', en: 'he', pos: 'pron' },
       { ko: 'ella', rom: 'E-ya', en: 'she', pos: 'pron' },
-      { ko: 'soy', rom: 'soy', en: 'I am', pos: 'verb' },
+      { ko: 'nosotros', rom: 'no-SO-tros', en: 'we', pos: 'pron' },
+      { ko: 'ellos', rom: 'E-yos', en: 'they', pos: 'pron' },
+      { ko: 'ser', rom: 'ser', en: 'to be', pos: 'verb', conj: 'soy', note: 'The single most frequent verb in Spanish.' },
+      { ko: 'soy', rom: 'soy', en: 'I am', pos: 'verb', ex: { ko: 'Soy de México.', rom: 'soy de ME-hi-ko', en: 'I am from Mexico.' } },
       { ko: 'eres', rom: 'E-res', en: 'you are', pos: 'verb' },
-      { ko: 'es', rom: 'es', en: 'he/she/it is', pos: 'verb' },
-      { ko: 'estudiante', rom: 'es-tu-DIAN-te', en: 'student', pos: 'noun', note: 'Same word for a man or a woman — only the article changes: el/la estudiante.' },
+      { ko: 'es', rom: 'es', en: 'he/she/it is, you are (polite)', pos: 'verb' },
+      { ko: 'me llamo', rom: 'me YA-mo', en: 'my name is', pos: 'phrase', ex: { ko: 'Me llamo Carlos.', rom: 'me YA-mo KAR-los', en: 'My name is Carlos.' } },
+      { ko: 'se llama', rom: 'se YA-ma', en: 'his/her name is', pos: 'phrase' },
+      { ko: 'qué', rom: 'ke', en: 'what', pos: 'pron', ex: { ko: '¿Qué quieres?', rom: 'ke KYE-res', en: 'What do you want?' } },
+      { ko: 'quién', rom: 'kyen', en: 'who', pos: 'pron' },
+      { ko: 'cómo', rom: 'KO-mo', en: 'how', pos: 'adv' },
+      { ko: 'dónde', rom: 'DON-de', en: 'where', pos: 'adv', ex: { ko: '¿Dónde está el baño?', rom: 'DON-de es-TA el BA-nyo', en: 'Where is the toilet?' } },
+      { ko: 'y', rom: 'ee', en: 'and', pos: 'conj' },
+      { ko: 'o', rom: 'o', en: 'or', pos: 'conj' },
+      { ko: 'estudiante', rom: 'es-tu-DYAN-te', en: 'student', pos: 'noun' },
       { ko: 'amigo', rom: 'a-MEE-go', en: 'friend (male)', pos: 'noun' },
       { ko: 'amiga', rom: 'a-MEE-ga', en: 'friend (female)', pos: 'noun' }
     ]
   },
+
   {
     id: 'U2', title: 'Everything has a gender',
-    goal: 'Use el/la and un/una correctly, and make things plural.',
+    goal: 'Put the right article on a noun, and make it plural.',
     grammar: [
       {
-        id: 'g_gender', name: 'el / la  (the)',
-        pattern: 'el + masculine · la + feminine',
-        explain: 'Every noun is masculine or feminine, including tables and books. It is not about meaning — it is a grammatical class you learn with the word. Learn "la mesa", never "mesa" on its own, and you never have to go back and fix it.',
+        id: 'g_ella', name: 'el / la  (the)',
+        pattern: 'el libro · la mesa · los libros · las mesas',
+        explain: 'Every Spanish noun is masculine or feminine, including things with no possible opinion on the matter. A table is feminine, a book is masculine, and there is no rule behind it — which is why you learn the article as part of the word rather than the word on its own.',
         examples: [
           { ko: 'el libro', rom: 'el LEE-bro', en: 'the book' },
-          { ko: 'la mesa', rom: 'la ME-sa', en: 'the table' },
-          { ko: 'la ciudad', rom: 'la ciu-DAD', en: 'the city' }
+          { ko: 'la casa', rom: 'la KA-sa', en: 'the house' },
+          { ko: 'los amigos', rom: 'los a-MEE-gos', en: 'the friends' }
         ]
       },
       {
         id: 'g_oa', name: '-o and -a, and when to trust them',
-        pattern: '-o → usually masculine · -a → usually feminine',
-        explain: 'The endings are a good bet, not a law. -ción, -dad and -tad are always feminine. And a few common words break it outright: el día, la mano, el problema.',
+        pattern: 'amigo → amiga · el niño → la niña',
+        explain: 'Nouns ending in -o are usually masculine and -a usually feminine, and for people the ending simply follows the person. The trap is the handful that ignore it: el día is masculine, la mano is feminine, and el agua takes el purely so two a-sounds do not collide.',
         examples: [
-          { ko: 'el día', rom: 'el DEE-a', en: 'the day (masculine, despite the -a)' },
-          { ko: 'la mano', rom: 'la MA-no', en: 'the hand (feminine, despite the -o)' },
-          { ko: 'la estación', rom: 'la es-ta-SION', en: 'the station (-ción is always feminine)' }
+          { ko: 'la niña', rom: 'la NEE-nya', en: 'the girl' },
+          { ko: 'el día', rom: 'el DEE-a', en: 'the day' },
+          { ko: 'la mano', rom: 'la MA-no', en: 'the hand' }
         ]
       },
       {
         id: 'g_plural', name: 'Making it plural',
-        pattern: 'vowel + s · consonant + es',
-        explain: 'Ends in a vowel, add -s. Ends in a consonant, add -es. The article has to agree too: el → los, la → las.',
+        pattern: 'add -s after a vowel, -es after a consonant',
+        explain: 'The noun changes, and so does everything agreeing with it — the article and any adjective come along. That is the part English speakers forget, because English only marks the noun.',
         examples: [
-          { ko: 'los libros', rom: 'los LEE-bros', en: 'the books' },
-          { ko: 'las ciudades', rom: 'las ciu-DA-des', en: 'the cities' },
-          { ko: 'unos amigos', rom: 'U-nos a-MEE-gos', en: 'some friends' }
+          { ko: 'las casas', rom: 'las KA-sas', en: 'the houses' },
+          { ko: 'las ciudades', rom: 'las syu-DA-des', en: 'the cities' },
+          { ko: 'los libros nuevos', rom: 'los LEE-bros NWE-vos', en: 'the new books' }
         ]
       }
     ],
@@ -3179,262 +3193,457 @@ const ES_UNITS_A = [
       { ko: 'los', rom: 'los', en: 'the (masculine plural)', pos: 'art' },
       { ko: 'las', rom: 'las', en: 'the (feminine plural)', pos: 'art' },
       { ko: 'un', rom: 'oon', en: 'a (masculine)', pos: 'art' },
-      { ko: 'una', rom: 'U-na', en: 'a (feminine)', pos: 'art' },
-      { ko: 'libro', rom: 'LEE-bro', en: 'book', pos: 'noun', ex: { ko: 'El libro es nuevo.', rom: 'el LEE-bro es NUE-vo', en: 'The book is new.' } },
+      { ko: 'una', rom: 'OO-na', en: 'a (feminine)', pos: 'art' },
+      { ko: 'libro', rom: 'LEE-bro', en: 'book', pos: 'noun', ex: { ko: 'El libro es nuevo.', rom: 'el LEE-bro es NWE-vo', en: 'The book is new.' } },
       { ko: 'mesa', rom: 'ME-sa', en: 'table', pos: 'noun' },
-      { ko: 'casa', rom: 'KA-sa', en: 'house', pos: 'noun', ex: { ko: 'Mi casa es pequeña.', rom: 'mee KA-sa es pe-KE-nya', en: 'My house is small.' } },
-      { ko: 'ciudad', rom: 'ciu-DAD', en: 'city', pos: 'noun' },
-      { ko: 'agua', rom: 'A-gua', en: 'water', pos: 'noun', note: 'Feminine, but takes el in the singular — el agua — because la agua is awkward to say. It goes back to las aguas in the plural.' },
-      { ko: 'día', rom: 'DEE-a', en: 'day', pos: 'noun' },
-      { ko: 'mano', rom: 'MA-no', en: 'hand', pos: 'noun' },
+      { ko: 'casa', rom: 'KA-sa', en: 'house', pos: 'noun', ex: { ko: 'La casa es grande.', rom: 'la KA-sa es GRAN-de', en: 'The house is big.' } },
+      { ko: 'ciudad', rom: 'syu-DAD', en: 'city', pos: 'noun' },
+      { ko: 'agua', rom: 'A-gwa', en: 'water', pos: 'noun', note: 'Feminine, but takes el in the singular so the two a-sounds do not run together: el agua fría.' },
+      { ko: 'día', rom: 'DEE-a', en: 'day', pos: 'noun', note: 'Ends in -a and is masculine anyway: el día.' },
+      { ko: 'mano', rom: 'MA-no', en: 'hand', pos: 'noun', note: 'Ends in -o and is feminine anyway: la mano.' },
+      { ko: 'coche', rom: 'KO-che', en: 'car', pos: 'noun' },
+      { ko: 'puerta', rom: 'PWER-ta', en: 'door', pos: 'noun' },
+      { ko: 'calle', rom: 'KA-ye', en: 'street', pos: 'noun' },
+      { ko: 'hombre', rom: 'OM-bre', en: 'man', pos: 'noun' },
+      { ko: 'mujer', rom: 'mu-HER', en: 'woman', pos: 'noun' },
+      { ko: 'niño', rom: 'NEE-nyo', en: 'boy, child', pos: 'noun' },
+      { ko: 'niña', rom: 'NEE-nya', en: 'girl', pos: 'noun' },
       { ko: 'madre', rom: 'MA-dre', en: 'mother', pos: 'noun' },
       { ko: 'padre', rom: 'PA-dre', en: 'father', pos: 'noun' },
       { ko: 'hermano', rom: 'er-MA-no', en: 'brother', pos: 'noun' },
       { ko: 'hermana', rom: 'er-MA-na', en: 'sister', pos: 'noun' },
-      { ko: 'mi', rom: 'mee', en: 'my', pos: 'det' },
-      { ko: 'tu', rom: 'too', en: 'your', pos: 'det', note: 'No accent — tú with an accent means "you".' },
-      { ko: 'nuevo', rom: 'NUE-vo', en: 'new', pos: 'adj' },
+      { ko: 'familia', rom: 'fa-MEE-lya', en: 'family', pos: 'noun' },
+      { ko: 'mi', rom: 'mee', en: 'my', pos: 'det', ex: { ko: 'Mi hermana es médica.', rom: 'mee er-MA-na es ME-di-ka', en: 'My sister is a doctor.' } },
+      { ko: 'tu', rom: 'too', en: 'your', pos: 'det' },
+      { ko: 'su', rom: 'soo', en: 'his, her, their', pos: 'det' },
+      { ko: 'nuevo', rom: 'NWE-vo', en: 'new', pos: 'adj' },
+      { ko: 'viejo', rom: 'VYE-ho', en: 'old', pos: 'adj' },
+      { ko: 'grande', rom: 'GRAN-de', en: 'big', pos: 'adj' },
       { ko: 'pequeño', rom: 'pe-KE-nyo', en: 'small', pos: 'adj' },
-      { ko: 'grande', rom: 'GRAN-de', en: 'big', pos: 'adj', note: 'One form for both genders — grande, not grando.' }
+      { ko: 'bueno', rom: 'BWE-no', en: 'good', pos: 'adj' },
+      { ko: 'malo', rom: 'MA-lo', en: 'bad', pos: 'adj' }
     ]
   },
+
   {
     id: 'U3', title: 'ser and estar — the two "to be"',
-    goal: 'Choose between ser and estar without guessing.',
+    goal: 'Choose between the two verbs English hides under one word.',
     grammar: [
       {
         id: 'g_ser', name: 'ser — what something IS',
         pattern: 'soy · eres · es · somos · son',
-        explain: 'Identity, origin, profession, what kind of thing it is. The things that would still be true tomorrow. "Soy alto" — I am tall.',
+        explain: 'Identity, origin, profession, what something is made of, what it is permanently like. If the answer would still be true next year, it is ser.',
         examples: [
-          { ko: 'Soy profesor.', rom: 'soy pro-fe-SOR', en: 'I am a teacher.' },
-          { ko: 'Somos de España.', rom: 'SO-mos de es-PA-nya', en: 'We are from Spain.' },
+          { ko: 'Soy médico.', rom: 'soy ME-di-ko', en: 'I am a doctor.' },
+          { ko: 'Somos de España.', rom: 'so-MOS de es-PA-nya', en: 'We are from Spain.' },
           { ko: 'La casa es grande.', rom: 'la KA-sa es GRAN-de', en: 'The house is big.' }
         ]
       },
       {
         id: 'g_estar', name: 'estar — how something IS RIGHT NOW',
         pattern: 'estoy · estás · está · estamos · están',
-        explain: 'State and position: how you feel, where you are, how something is at this moment. "Estoy cansado" — I am tired, today.',
+        explain: 'States that can change, and where something is. Tired, happy, busy, ill, and every location in the language. If it could be different tomorrow, it is estar.',
         examples: [
           { ko: 'Estoy cansado.', rom: 'es-TOY kan-SA-do', en: 'I am tired.' },
           { ko: '¿Dónde estás?', rom: 'DON-de es-TAS', en: 'Where are you?' },
-          { ko: 'El café está frío.', rom: 'el ka-FE es-TA FREE-o', en: 'The coffee is cold.' }
+          { ko: 'Están en casa.', rom: 'es-TAN en KA-sa', en: 'They are at home.' }
         ]
       },
       {
         id: 'g_serestar', name: 'When the choice changes the meaning',
         pattern: 'es aburrido ≠ está aburrido',
-        explain: 'With some adjectives both work and mean different things. Es aburrido = he is boring. Está aburrido = he is bored. Ser describes the person; estar describes the moment they are having.',
+        explain: 'With some adjectives the two verbs give two different sentences. Es aburrido means the thing is boring; está aburrido means the person is bored. Same adjective, and the verb carries the whole difference.',
         examples: [
-          { ko: 'Él es aburrido.', rom: 'el es a-bu-RREE-do', en: 'He is boring (as a person).' },
-          { ko: 'Él está aburrido.', rom: 'el es-TA a-bu-RREE-do', en: 'He is bored (right now).' },
-          { ko: 'La sopa está buena.', rom: 'la SO-pa es-TA BUE-na', en: 'The soup tastes good (this one).' }
+          { ko: 'Es aburrido.', rom: 'es a-bu-RREE-do', en: 'It is boring.' },
+          { ko: 'Está aburrido.', rom: 'es-TA a-bu-RREE-do', en: 'He is bored.' },
+          { ko: 'La sopa está fría.', rom: 'la SO-pa es-TA FREE-a', en: 'The soup is cold.' }
         ]
       }
     ],
     vocab: [
-      { ko: 'estoy', rom: 'es-TOY', en: 'I am (state)', pos: 'verb' },
+      { ko: 'estar', rom: 'es-TAR', en: 'to be (state, place)', pos: 'verb', conj: 'estoy' },
+      { ko: 'estoy', rom: 'es-TOY', en: 'I am (state)', pos: 'verb', ex: { ko: 'Estoy bien, gracias.', rom: 'es-TOY byen GRA-syas', en: 'I am well, thank you.' } },
       { ko: 'estás', rom: 'es-TAS', en: 'you are (state)', pos: 'verb' },
-      { ko: 'está', rom: 'es-TA', en: 'he/she/it is (state)', pos: 'verb' },
+      { ko: 'está', rom: 'es-TA', en: 'he/she/it is (state)', pos: 'verb', ex: { ko: 'El café está caliente.', rom: 'el ka-FE es-TA ka-LYEN-te', en: 'The coffee is hot.' } },
+      { ko: 'estamos', rom: 'es-TA-mos', en: 'we are (state)', pos: 'verb' },
+      { ko: 'están', rom: 'es-TAN', en: 'they are (state)', pos: 'verb' },
       { ko: 'somos', rom: 'SO-mos', en: 'we are', pos: 'verb' },
       { ko: 'son', rom: 'son', en: 'they are', pos: 'verb' },
-      { ko: 'cansado', rom: 'kan-SA-do', en: 'tired', pos: 'adj' },
+      { ko: 'cansado', rom: 'kan-SA-do', en: 'tired', pos: 'adj', ex: { ko: 'Ana está cansada.', rom: 'A-na es-TA kan-SA-da', en: 'Ana is tired.' } },
       { ko: 'contento', rom: 'kon-TEN-to', en: 'happy, pleased', pos: 'adj' },
+      { ko: 'triste', rom: 'TREES-te', en: 'sad', pos: 'adj' },
       { ko: 'enfermo', rom: 'en-FER-mo', en: 'ill', pos: 'adj' },
       { ko: 'ocupado', rom: 'o-ku-PA-do', en: 'busy', pos: 'adj' },
-      { ko: 'bien', rom: 'bien', en: 'well, fine', pos: 'adv', ex: { ko: 'Estoy muy bien.', rom: 'es-TOY mooy bien', en: 'I am very well.' } },
+      { ko: 'listo', rom: 'LEES-to', en: 'ready (estar) / clever (ser)', pos: 'adj', note: 'The clearest case of the verb changing the word: está listo = ready, es listo = clever.' },
+      { ko: 'bien', rom: 'byen', en: 'well, fine', pos: 'adv', ex: { ko: 'Estoy muy bien.', rom: 'es-TOY mwee byen', en: 'I am very well.' } },
       { ko: 'mal', rom: 'mal', en: 'badly, unwell', pos: 'adv' },
-      { ko: 'muy', rom: 'mooy', en: 'very', pos: 'adv' },
-      { ko: 'un poco', rom: 'oon PO-ko', en: 'a little', pos: 'phrase' },
+      { ko: 'muy', rom: 'mwee', en: 'very', pos: 'adv' },
+      { ko: 'un poco', rom: 'oon PO-ko', en: 'a little', pos: 'adv' },
+      { ko: 'aquí', rom: 'a-KEE', en: 'here', pos: 'adv', ex: { ko: 'El libro está aquí.', rom: 'el LEE-bro es-TA a-KEE', en: 'The book is here.' } },
+      { ko: 'allí', rom: 'a-YEE', en: 'there', pos: 'adv' },
+      { ko: 'en', rom: 'en', en: 'in, on, at', pos: 'prep' },
+      { ko: 'de', rom: 'de', en: 'of, from', pos: 'prep' },
+      { ko: 'con', rom: 'kon', en: 'with', pos: 'prep' },
       { ko: 'profesor', rom: 'pro-fe-SOR', en: 'teacher', pos: 'noun' },
       { ko: 'médico', rom: 'ME-di-ko', en: 'doctor', pos: 'noun' },
-      { ko: 'dónde', rom: 'DON-de', en: 'where', pos: 'adv' },
-      { ko: 'aquí', rom: 'a-KEE', en: 'here', pos: 'adv' },
-      { ko: 'allí', rom: 'a-YEE', en: 'there', pos: 'adv' },
-      { ko: 'café', rom: 'ka-FE', en: 'coffee', pos: 'noun' },
-      { ko: 'frío', rom: 'FREE-o', en: 'cold', pos: 'adj' },
-      { ko: 'caliente', rom: 'ka-LIEN-te', en: 'hot', pos: 'adj' }
+      { ko: 'trabajo', rom: 'tra-BA-ho', en: 'work, job', pos: 'noun' },
+      { ko: 'España', rom: 'es-PA-nya', en: 'Spain', pos: 'noun' },
+      { ko: 'español', rom: 'es-pa-NYOL', en: 'Spanish', pos: 'noun' },
+      { ko: 'inglés', rom: 'een-GLES', en: 'English', pos: 'noun' }
+    ]
+  },
+
+  {
+    id: 'U4', title: 'The present tense, and the verbs you will use most',
+    goal: 'Conjugate any regular verb, and handle the irregular ones that carry a third of everything said.',
+    grammar: [
+      {
+        id: 'g_ar', name: '-ar verbs  (hablar → hablo)',
+        pattern: '-o · -as · -a · -amos · -an',
+        explain: 'Chop off -ar and add the ending. Spanish has no "do" and needs no "am" to make the present: hablo covers "I speak", "I am speaking" and "I do speak". A question is the same sentence with a rising voice and two marks around it.',
+        examples: [
+          { ko: 'Hablo español.', rom: 'A-blo es-pa-NYOL', en: 'I speak Spanish.' },
+          { ko: '¿Hablas inglés?', rom: 'A-blas een-GLES', en: 'Do you speak English?' },
+          { ko: 'Trabajamos aquí.', rom: 'tra-ba-HA-mos a-KEE', en: 'We work here.' }
+        ]
+      },
+      {
+        id: 'g_erir', name: '-er and -ir verbs',
+        pattern: '-o · -es · -e · -emos/-imos · -en',
+        explain: 'Almost the same endings, with e where -ar had a. The only place -er and -ir differ from each other at all is the we-form: comemos against vivimos. Learn the -ar set and you are most of the way to all three.',
+        examples: [
+          { ko: 'Como pan.', rom: 'KO-mo pan', en: 'I eat bread.' },
+          { ko: '¿Dónde vives?', rom: 'DON-de VEE-ves', en: 'Where do you live?' },
+          { ko: 'Comemos juntos.', rom: 'ko-ME-mos HUN-tos', en: 'We eat together.' }
+        ]
+      },
+      {
+        id: 'g_irreg', name: 'The five that break the pattern',
+        pattern: 'tener · ir · hacer · poder · querer',
+        explain: 'These five plus ser and estar are the verbs you will reach for most, and every one of them is irregular. That is not bad luck — the most-used verbs in any language wear down and go irregular. Learning them as whole forms rather than as rules is faster and is what native children do.',
+        examples: [
+          { ko: 'Tengo dos hermanas.', rom: 'TEN-go dos er-MA-nas', en: 'I have two sisters.' },
+          { ko: 'Voy a casa.', rom: 'voy a KA-sa', en: 'I am going home.' },
+          { ko: 'No puedo hoy.', rom: 'no PWE-do oy', en: 'I cannot today.' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: 'hablar', rom: 'a-BLAR', en: 'to speak', pos: 'verb', conj: 'hablo', ex: { ko: 'Hablo un poco de español.', rom: 'A-blo oon PO-ko de es-pa-NYOL', en: 'I speak a little Spanish.' } },
+      { ko: 'hablo', rom: 'A-blo', en: 'I speak', pos: 'verb' },
+      { ko: 'hablas', rom: 'A-blas', en: 'you speak', pos: 'verb' },
+      { ko: 'hablamos', rom: 'a-BLA-mos', en: 'we speak', pos: 'verb' },
+      { ko: 'trabajar', rom: 'tra-ba-HAR', en: 'to work', pos: 'verb', conj: 'trabajo' },
+      { ko: 'estudiar', rom: 'es-tu-DYAR', en: 'to study', pos: 'verb', conj: 'estudio' },
+      { ko: 'comer', rom: 'ko-MER', en: 'to eat', pos: 'verb', conj: 'como', ex: { ko: 'Comemos a las dos.', rom: 'ko-ME-mos a las dos', en: 'We eat at two.' } },
+      { ko: 'como', rom: 'KO-mo', en: 'I eat', pos: 'verb' },
+      { ko: 'beber', rom: 'be-BER', en: 'to drink', pos: 'verb', conj: 'bebo' },
+      { ko: 'vivir', rom: 'vee-VEER', en: 'to live', pos: 'verb', conj: 'vivo', ex: { ko: 'Vivo en Madrid.', rom: 'VEE-vo en ma-DREED', en: 'I live in Madrid.' } },
+      { ko: 'vivo', rom: 'VEE-vo', en: 'I live', pos: 'verb' },
+      { ko: 'tener', rom: 'te-NER', en: 'to have', pos: 'verb', conj: 'tengo', note: 'Third most frequent verb in Spanish, and it does far more than English "have".' },
+      { ko: 'tengo', rom: 'TEN-go', en: 'I have', pos: 'verb', ex: { ko: 'Tengo un hermano.', rom: 'TEN-go oon er-MA-no', en: 'I have a brother.' } },
+      { ko: 'tienes', rom: 'TYE-nes', en: 'you have', pos: 'verb' },
+      { ko: 'tiene', rom: 'TYE-ne', en: 'he/she has', pos: 'verb' },
+      { ko: 'ir', rom: 'eer', en: 'to go', pos: 'verb', conj: 'voy', note: 'Wildly irregular, and the base of the commonest way to talk about the future.' },
+      { ko: 'voy', rom: 'voy', en: 'I go, I am going', pos: 'verb', ex: { ko: 'Voy al trabajo.', rom: 'voy al tra-BA-ho', en: 'I am going to work.' } },
+      { ko: 'vas', rom: 'vas', en: 'you go', pos: 'verb' },
+      { ko: 'va', rom: 'va', en: 'he/she goes', pos: 'verb' },
+      { ko: 'vamos', rom: 'VA-mos', en: 'we go, let us go', pos: 'verb' },
+      { ko: 'hacer', rom: 'a-SER', en: 'to do, to make', pos: 'verb', conj: 'hago', ex: { ko: '¿Qué haces?', rom: 'ke A-ses', en: 'What are you doing?' } },
+      { ko: 'hago', rom: 'A-go', en: 'I do, I make', pos: 'verb' },
+      { ko: 'hace', rom: 'A-se', en: 'he/she does, it makes', pos: 'verb' },
+      { ko: 'poder', rom: 'po-DER', en: 'to be able, can', pos: 'verb', conj: 'puedo' },
+      { ko: 'puedo', rom: 'PWE-do', en: 'I can', pos: 'verb', ex: { ko: 'No puedo ir hoy.', rom: 'no PWE-do eer oy', en: 'I cannot go today.' } },
+      { ko: 'puedes', rom: 'PWE-des', en: 'you can', pos: 'verb' },
+      { ko: 'querer', rom: 'ke-RER', en: 'to want', pos: 'verb', conj: 'quiero' },
+      { ko: 'ver', rom: 'ver', en: 'to see, to watch', pos: 'verb', conj: 'veo' },
+      { ko: 'veo', rom: 'VE-o', en: 'I see', pos: 'verb' },
+      { ko: 'saber', rom: 'sa-BER', en: 'to know (a fact)', pos: 'verb', conj: 'sé' },
+      { ko: 'sé', rom: 'se', en: 'I know', pos: 'verb', ex: { ko: 'No sé.', rom: 'no se', en: "I don't know." } },
+      { ko: 'decir', rom: 'de-SEER', en: 'to say, to tell', pos: 'verb', conj: 'digo' },
+      { ko: 'dar', rom: 'dar', en: 'to give', pos: 'verb', conj: 'doy' },
+      { ko: 'juntos', rom: 'HUN-tos', en: 'together', pos: 'adv' },
+      { ko: 'también', rom: 'tam-BYEN', en: 'also, too', pos: 'adv' },
+      { ko: 'pero', rom: 'PE-ro', en: 'but', pos: 'conj', note: 'One r. With two — perro — it is a dog.' },
+      { ko: 'porque', rom: 'POR-ke', en: 'because', pos: 'conj' },
+      { ko: 'que', rom: 'ke', en: 'that, which', pos: 'conj', note: 'The most frequent word in Spanish. No accent when it is not asking.' }
     ]
   }
 ];
 
 const ES_UNITS_B = [
   {
-    id: 'U4', title: 'The present tense, and the three endings that build it',
-    goal: 'Conjugate any regular verb and say what you do.',
+    id: 'U5', title: 'Numbers, time, and the week',
+    goal: 'Say how many, what time, and what day — before anyone asks you for a price.',
     grammar: [
       {
-        id: 'g_ar', name: '-ar verbs  (hablar → hablo)',
-        pattern: 'hablo · hablas · habla · hablamos · hablan',
-        explain: 'Drop the -ar and add the ending. Roughly nine in ten Spanish verbs are -ar verbs, so this one table gets you further than any other thing you can learn.',
+        id: 'g_numeros', name: 'One to twenty, then the pattern',
+        pattern: 'uno … quince · dieciséis = diez y seis',
+        explain: 'The first fifteen are their own words and have to be learned. From sixteen the language gives up and starts gluing: dieciséis is literally ten-and-six, veintiuno is twenty-and-one, and after thirty it separates out into treinta y uno. Learn to fifteen and the rest is arithmetic.',
         examples: [
-          { ko: 'Hablo español.', rom: 'A-blo es-pa-NYOL', en: 'I speak Spanish.' },
-          { ko: '¿Trabajas aquí?', rom: 'tra-BA-has a-KEE', en: 'Do you work here?' },
-          { ko: 'Estudiamos juntos.', rom: 'es-tu-DIA-mos HUN-tos', en: 'We study together.' }
+          { ko: 'Tengo dos hermanos.', rom: 'TEN-go dos er-MA-nos', en: 'I have two brothers.' },
+          { ko: 'Son las tres.', rom: 'son las tres', en: 'It is three o\'clock.' },
+          { ko: 'Cuesta treinta euros.', rom: 'KWES-ta TREYN-ta EW-ros', en: 'It costs thirty euros.' }
         ]
       },
       {
-        id: 'g_erir', name: '-er and -ir verbs',
-        pattern: 'como · comes · come  ·  vivo · vives · vive',
-        explain: 'Nearly the same table. -er and -ir differ only in the "we" form: comemos but vivimos. Everything else is shared.',
+        id: 'g_hora', name: 'Telling the time',
+        pattern: 'Es la una · Son las dos · … y media · … menos cuarto',
+        explain: 'One o\'clock is singular and every other hour is plural, because the words behind it are "the hour" and "the hours". Minutes past are added with y, minutes to are taken away with menos, and half past is y media.',
         examples: [
-          { ko: 'Como en casa.', rom: 'KO-mo en KA-sa', en: 'I eat at home.' },
-          { ko: '¿Dónde vives?', rom: 'DON-de BEE-bes', en: 'Where do you live?' },
-          { ko: 'Bebemos agua.', rom: 'be-BE-mos A-gua', en: 'We drink water.' }
+          { ko: 'Es la una.', rom: 'es la OO-na', en: 'It is one o\'clock.' },
+          { ko: 'Son las dos y media.', rom: 'son las dos ee ME-dya', en: 'It is half past two.' },
+          { ko: '¿A qué hora?', rom: 'a ke O-ra', en: 'At what time?' }
         ]
       },
       {
-        id: 'g_noaux', name: 'One present tense, three English ones',
-        pattern: 'hablo = I speak / I am speaking / I do speak',
-        explain: 'Spanish has no "do" and needs no "am" to make the present. Hablo covers all three. So a question is just the statement with question marks and a rising voice: ¿Hablas español?',
+        id: 'g_tener_expr', name: 'tener — what Spanish has that English is',
+        pattern: 'tengo hambre · tengo sed · tengo veinte años',
+        explain: 'Spanish has hunger where English is hungry, and has twenty years where English is twenty. This is not a quirk to memorise one phrase at a time — it is a whole family, and getting it wrong ("soy veinte") is the single most recognisable beginner error.',
         examples: [
-          { ko: '¿Hablas inglés?', rom: 'A-blas in-GLES', en: 'Do you speak English?' },
-          { ko: 'No hablo francés.', rom: 'no A-blo fran-SES', en: 'I do not speak French.' },
-          { ko: 'Ella no come carne.', rom: 'E-ya no KO-me KAR-ne', en: 'She does not eat meat.' }
+          { ko: 'Tengo hambre.', rom: 'TEN-go AM-bre', en: 'I am hungry.' },
+          { ko: 'Tengo veinte años.', rom: 'TEN-go VEYN-te A-nyos', en: 'I am twenty years old.' },
+          { ko: '¿Cuántos años tienes?', rom: 'KWAN-tos A-nyos TYE-nes', en: 'How old are you?' }
         ]
       }
     ],
     vocab: [
-      { ko: 'hablar', rom: 'a-BLAR', en: 'to speak', pos: 'verb', ex: { ko: 'Hablo un poco de español.', rom: 'A-blo oon PO-ko de es-pa-NYOL', en: 'I speak a little Spanish.' } },
-      { ko: 'trabajar', rom: 'tra-ba-HAR', en: 'to work', pos: 'verb' },
-      { ko: 'estudiar', rom: 'es-tu-DIAR', en: 'to study', pos: 'verb' },
-      { ko: 'comer', rom: 'ko-MER', en: 'to eat', pos: 'verb' },
-      { ko: 'beber', rom: 'be-BER', en: 'to drink', pos: 'verb' },
-      { ko: 'vivir', rom: 'bee-BEER', en: 'to live', pos: 'verb' },
-      { ko: 'escribir', rom: 'es-kri-BEER', en: 'to write', pos: 'verb' },
-      { ko: 'leer', rom: 'le-ER', en: 'to read', pos: 'verb' },
-      { ko: 'hablo', rom: 'A-blo', en: 'I speak', pos: 'verb' },
-      { ko: 'hablas', rom: 'A-blas', en: 'you speak', pos: 'verb' },
-      { ko: 'como', rom: 'KO-mo', en: 'I eat', pos: 'verb' },
-      { ko: 'vivo', rom: 'BEE-bo', en: 'I live', pos: 'verb' },
-      { ko: 'español', rom: 'es-pa-NYOL', en: 'Spanish', pos: 'noun' },
-      { ko: 'inglés', rom: 'in-GLES', en: 'English', pos: 'noun' },
-      { ko: 'trabajo', rom: 'tra-BA-ho', en: 'work, job', pos: 'noun' },
-      { ko: 'juntos', rom: 'HUN-tos', en: 'together', pos: 'adv' },
-      { ko: 'también', rom: 'tam-BIEN', en: 'also, too', pos: 'adv' },
-      { ko: 'pero', rom: 'PE-ro', en: 'but', pos: 'conj', note: 'One r. perro with two is a dog.' },
-      { ko: 'porque', rom: 'POR-ke', en: 'because', pos: 'conj' },
-      { ko: 'con', rom: 'kon', en: 'with', pos: 'prep' },
-      { ko: 'en', rom: 'en', en: 'in, on, at', pos: 'prep' },
-      { ko: 'de', rom: 'de', en: 'of, from', pos: 'prep' }
+      { ko: 'uno', rom: 'OO-no', en: 'one', pos: 'num' },
+      { ko: 'dos', rom: 'dos', en: 'two', pos: 'num' },
+      { ko: 'tres', rom: 'tres', en: 'three', pos: 'num' },
+      { ko: 'cuatro', rom: 'KWA-tro', en: 'four', pos: 'num' },
+      { ko: 'cinco', rom: 'SEEN-ko', en: 'five', pos: 'num' },
+      { ko: 'seis', rom: 'seys', en: 'six', pos: 'num' },
+      { ko: 'siete', rom: 'SYE-te', en: 'seven', pos: 'num' },
+      { ko: 'ocho', rom: 'O-cho', en: 'eight', pos: 'num' },
+      { ko: 'nueve', rom: 'NWE-ve', en: 'nine', pos: 'num' },
+      { ko: 'diez', rom: 'dyes', en: 'ten', pos: 'num' },
+      { ko: 'veinte', rom: 'VEYN-te', en: 'twenty', pos: 'num' },
+      { ko: 'treinta', rom: 'TREYN-ta', en: 'thirty', pos: 'num' },
+      { ko: 'cien', rom: 'syen', en: 'one hundred', pos: 'num' },
+      { ko: 'cuántos', rom: 'KWAN-tos', en: 'how many', pos: 'det', ex: { ko: '¿Cuántos años tienes?', rom: 'KWAN-tos A-nyos TYE-nes', en: 'How old are you?' } },
+      { ko: 'hora', rom: 'O-ra', en: 'hour, time', pos: 'noun', ex: { ko: '¿Qué hora es?', rom: 'ke O-ra es', en: 'What time is it?' } },
+      { ko: 'media', rom: 'ME-dya', en: 'half', pos: 'noun' },
+      { ko: 'cuarto', rom: 'KWAR-to', en: 'quarter', pos: 'noun' },
+      { ko: 'menos', rom: 'ME-nos', en: 'less, minus, to (the hour)', pos: 'adv' },
+      { ko: 'más', rom: 'mas', en: 'more', pos: 'adv' },
+      { ko: 'hambre', rom: 'AM-bre', en: 'hunger', pos: 'noun', ex: { ko: 'Tengo mucha hambre.', rom: 'TEN-go MU-cha AM-bre', en: 'I am very hungry.' } },
+      { ko: 'sed', rom: 'sed', en: 'thirst', pos: 'noun' },
+      { ko: 'año', rom: 'A-nyo', en: 'year', pos: 'noun', note: 'The tilde is not optional. Without it, año becomes a very different word.' },
+      { ko: 'mes', rom: 'mes', en: 'month', pos: 'noun' },
+      { ko: 'semana', rom: 'se-MA-na', en: 'week', pos: 'noun' },
+      { ko: 'hoy', rom: 'oy', en: 'today', pos: 'adv' },
+      { ko: 'mañana', rom: 'ma-NYA-na', en: 'tomorrow, morning', pos: 'adv' },
+      { ko: 'ayer', rom: 'a-YER', en: 'yesterday', pos: 'adv' },
+      { ko: 'ahora', rom: 'a-O-ra', en: 'now', pos: 'adv' },
+      { ko: 'siempre', rom: 'SYEM-pre', en: 'always', pos: 'adv' },
+      { ko: 'nunca', rom: 'NUN-ka', en: 'never', pos: 'adv' },
+      { ko: 'lunes', rom: 'LU-nes', en: 'Monday', pos: 'noun', note: 'Days are not capitalised in Spanish, and the plural is the same word.' },
+      { ko: 'viernes', rom: 'VYER-nes', en: 'Friday', pos: 'noun' },
+      { ko: 'sábado', rom: 'SA-ba-do', en: 'Saturday', pos: 'noun' },
+      { ko: 'domingo', rom: 'do-MEEN-go', en: 'Sunday', pos: 'noun' }
     ]
   },
+
   {
-    id: 'U5', title: 'Ordering, wanting, and asking for things',
-    goal: 'Order food and drink, say what you want, and ask what things cost.',
+    id: 'U6', title: 'Me gusta — saying what you like',
+    goal: 'Talk about what you like and dislike, and meet the little words that do it.',
+    grammar: [
+      {
+        id: 'g_gustar', name: 'gustar — the sentence runs backwards',
+        pattern: 'me gusta el café  =  the coffee is pleasing to me',
+        explain: 'This is the structure that trips up every English speaker, and it is worth the five minutes it takes. Spanish does not say "I like coffee". It says the coffee pleases me — so the coffee is the subject, you are the one it happens to, and the verb agrees with the coffee rather than with you. Once you see it that way it stops being irregular and becomes obvious.',
+        examples: [
+          { ko: 'Me gusta el café.', rom: 'me GUS-ta el ka-FE', en: 'I like coffee.' },
+          { ko: '¿Te gusta la música?', rom: 'te GUS-ta la MU-si-ka', en: 'Do you like music?' },
+          { ko: 'No me gusta el frío.', rom: 'no me GUS-ta el FREE-o', en: 'I do not like the cold.' }
+        ]
+      },
+      {
+        id: 'g_gustan', name: 'One thing or many: gusta and gustan',
+        pattern: 'me gusta el libro · me gustan los libros',
+        explain: 'Because the thing is the subject, a plural thing takes a plural verb. Me gustan los perros is literally "the dogs please me". The me never changes — only the verb does, and it is following the thing, not you.',
+        examples: [
+          { ko: 'Me gustan los libros.', rom: 'me GUS-tan los LEE-bros', en: 'I like books.' },
+          { ko: 'Le gustan los coches.', rom: 'le GUS-tan los KO-ches', en: 'He likes cars.' },
+          { ko: 'Nos gusta la ciudad.', rom: 'nos GUS-ta la syu-DAD', en: 'We like the city.' }
+        ]
+      },
+      {
+        id: 'g_gustar_inf', name: 'Liking to do something',
+        pattern: 'me gusta + infinitive — always singular',
+        explain: 'Put a verb after it and the form stays gusta, however many verbs you stack up. Me gusta leer y viajar. This is the fastest way to say something true about yourself, which is why it turns up in the first week of every good course.',
+        examples: [
+          { ko: 'Me gusta viajar.', rom: 'me GUS-ta vya-HAR', en: 'I like travelling.' },
+          { ko: 'Me gusta comer aquí.', rom: 'me GUS-ta ko-MER a-KEE', en: 'I like eating here.' },
+          { ko: '¿Te gusta bailar?', rom: 'te GUS-ta bay-LAR', en: 'Do you like dancing?' }
+        ]
+      }
+    ],
+    vocab: [
+      { ko: 'gustar', rom: 'gus-TAR', en: 'to please, to be liked', pos: 'verb', conj: 'gusta' },
+      { ko: 'me gusta', rom: 'me GUS-ta', en: 'I like (it)', pos: 'phrase', ex: { ko: 'Me gusta mucho.', rom: 'me GUS-ta MU-cho', en: 'I like it a lot.' } },
+      { ko: 'te gusta', rom: 'te GUS-ta', en: 'you like (it)', pos: 'phrase' },
+      { ko: 'le gusta', rom: 'le GUS-ta', en: 'he/she likes (it)', pos: 'phrase' },
+      { ko: 'nos gusta', rom: 'nos GUS-ta', en: 'we like (it)', pos: 'phrase' },
+      { ko: 'me gustan', rom: 'me GUS-tan', en: 'I like (them)', pos: 'phrase', ex: { ko: 'Me gustan las ciudades grandes.', rom: 'me GUS-tan las syu-DA-des GRAN-des', en: 'I like big cities.' } },
+      { ko: 'me encanta', rom: 'me en-KAN-ta', en: 'I love (it)', pos: 'phrase', note: 'Same backwards shape as gustar. There is no "me gusta mucho mucho" — this is the word for that.' },
+      { ko: 'me', rom: 'me', en: 'to me, me', pos: 'pron' },
+      { ko: 'te', rom: 'te', en: 'to you, you', pos: 'pron' },
+      { ko: 'le', rom: 'le', en: 'to him, to her', pos: 'pron' },
+      { ko: 'nos', rom: 'nos', en: 'to us, us', pos: 'pron' },
+      { ko: 'mucho', rom: 'MU-cho', en: 'a lot, much', pos: 'adv' },
+      { ko: 'poco', rom: 'PO-ko', en: 'little, not much', pos: 'adv' },
+      { ko: 'nada', rom: 'NA-da', en: 'nothing, not at all', pos: 'adv', ex: { ko: 'No me gusta nada.', rom: 'no me GUS-ta NA-da', en: 'I do not like it at all.' } },
+      { ko: 'tampoco', rom: 'tam-PO-ko', en: 'neither, not either', pos: 'adv' },
+      { ko: 'favorito', rom: 'fa-vo-REE-to', en: 'favourite', pos: 'adj' },
+      { ko: 'música', rom: 'MU-si-ka', en: 'music', pos: 'noun' },
+      { ko: 'comida', rom: 'ko-MEE-da', en: 'food, meal', pos: 'noun' },
+      { ko: 'película', rom: 'pe-LEE-ku-la', en: 'film', pos: 'noun' },
+      { ko: 'fútbol', rom: 'FUT-bol', en: 'football', pos: 'noun' },
+      { ko: 'perro', rom: 'PE-rro', en: 'dog', pos: 'noun' },
+      { ko: 'gato', rom: 'GA-to', en: 'cat', pos: 'noun' },
+      { ko: 'viajar', rom: 'vya-HAR', en: 'to travel', pos: 'verb', conj: 'viajo' },
+      { ko: 'bailar', rom: 'bay-LAR', en: 'to dance', pos: 'verb', conj: 'bailo' },
+      { ko: 'cocinar', rom: 'ko-see-NAR', en: 'to cook', pos: 'verb', conj: 'cocino' },
+      { ko: 'leer', rom: 'le-ER', en: 'to read', pos: 'verb', conj: 'leo' },
+      { ko: 'escribir', rom: 'es-kree-BEER', en: 'to write', pos: 'verb', conj: 'escribo' },
+      { ko: 'escuchar', rom: 'es-ku-CHAR', en: 'to listen to', pos: 'verb', conj: 'escucho' }
+    ]
+  },
+
+  {
+    id: 'U7', title: 'Out in the world: asking, ordering, paying',
+    goal: 'Get fed, ask what things cost, and find the place you are looking for.',
     grammar: [
       {
         id: 'g_quiero', name: 'quiero / quisiera  (I want / I would like)',
-        pattern: 'quiero · quieres · quiere',
-        explain: 'Quiero is direct and completely normal with friends. In a restaurant, quisiera softens it to "I would like" — the difference between "I want a coffee" and "could I get a coffee".',
+        pattern: 'quiero + noun · quisiera + noun',
+        explain: 'Quiero is direct and completely normal in a café — Spanish does not find it rude the way English does. Quisiera is the softer one, worth having for a shop or a formal request. Either can be followed by a verb: quiero comer.',
         examples: [
-          { ko: 'Quiero un café.', rom: 'KIE-ro oon ka-FE', en: 'I want a coffee.' },
-          { ko: 'Quisiera la cuenta.', rom: 'ki-SIE-ra la KUEN-ta', en: 'I would like the bill.' },
-          { ko: '¿Qué quieres?', rom: 'ke KIE-res', en: 'What do you want?' }
+          { ko: 'Quiero un café, por favor.', rom: 'KYE-ro oon ka-FE por fa-VOR', en: 'I want a coffee, please.' },
+          { ko: 'Quisiera el menú.', rom: 'kee-SYE-ra el me-NU', en: 'I would like the menu.' },
+          { ko: 'Quiero comer algo.', rom: 'KYE-ro ko-MER AL-go', en: 'I want to eat something.' }
         ]
       },
       {
         id: 'g_hay', name: 'hay  (there is / there are)',
-        pattern: 'hay + anything, singular or plural',
-        explain: 'One word covering both. It never changes: hay un problema, hay muchos problemas. Pronounced like English "eye".',
+        pattern: 'one word, singular and plural alike',
+        explain: 'Hay never changes. Hay un problema, hay muchos problemas — same word. It is the leftover of an old form of haber, and it is the fastest way to ask whether a place has something at all.',
         examples: [
-          { ko: '¿Hay una mesa?', rom: 'eye U-na ME-sa', en: 'Is there a table?' },
-          { ko: 'Hay dos personas.', rom: 'eye dos per-SO-nas', en: 'There are two people.' },
-          { ko: 'No hay problema.', rom: 'no eye pro-BLE-ma', en: 'There is no problem.' }
+          { ko: '¿Hay una mesa?', rom: 'aye OO-na ME-sa', en: 'Is there a table?' },
+          { ko: 'Hay muchas personas.', rom: 'aye MU-chas per-SO-nas', en: 'There are a lot of people.' },
+          { ko: 'No hay pan.', rom: 'no aye pan', en: 'There is no bread.' }
         ]
       },
       {
         id: 'g_cuanto', name: '¿Cuánto cuesta?  (how much)',
-        pattern: '¿Cuánto cuesta? · ¿Cuánto cuestan?',
-        explain: 'Singular for one thing, plural for several. Question words carry an accent when they are actually asking: qué, cuánto, dónde, cómo.',
+        pattern: 'cuesta for one · cuestan for several',
+        explain: 'The verb agrees with the thing being bought, not with you — the same logic as gustar, which you have already met. One coffee cuesta; two coffees cuestan.',
         examples: [
-          { ko: '¿Cuánto cuesta?', rom: 'KUAN-to KUES-ta', en: 'How much does it cost?' },
-          { ko: '¿Cuánto cuestan los libros?', rom: 'KUAN-to KUES-tan los LEE-bros', en: 'How much do the books cost?' },
-          { ko: 'La cuenta, por favor.', rom: 'la KUEN-ta por fa-VOR', en: 'The bill, please.' }
+          { ko: '¿Cuánto cuesta?', rom: 'KWAN-to KWES-ta', en: 'How much does it cost?' },
+          { ko: '¿Cuánto cuestan los libros?', rom: 'KWAN-to KWES-tan los LEE-bros', en: 'How much do the books cost?' },
+          { ko: 'La cuenta, por favor.', rom: 'la KWEN-ta por fa-VOR', en: 'The bill, please.' }
         ]
       }
     ],
     vocab: [
-      { ko: 'quiero', rom: 'KIE-ro', en: 'I want', pos: 'verb' },
-      { ko: 'quisiera', rom: 'ki-SIE-ra', en: 'I would like', pos: 'verb' },
-      { ko: 'hay', rom: 'eye', en: 'there is, there are', pos: 'verb' },
-      { ko: 'cuesta', rom: 'KUES-ta', en: 'it costs', pos: 'verb' },
-      { ko: 'la cuenta', rom: 'la KUEN-ta', en: 'the bill', pos: 'noun' },
-      { ko: 'el menú', rom: 'el me-NOO', en: 'the menu', pos: 'noun' },
+      { ko: 'quiero', rom: 'KYE-ro', en: 'I want', pos: 'verb', ex: { ko: 'Quiero un café.', rom: 'KYE-ro oon ka-FE', en: 'I want a coffee.' } },
+      { ko: 'quisiera', rom: 'kee-SYE-ra', en: 'I would like', pos: 'verb' },
+      { ko: 'hay', rom: 'aye', en: 'there is, there are', pos: 'verb', ex: { ko: '¿Hay agua?', rom: 'aye A-gwa', en: 'Is there any water?' } },
+      { ko: 'cuesta', rom: 'KWES-ta', en: 'it costs', pos: 'verb' },
+      { ko: 'cuánto', rom: 'KWAN-to', en: 'how much', pos: 'pron' },
+      { ko: 'la cuenta', rom: 'la KWEN-ta', en: 'the bill', pos: 'noun' },
+      { ko: 'el menú', rom: 'el me-NU', en: 'the menu', pos: 'noun' },
       { ko: 'pan', rom: 'pan', en: 'bread', pos: 'noun' },
       { ko: 'carne', rom: 'KAR-ne', en: 'meat', pos: 'noun' },
-      { ko: 'pescado', rom: 'pes-KA-do', en: 'fish (to eat)', pos: 'noun' },
+      { ko: 'pescado', rom: 'pes-KA-do', en: 'fish', pos: 'noun' },
       { ko: 'pollo', rom: 'PO-yo', en: 'chicken', pos: 'noun' },
       { ko: 'arroz', rom: 'a-RROS', en: 'rice', pos: 'noun' },
       { ko: 'ensalada', rom: 'en-sa-LA-da', en: 'salad', pos: 'noun' },
-      { ko: 'cerveza', rom: 'ser-BE-sa', en: 'beer', pos: 'noun' },
-      { ko: 'vino', rom: 'BEE-no', en: 'wine', pos: 'noun' },
-      { ko: 'la mesa', rom: 'la ME-sa', en: 'the table', pos: 'noun' },
-      { ko: 'qué', rom: 'ke', en: 'what', pos: 'pron' },
-      { ko: 'cuánto', rom: 'KUAN-to', en: 'how much', pos: 'pron' },
-      { ko: 'delicioso', rom: 'de-li-SIO-so', en: 'delicious', pos: 'adj' },
-      { ko: 'rico', rom: 'RREE-ko', en: 'tasty', pos: 'adj', note: 'Also means rich. About food it means it tastes good, and it is what people actually say.' }
+      { ko: 'café', rom: 'ka-FE', en: 'coffee, café', pos: 'noun' },
+      { ko: 'cerveza', rom: 'ser-VE-sa', en: 'beer', pos: 'noun' },
+      { ko: 'vino', rom: 'VEE-no', en: 'wine', pos: 'noun' },
+      { ko: 'dinero', rom: 'dee-NE-ro', en: 'money', pos: 'noun' },
+      { ko: 'euro', rom: 'EW-ro', en: 'euro', pos: 'noun' },
+      { ko: 'baño', rom: 'BA-nyo', en: 'toilet, bathroom', pos: 'noun', ex: { ko: '¿Dónde está el baño?', rom: 'DON-de es-TA el BA-nyo', en: 'Where is the toilet?' } },
+      { ko: 'algo', rom: 'AL-go', en: 'something', pos: 'pron' },
+      { ko: 'otro', rom: 'O-tro', en: 'another', pos: 'adj' },
+      { ko: 'delicioso', rom: 'de-lee-SYO-so', en: 'delicious', pos: 'adj' },
+      { ko: 'rico', rom: 'REE-ko', en: 'tasty, rich', pos: 'adj', note: 'Said of food it means delicious; said of a person it means wealthy.' },
+      { ko: 'caliente', rom: 'ka-LYEN-te', en: 'hot', pos: 'adj' },
+      { ko: 'frío', rom: 'FREE-o', en: 'cold', pos: 'adj' },
+      { ko: 'para', rom: 'PA-ra', en: 'for, in order to', pos: 'prep' },
+      { ko: 'sin', rom: 'seen', en: 'without', pos: 'prep' },
+      { ko: 'a', rom: 'a', en: 'to, at', pos: 'prep' }
     ]
   },
+
   {
-    id: 'U6', title: 'Numbers, time, and the week',
-    goal: 'Count, tell the time, and arrange to meet.',
+    id: 'U8', title: 'What you are going to do, and what you have done',
+    goal: 'Escape the present tense — talk about plans and about this morning.',
     grammar: [
       {
-        id: 'g_numbers', name: 'One to twenty, and then the pattern',
-        pattern: 'uno … quince · dieciséis … veinte · veintiuno …',
-        explain: 'Sixteen through nineteen are "ten and six" run together: dieciséis. From thirty on it comes apart again into treinta y uno. And uno drops its o before a masculine noun: un café, not uno café.',
+        id: 'g_ira', name: 'ir a + infinitive — the future you will actually use',
+        pattern: 'voy a comer · vas a ver · vamos a hablar',
+        explain: 'Spanish has a proper future tense and almost nobody reaches for it in conversation. This is what people say instead, and it is the same shape as English "going to" — take ir, add a, add any verb in its plain form. One structure and the whole future opens up.',
         examples: [
-          { ko: 'Tengo veinte años.', rom: 'TEN-go BEIN-te A-nyos', en: 'I am twenty years old.' },
-          { ko: 'Son treinta y cinco.', rom: 'son TREIN-ta ee SIN-ko', en: 'That is thirty-five.' },
-          { ko: 'Quiero un café.', rom: 'KIE-ro oon ka-FE', en: 'I want one coffee.' }
+          { ko: 'Voy a comer.', rom: 'voy a ko-MER', en: 'I am going to eat.' },
+          { ko: '¿Qué vas a hacer?', rom: 'ke vas a a-SER', en: 'What are you going to do?' },
+          { ko: 'Vamos a ver la película.', rom: 'VA-mos a ver la pe-LEE-ku-la', en: 'We are going to watch the film.' }
         ]
       },
       {
-        id: 'g_time', name: 'Telling the time',
-        pattern: 'Es la una · Son las dos · Son las tres y media',
-        explain: 'One o\'clock is singular — es la una — and everything else is plural: son las. Half past is y media, quarter past y cuarto, quarter to menos cuarto.',
+        id: 'g_perfecto', name: 'he hablado — what you have done',
+        pattern: 'he · has · ha · hemos · han  +  -ado / -ido',
+        explain: 'Two pieces: a short helper that changes for the person, and a participle that never changes at all. -ar verbs take -ado, -er and -ir take -ido. In Spain this is the everyday past for anything that happened today, which makes it the one past tense worth having first.',
         examples: [
-          { ko: '¿Qué hora es?', rom: 'ke O-ra es', en: 'What time is it?' },
-          { ko: 'Son las tres y media.', rom: 'son las tres ee ME-dia', en: 'It is half past three.' },
-          { ko: 'Es la una y cuarto.', rom: 'es la U-na ee KUAR-to', en: 'It is quarter past one.' }
+          { ko: 'He comido.', rom: 'e ko-MEE-do', en: 'I have eaten.' },
+          { ko: '¿Has hablado con él?', rom: 'as a-BLA-do kon el', en: 'Have you spoken to him?' },
+          { ko: 'Hemos visto la ciudad.', rom: 'E-mos VEES-to la syu-DAD', en: 'We have seen the city.' }
         ]
       },
       {
-        id: 'g_tener', name: 'tener — the verb that owns things and ages',
-        pattern: 'tengo · tienes · tiene · tenemos · tienen',
-        explain: 'Used for having, but also for age and for hunger and thirst, where English uses "to be": tengo hambre is literally "I have hunger".',
+        id: 'g_tenerque', name: 'tener que — what you have to do',
+        pattern: 'tengo que + infinitive',
+        explain: 'The que is not optional and it is what makes this mean obligation rather than possession. Tengo que trabajar. Pair it with poder and querer and you can say you want to, are able to, or have to do anything you have a verb for.',
         examples: [
-          { ko: 'Tengo hambre.', rom: 'TEN-go AM-bre', en: 'I am hungry.' },
-          { ko: '¿Cuántos años tienes?', rom: 'KUAN-tos A-nyos TIE-nes', en: 'How old are you?' },
-          { ko: 'Tenemos tiempo.', rom: 'te-NE-mos TIEM-po', en: 'We have time.' }
+          { ko: 'Tengo que trabajar.', rom: 'TEN-go ke tra-ba-HAR', en: 'I have to work.' },
+          { ko: '¿Tienes que ir?', rom: 'TYE-nes ke eer', en: 'Do you have to go?' },
+          { ko: 'No tengo que estudiar hoy.', rom: 'no TEN-go ke es-tu-DYAR oy', en: 'I do not have to study today.' }
         ]
       }
     ],
     vocab: [
-      { ko: 'uno', rom: 'U-no', en: 'one', pos: 'num' },
-      { ko: 'dos', rom: 'dos', en: 'two', pos: 'num' },
-      { ko: 'tres', rom: 'tres', en: 'three', pos: 'num' },
-      { ko: 'cuatro', rom: 'KUA-tro', en: 'four', pos: 'num' },
-      { ko: 'cinco', rom: 'SIN-ko', en: 'five', pos: 'num' },
-      { ko: 'diez', rom: 'dies', en: 'ten', pos: 'num' },
-      { ko: 'veinte', rom: 'BEIN-te', en: 'twenty', pos: 'num' },
-      { ko: 'cien', rom: 'sien', en: 'one hundred', pos: 'num' },
-      { ko: 'tengo', rom: 'TEN-go', en: 'I have', pos: 'verb' },
-      { ko: 'tienes', rom: 'TIE-nes', en: 'you have', pos: 'verb' },
-      { ko: 'tiene', rom: 'TIE-ne', en: 'he/she has', pos: 'verb' },
-      { ko: 'hambre', rom: 'AM-bre', en: 'hunger', pos: 'noun' },
-      { ko: 'sed', rom: 'sed', en: 'thirst', pos: 'noun' },
-      { ko: 'hora', rom: 'O-ra', en: 'hour, time', pos: 'noun' },
-      { ko: 'tiempo', rom: 'TIEM-po', en: 'time, weather', pos: 'noun' },
-      { ko: 'año', rom: 'A-nyo', en: 'year', pos: 'noun' },
-      { ko: 'hoy', rom: 'oy', en: 'today', pos: 'adv' },
-      { ko: 'mañana', rom: 'ma-NYA-na', en: 'tomorrow, morning', pos: 'adv', note: 'Both — la mañana is the morning, mañana on its own is tomorrow.' },
-      { ko: 'ahora', rom: 'a-O-ra', en: 'now', pos: 'adv' },
-      { ko: 'lunes', rom: 'LU-nes', en: 'Monday', pos: 'noun', note: 'Days are lower case in Spanish, and lunes is both singular and plural.' },
-      { ko: 'sábado', rom: 'SA-ba-do', en: 'Saturday', pos: 'noun' },
-      { ko: 'domingo', rom: 'do-MIN-go', en: 'Sunday', pos: 'noun' }
+      { ko: 'voy a', rom: 'voy a', en: 'I am going to', pos: 'phrase', ex: { ko: 'Voy a estudiar.', rom: 'voy a es-tu-DYAR', en: 'I am going to study.' } },
+      { ko: 'vas a', rom: 'vas a', en: 'you are going to', pos: 'phrase' },
+      { ko: 'va a', rom: 'va a', en: 'he/she is going to', pos: 'phrase' },
+      { ko: 'vamos a', rom: 'VA-mos a', en: 'we are going to', pos: 'phrase' },
+      { ko: 'he', rom: 'e', en: 'I have (done)', pos: 'verb', ex: { ko: 'He trabajado mucho.', rom: 'e tra-ba-HA-do MU-cho', en: 'I have worked a lot.' } },
+      { ko: 'has', rom: 'as', en: 'you have (done)', pos: 'verb' },
+      { ko: 'ha', rom: 'a', en: 'he/she has (done)', pos: 'verb' },
+      { ko: 'hemos', rom: 'E-mos', en: 'we have (done)', pos: 'verb' },
+      { ko: 'han', rom: 'an', en: 'they have (done)', pos: 'verb' },
+      { ko: 'hablado', rom: 'a-BLA-do', en: 'spoken', pos: 'verb' },
+      { ko: 'comido', rom: 'ko-MEE-do', en: 'eaten', pos: 'verb' },
+      { ko: 'vivido', rom: 'vee-VEE-do', en: 'lived', pos: 'verb' },
+      { ko: 'trabajado', rom: 'tra-ba-HA-do', en: 'worked', pos: 'verb' },
+      { ko: 'hecho', rom: 'E-cho', en: 'done, made', pos: 'verb', note: 'Irregular. So are visto (seen), dicho (said) and ido (gone) — the frequent verbs break here too.' },
+      { ko: 'visto', rom: 'VEES-to', en: 'seen', pos: 'verb' },
+      { ko: 'dicho', rom: 'DEE-cho', en: 'said', pos: 'verb' },
+      { ko: 'ido', rom: 'EE-do', en: 'gone', pos: 'verb' },
+      { ko: 'tengo que', rom: 'TEN-go ke', en: 'I have to', pos: 'phrase', ex: { ko: 'Tengo que ir ahora.', rom: 'TEN-go ke eer a-O-ra', en: 'I have to go now.' } },
+      { ko: 'tienes que', rom: 'TYE-nes ke', en: 'you have to', pos: 'phrase' },
+      { ko: 'esta noche', rom: 'ES-ta NO-che', en: 'tonight', pos: 'adv' },
+      { ko: 'esta mañana', rom: 'ES-ta ma-NYA-na', en: 'this morning', pos: 'adv' },
+      { ko: 'el fin de semana', rom: 'el feen de se-MA-na', en: 'the weekend', pos: 'noun' },
+      { ko: 'ya', rom: 'ya', en: 'already, now', pos: 'adv' },
+      { ko: 'todavía', rom: 'to-da-VEE-a', en: 'still, yet', pos: 'adv' },
+      { ko: 'viaje', rom: 'VYA-he', en: 'trip, journey', pos: 'noun' },
+      { ko: 'fiesta', rom: 'FYES-ta', en: 'party', pos: 'noun' },
+      { ko: 'playa', rom: 'PLA-ya', en: 'beach', pos: 'noun' },
+      { ko: 'llegar', rom: 'ye-GAR', en: 'to arrive', pos: 'verb', conj: 'llego' },
+      { ko: 'salir', rom: 'sa-LEER', en: 'to go out, to leave', pos: 'verb', conj: 'salgo' }
     ]
   }
 ];
@@ -3509,7 +3718,7 @@ const ES_CONVERSATIONS = [
     ]
   },
   {
-    id: 'C3', unit: 'U5', title: 'En el restaurante',
+    id: 'C3', unit: 'U7', title: 'En el restaurante',
     en: 'At the restaurant',
     goal: 'Order food and drink, and ask for the bill.',
     scene: 'A small restaurant at two in the afternoon, which in Spain is lunchtime.',
@@ -3540,6 +3749,94 @@ const ES_CONVERSATIONS = [
       { t: 'Quisiera buys you politeness', b: 'Quiero el pescado is perfectly correct and slightly blunt. Quisiera is the difference between "I want the fish" and "I would like the fish" — one syllable for a lot of goodwill.' },
       { t: 'está rico, not es rico', b: 'The fish tastes good today. Es rico would mean it is a rich fish, or that fish as a category is delicious. Estar is the plate in front of you.' },
       { t: 'Asking for the bill', b: 'In Spain the bill does not come until you ask. Waiting politely for it will keep you there a long time.' }
+    ]
+  },
+  {
+    id: 'C4', unit: 'U6', title: '¿Qué te gusta?',
+    en: 'Finding out what somebody likes',
+    goal: 'Use the backwards verb in a real exchange, and answer one back.',
+    scene: 'A break between classes. Ana asks what you do when you are not studying.',
+    cast: { A: 'Ana', B: 'Kevin' }, castEn: { A: 'Ana', B: 'Kevin (you)' }, you: 'B',
+    lines: [
+      { w: 'A', ko: '¿Qué te gusta hacer?', rom: 'ke te GUS-ta a-SER', en: 'What do you like doing?',
+        lit: 'What to-you pleases to-do?',
+        c: [['¿Qué', 'what'], ['te gusta', 'pleases you'], ['hacer?', 'to do']] },
+      { w: 'B', ko: 'Me gusta leer y cocinar.', rom: 'me GUS-ta le-ER ee ko-see-NAR', en: 'I like reading and cooking.',
+        lit: 'To-me pleases to-read and to-cook.',
+        c: [['Me gusta', 'pleases me'], ['leer', 'to read'], ['y', 'and'], ['cocinar.', 'to cook']] },
+      { w: 'A', ko: 'A mí también. ¿Te gusta la música?', rom: 'a mee tam-BYEN te GUS-ta la MU-si-ka', en: 'Me too. Do you like music?',
+        lit: 'To me also. To-you pleases the music?',
+        c: [['A mí también.', 'me too'], ['¿Te gusta', 'pleases you'], ['la música?', 'the music']] },
+      { w: 'B', ko: 'Sí, me encanta.', rom: 'see me en-KAN-ta', en: 'Yes, I love it.',
+        lit: 'Yes, to-me delights.',
+        c: [['Sí,', 'yes'], ['me encanta.', 'it delights me']] },
+      { w: 'A', ko: '¿Y el fútbol? A mi hermano le gusta mucho.', rom: 'ee el FUT-bol a mee er-MA-no le GUS-ta MU-cho', en: 'And football? My brother likes it a lot.',
+        lit: 'And the football? To my brother to-him pleases a-lot.',
+        c: [['¿Y el fútbol?', 'and football'], ['A mi hermano', 'to my brother'], ['le gusta', 'it pleases him'], ['mucho.', 'a lot']] },
+      { w: 'B', ko: 'No me gusta nada.', rom: 'no me GUS-ta NA-da', en: 'I do not like it at all.',
+        lit: 'Not to-me pleases nothing.',
+        c: [['No me gusta', 'it does not please me'], ['nada.', 'at all']] },
+      { w: 'A', ko: '¿No? ¿Y las películas?', rom: 'no ee las pe-LEE-ku-las', en: 'No? And films?',
+        lit: 'No? And the films?',
+        c: [['¿No?', 'no'], ['¿Y las películas?', 'and the films']] },
+      { w: 'B', ko: 'Me gustan mucho las películas españolas.', rom: 'me GUS-tan MU-cho las pe-LEE-ku-las es-pa-NYO-las', en: 'I really like Spanish films.',
+        lit: 'To-me please a-lot the films Spanish.',
+        c: [['Me gustan', 'they please me'], ['mucho', 'a lot'], ['las películas', 'the films'], ['españolas.', 'Spanish']] },
+      { w: 'A', ko: 'Vamos a ver una el sábado.', rom: 'VA-mos a ver OO-na el SA-ba-do', en: 'Let us go and see one on Saturday.',
+        lit: 'We-go to see one the Saturday.',
+        c: [['Vamos a ver', 'we are going to see'], ['una', 'one'], ['el sábado.', 'on Saturday']] },
+      { w: 'B', ko: 'Perfecto. Hasta el sábado.', rom: 'per-FEK-to AS-ta el SA-ba-do', en: 'Perfect. See you Saturday.',
+        lit: 'Perfect. Until the Saturday.',
+        c: [['Perfecto.', 'perfect'], ['Hasta', 'until'], ['el sábado.', 'Saturday']] }
+    ],
+    notes: [
+      { t: 'gustan, not gusta', b: 'Las películas is plural, so the verb is plural. It is agreeing with the films, not with the person doing the liking — which is the whole trick of this verb.' },
+      { t: 'A mí también', b: 'You cannot answer "me too" with just yo, because you were never the subject. The echo has to be the same shape: a mí también.' },
+      { t: 'No … nada', b: 'Spanish stacks its negatives happily. No me gusta nada is two negatives and one meaning: not at all.' }
+    ]
+  },
+  {
+    id: 'C5', unit: 'U8', title: 'El fin de semana',
+    en: 'What you have done, and what you are going to do',
+    goal: 'Move off the present tense in both directions inside one conversation.',
+    scene: 'Monday morning. Ana wants to know how your weekend went.',
+    cast: { A: 'Ana', B: 'Kevin' }, castEn: { A: 'Ana', B: 'Kevin (you)' }, you: 'B',
+    lines: [
+      { w: 'A', ko: '¿Qué has hecho este fin de semana?', rom: 'ke as E-cho ES-te feen de se-MA-na', en: 'What have you done this weekend?',
+        lit: 'What have-you done this end of week?',
+        c: [['¿Qué', 'what'], ['has hecho', 'have you done'], ['este fin de semana?', 'this weekend']] },
+      { w: 'B', ko: 'He ido a la playa con mi hermana.', rom: 'e EE-do a la PLA-ya kon mee er-MA-na', en: 'I went to the beach with my sister.',
+        lit: 'I-have gone to the beach with my sister.',
+        c: [['He ido', 'I have gone'], ['a la playa', 'to the beach'], ['con mi hermana.', 'with my sister']] },
+      { w: 'A', ko: '¡Qué bien! ¿Y has comido allí?', rom: 'ke byen ee as ko-MEE-do a-YEE', en: 'How nice! And did you eat there?',
+        lit: 'How well! And have-you eaten there?',
+        c: [['¡Qué bien!', 'how nice'], ['¿Y has comido', 'and have you eaten'], ['allí?', 'there']] },
+      { w: 'B', ko: 'Sí, hemos comido pescado. Estaba muy rico.', rom: 'see E-mos ko-MEE-do pes-KA-do es-TA-ba mwee REE-ko', en: 'Yes, we had fish. It was delicious.',
+        lit: 'Yes, we-have eaten fish. It-was very tasty.',
+        c: [['Sí,', 'yes'], ['hemos comido', 'we have eaten'], ['pescado.', 'fish'], ['Estaba', 'it was'], ['muy rico.', 'very tasty']] },
+      { w: 'A', ko: '¿Y qué vas a hacer esta semana?', rom: 'ee ke vas a a-SER ES-ta se-MA-na', en: 'And what are you going to do this week?',
+        lit: 'And what go-you to do this week?',
+        c: [['¿Y qué', 'and what'], ['vas a hacer', 'are you going to do'], ['esta semana?', 'this week']] },
+      { w: 'B', ko: 'Tengo que trabajar mucho.', rom: 'TEN-go ke tra-ba-HAR MU-cho', en: 'I have to work a lot.',
+        lit: 'I-have that to-work a-lot.',
+        c: [['Tengo que', 'I have to'], ['trabajar', 'work'], ['mucho.', 'a lot']] },
+      { w: 'A', ko: 'Yo también. Pero el viernes voy a una fiesta.', rom: 'yo tam-BYEN PE-ro el VYER-nes voy a OO-na FYES-ta', en: 'Me too. But on Friday I am going to a party.',
+        lit: 'I also. But the Friday I-go to a party.',
+        c: [['Yo también.', 'me too'], ['Pero', 'but'], ['el viernes', 'on Friday'], ['voy a', 'I am going to'], ['una fiesta.', 'a party']] },
+      { w: 'B', ko: '¿Puedo ir contigo?', rom: 'PWE-do eer kon-TEE-go', en: 'Can I come with you?',
+        lit: 'Can-I to-go with-you?',
+        c: [['¿Puedo', 'can I'], ['ir', 'go'], ['contigo?', 'with you']] },
+      { w: 'A', ko: 'Claro. Vamos a las nueve.', rom: 'KLA-ro VA-mos a las NWE-ve', en: 'Of course. We are going at nine.',
+        lit: 'Clear. We-go at the nine.',
+        c: [['Claro.', 'of course'], ['Vamos', 'we go'], ['a las nueve.', 'at nine']] },
+      { w: 'B', ko: 'Perfecto. Hasta el viernes.', rom: 'per-FEK-to AS-ta el VYER-nes', en: 'Perfect. See you Friday.',
+        lit: 'Perfect. Until the Friday.',
+        c: [['Perfecto.', 'perfect'], ['Hasta', 'until'], ['el viernes.', 'Friday']] }
+    ],
+    notes: [
+      { t: 'he ido, not fui', b: 'Both are correct Spanish. In Spain this one is what people actually say about something as recent as the weekend, which is why it comes first here — the other past tense is a later problem.' },
+      { t: 'The participle never moves', b: 'he ido, has ido, hemos ido — the front half changes for the person and the back half never does. That is the whole tense.' },
+      { t: 'contigo', b: 'Spanish welds con and mí/ti into single words: conmigo, contigo. Nothing else in the language does this, and these two are worth memorising whole.' }
     ]
   }
 ];
@@ -3978,11 +4275,15 @@ const COURSES = {
     bands: [
       { label: 'Sounds and spelling', stage: 'hangul' },
       { label: 'Units 1–3 — people and things', units: ['U1', 'U2', 'U3'] },
-      { label: 'Units 4–6 — doing and asking', units: ['U4', 'U5', 'U6'] }
+      { label: 'Units 4–6 — verbs, numbers, likes', units: ['U4', 'U5', 'U6'] },
+      { label: 'Units 7–8 — out in the world, and off the present tense', units: ['U7', 'U8'] }
     ],
     writePrompt: 'Write this in Spanish.', sayPrompt: 'Say this in Spanish, out loud.',
     buildPrompt: 'Build this sentence in Spanish.', rulePrompt: 'This is the spelling. How is it actually pronounced?',
-    readPrompt: 'Read this out loud, then type how it sounds.',
+    /* Spanish spelling is transparent — "type how it sounds" tested nothing
+       an English speaker gets wrong. Stress placement is the real skill, and
+       the respelling already marks it. */
+    readIsStress: true,
     tagline: 'Spanish, on a forgetting curve',
     mark: '\u00f1', openTitle: 'Start with the sounds',
     store: 'chispa.es.v1', portraits: true,
@@ -6632,6 +6933,12 @@ function speakRungFor(item) {
 function ladderFor(item) {
   let l = LADDER[item.kind].slice();
   if (item.kind === 'word' && !item.ex) l = l.filter(s => s !== 'cloze');
+  // Where reading means "which syllable is stressed", a one-syllable word has
+  // no question to ask. Without this it fell back to typing the respelling,
+  // which is the exercise the stress rung exists to replace.
+  if (COURSE.readIsStress && item.kind === 'hword' && !String(item.rom || '').includes('-')) {
+    l = l.filter(s => s !== 'read');
+  }
   // Nothing in chess is learned by ear. Cards already on the retired rung
   // are dropped by dueCards(), which is why this is safe to remove.
   if (COURSE.noListening) l = l.filter(s => s !== 'listen');
@@ -7880,6 +8187,22 @@ function makeExercise(key, step) {
         ex.target = item.rom;
         ex.targetEn = true;
         ex.answer = item.ko;
+      } else if (COURSE.readIsStress && String(item.rom).includes('-')) {
+        /* Spanish spelling is transparent, so "type how it sounds" tested
+           almost nothing — it was the Korean romanisation rung wearing a
+           Spanish hat. The thing an English speaker actually gets wrong is
+           which syllable carries the stress, and the respelling already
+           marks it in capitals, so the data was there all along. */
+        const syls = String(item.rom).split('-');
+        ex.type = 'mc';
+        ex.prompt = 'Which syllable is stressed?';
+        ex.target = item.ko;
+        ex.answer = syls.find(x => x === x.toUpperCase()) || syls[syls.length - 1];
+        ex.options = syls.slice();
+        ex.mono = true;
+        ex.why = 'Said aloud: ' + syls.join('-') + '. ' + STRESS_WHY(item.ko);
+        ex.speakAfter = item.ko;
+        return ex;
       } else {
         ex.prompt = COURSE.readPrompt || 'Read this out loud, then type it in letters (romanisation).';
         ex.target = item.ko;
@@ -7985,6 +8308,16 @@ function makeExercise(key, step) {
   }
 
   return ex;
+}
+
+/* Spanish stress is rule-governed, so a stress question can always say WHY
+   rather than just marking it. Written accents win outright; otherwise the
+   final letter decides. */
+function STRESS_WHY(word) {
+  const w = String(word);
+  if (/[áéíóú]/.test(w)) return 'The written accent overrides everything — wherever it sits, that is the stress.';
+  if (/[aeiouns]$/i.test(w)) return 'No accent and it ends in a vowel, n or s, so the stress falls on the second-to-last syllable.';
+  return 'No accent and it ends in a consonant other than n or s, so the stress falls on the last syllable.';
 }
 
 /* Blank out the target word inside its own example sentence.
