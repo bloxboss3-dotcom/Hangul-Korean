@@ -314,6 +314,11 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .kb-key.wide { max-width: 90px; flex: 1.6 1 0; font-size: 13px; font-family: inherit; }
 .kb-hint { font-size: 11.5px; color: var(--tx-faint); text-align: center; margin-top: 4px; }
 
+/* Practise-this-unit row, under each unit header in the course browser. */
+.unit-practice { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 0 14px 12px; margin-top: -2px; }
+.btn.sm { padding: 7px 12px; font-size: 13px; }
+
 /* sentence builder */
 .build-target { min-height: 66px; padding: 12px; border-radius: var(--radius-sm);
   background: var(--bg-card); border: 1px dashed var(--line); display: flex; flex-wrap: wrap; gap: 7px; align-content: flex-start; }
@@ -6564,6 +6569,9 @@ const CORE_UNIT_BY_ID = {};
 ALL_CORE_UNITS.forEach(u => CORE_UNIT_BY_ID[u.id] = u);
 const HANGUL_UNIT_BY_ID = {};
 HANGUL_UNITS.forEach(u => HANGUL_UNIT_BY_ID[u.id] = u);
+/* Both stages in one lookup — a unit drill does not care which stage a
+   unit belongs to, only what it is called. */
+const UNIT_BY_ID = Object.assign({}, HANGUL_UNIT_BY_ID, CORE_UNIT_BY_ID);
 
 /* Skill ladders. Each rung is a separate scheduled card, unlocked
    only once the rung below it is holding. Recognition is cheap and
@@ -8911,10 +8919,24 @@ function renderToday() {
     <button class="btn primary big" data-act="start" ${total === 0 ? 'disabled' : ''}>
       ${total === 0 ? 'All clear for today' : (first ? 'Begin lesson 1' : `Study ${total} card${total === 1 ? '' : 's'}`)}
     </button>
-    ${flaggedN || pairsN ? `<div class="row wrap" style="margin-top:10px">
-      ${flaggedN ? `<button class="btn" data-act="drill" data-kind="weak">Drill ${Math.min(8, flaggedN)} weak spot${flaggedN === 1 ? '' : 's'}</button>` : ''}
-      ${pairsN ? `<button class="btn ghost" data-act="drill" data-kind="confusions">Break ${pairsN} confusion${pairsN === 1 ? '' : 's'}</button>` : ''}
-      <button class="btn ghost" data-act="drill" data-kind="foundations">Foundations check</button>
+    ${/* Practice you choose, as opposed to practice the schedule chose.
+          This row used to be hidden entirely unless you had a weak spot or a
+          confusion, which meant the foundations check disappeared exactly for
+          the people doing well. It is always here now, and "Recent" is the
+          one that was missing: the newest material is the least settled and
+          is often not due yet, so without asking for it by name you could not
+          reach it at all. */''}
+    ${recentItems(20).length >= 3 || flaggedN || pairsN ? `<div style="margin-top:12px">
+      <div class="faint" style="font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Practise something specific</div>
+      <div class="row wrap">
+        ${recentItems(20).length >= 3 ? `<button class="btn" data-act="drill" data-kind="recent">Recent — ${esc(spanLabel(recentItems(20)))}</button>` : ''}
+        ${flaggedN ? `<button class="btn" data-act="drill" data-kind="weak">Drill ${Math.min(8, flaggedN)} weak spot${flaggedN === 1 ? '' : 's'}</button>` : ''}
+        ${pairsN ? `<button class="btn ghost" data-act="drill" data-kind="confusions">Break ${pairsN} confusion${pairsN === 1 ? '' : 's'}</button>` : ''}
+        <button class="btn ghost" data-act="drill" data-kind="foundations">Foundations check</button>
+        <button class="btn ghost" data-view="browse">Pick a unit ›</button>
+      </div>
+      <div class="faint" style="font-size:12px;margin-top:7px">These grade like any other session — if the newest material is shakier
+      than the schedule assumes, missing it here is what tells the scheduler.</div>
     </div>` : ''}
     ${total === 0 && p.remainingInCourse > 0 ? `<div style="margin-top:10px"><button class="btn ghost" data-act="extra">Learn ${Math.min(5, p.remainingInCourse)} extra new items anyway</button></div>` : ''}
   </div>
@@ -10766,6 +10788,8 @@ function renderBrowse() {
         <span class="spacer"></span><span class="faint" style="font-size:12px">${seen}/${ids.length}</span>
         <span class="faint">${open ? '▾' : '▸'}</span>
       </div>
+      ${seen ? `<div class="unit-practice"><button class="btn ghost sm" data-act="drill" data-kind="unit" data-unit="${esc(u.id)}">Practise this unit</button>
+        <span class="faint" style="font-size:12px">${seen} item${seen === 1 ? '' : 's'} started</span></div>` : ''}
       ${open ? `<div class="unit-body">
         <p class="sub">${esc(u.blurb)}</p>
         ${u.letters.length ? `<div class="row wrap" style="margin-bottom:12px">${u.letters.map(l =>
@@ -10793,6 +10817,8 @@ function renderBrowse() {
         <span class="spacer"></span><span class="faint" style="font-size:12px">${seen}/${ids.length}</span>
         <span class="faint">${open ? '▾' : '▸'}</span>
       </div>
+      ${seen ? `<div class="unit-practice"><button class="btn ghost sm" data-act="drill" data-kind="unit" data-unit="${esc(u.id)}">Practise this unit</button>
+        <span class="faint" style="font-size:12px">${seen} item${seen === 1 ? '' : 's'} started</span></div>` : ''}
       ${open ? `<div class="unit-body">
         <p class="sub">${esc(u.goal)}</p>
         ${u.grammar.map(g => `<div class="gram">
@@ -10814,7 +10840,8 @@ function renderBrowse() {
   }).join('');
 
   return `<div class="card"><h2>The whole course</h2>
-    <p class="sub" style="margin:0">Ten reading units then twelve grammar-and-vocabulary units — ${SEQUENCE.length} items in all. Everything is browsable and playable from here whenever you want it, in any order. Free study never affects your schedule.</p></div>
+    <p class="sub" style="margin:0">Ten reading units then twelve grammar-and-vocabulary units — ${SEQUENCE.length} items in all. Any unit you have started can be
+    practised on demand, in any order and as often as you like — you never have to wait for the schedule to offer it.</p></div>
     <h3>Stage 0 · ${esc(COURSE.stageTitle)}</h3>${hangul}
     <h3>Stage 1 · Build sentences</h3>${core}`;
 }
@@ -11377,7 +11404,7 @@ document.addEventListener('click', e => {
   if (act === 'keepgoing') { sess.askStop = false; sess.overtime = true; sess.budgetMs = Infinity; render(); return; }
   if (act === 'learned') { learnedStep(); return; }
   if (act === 'reteachdone') { advance(); return; }
-  if (act === 'drill') { startDrill(t.dataset.kind); return; }
+  if (act === 'drill') { startDrill(t.dataset.kind, t.dataset.unit); return; }
   if (act === 'submit') { submitAnswer(); return; }
   if (act === 'giveup') { giveUp(); return; }
   if (act === 'next') { advance(); return; }
@@ -11575,6 +11602,44 @@ document.addEventListener('keydown', e => {
    --------------------------------------------------------------- */
 const firstRungKey = id => ITEMS[id] ? ck(id, ladderFor(ITEMS[id])[0]) : null;
 
+/* Every rung of an item that actually exists as a card. unlockSkills() only
+   creates the next rung once the previous one is holding, so this is "the
+   parts of this item you have really started", which is what a drill over a
+   chosen slice of the course wants — not just the bottom rung. */
+const startedKeys = id => ITEMS[id]
+  ? ladderFor(ITEMS[id]).map(sk => ck(id, sk)).filter(k => S.cards[k])
+  : [];
+
+/* Where "recent" stops and "foundations" begins. The two checks read the same
+   introduced list from opposite ends, and they must not meet in the middle:
+   a foundations check that includes yesterday's material is not checking a
+   foundation. */
+const FOUNDATION_AGE_DAYS = 4;
+
+/* Items you met most recently, newest first. The mirror image of the
+   foundations check, which reads the same list from the other end. */
+function recentItems(n) {
+  return Object.keys(S.introduced)
+    .filter(id => ITEMS[id])
+    .sort((a, b) => S.introduced[b] - S.introduced[a])
+    .slice(0, n);
+}
+
+function unitItems(unitId) {
+  return SEQUENCE.filter(id => ITEMS[id].unit === unitId && S.introduced[id]);
+}
+
+/* How far back a set of items reaches, for a label that says what you are
+   actually about to practise rather than a bare count. */
+function spanLabel(ids) {
+  if (!ids.length) return '';
+  const oldest = Math.min(...ids.map(id => S.introduced[id]));
+  const days = Math.max(0, calendarDaysBetween(oldest, Date.now()));
+  if (days <= 0) return 'today';
+  if (days === 1) return 'since yesterday';
+  return `the last ${days + 1} days`;
+}
+
 function partnerFor(itemId) {
   const pairs = confusionPairs(2).filter(p => p.a === itemId || p.b === itemId);
   if (!pairs.length) return null;
@@ -11588,7 +11653,7 @@ function partnerFor(itemId) {
    first, then forces a discrimination against whatever it is being
    confused with, and only then asks for production.
    ------------------------------------------------------------ */
-function startDrill(kind) {
+function startDrill(kind, arg) {
   unlockSkills();
   const steps = [];
   let title = '';
@@ -11629,16 +11694,59 @@ function startDrill(kind) {
   }
 
   else if (kind === 'foundations') {
-    // your oldest material, sampled to check it is genuinely still there
+    /* Your oldest material, sampled to check it is genuinely still there.
+       The cutoff matters: taking "the oldest 60" meant that early on, when you
+       own fewer than 60 items, the foundations check quietly included what you
+       met yesterday — which is not a foundation, it is the thing you have not
+       learned yet. Anything from the last few days is excluded outright, and
+       if that leaves too little the check says so rather than padding itself
+       out with new material. */
+    const settledBefore = Date.now() - FOUNDATION_AGE_DAYS * DAY;
     const ids = Object.keys(S.introduced)
       .filter(id => ITEMS[id] && (ITEMS[id].kind === 'word' || ITEMS[id].kind === 'hword' || ITEMS[id].kind === 'letter'))
+      .filter(id => S.introduced[id] < settledBefore)
       .sort((a, b) => S.introduced[a] - S.introduced[b])
       .slice(0, 60);
     const keys = ids.map(firstRungKey).filter(k => k && S.cards[k] && S.cards[k].state !== 'new');
-    if (keys.length < 4) { showToast('Not enough settled material yet for a foundations check.'); return; }
+    if (keys.length < 4) {
+      showToast(`Not enough settled material yet — the foundations check only uses what you met more than ${FOUNDATION_AGE_DAYS} days ago.`);
+      return;
+    }
     title = 'Foundations check';
     shuffle(keys);
     keys.slice(0, 14).forEach(key => steps.push({ t: 'card', key }));
+  }
+
+  /* The counterpart to the foundations check, and the one that was missing.
+     Foundations reads your introduced list from the oldest end; this reads it
+     from the newest. Material from the last couple of days is exactly what has
+     not settled yet, and until now there was no way to ask for it — the
+     scheduler decided, and recent items are often not due yet by design.
+
+     It grades like any other session, which is the point: if the newest
+     material is shakier than the schedule assumes, missing it here is what
+     tells the scheduler so. */
+  else if (kind === 'recent') {
+    const ids = recentItems(20);
+    const keys = ids.flatMap(startedKeys);
+    if (keys.length < 4) { showToast('Not enough recent material yet — learn a few items first.'); return; }
+    title = 'Recent · ' + spanLabel(ids);
+    shuffle(keys);
+    keys.slice(0, 16).forEach(key => steps.push({ t: 'card', key }));
+  }
+
+  /* Any single unit, on demand. The course browser lists every unit you have
+     ever touched; this is what makes those entries practisable rather than
+     just readable. */
+  else if (kind === 'unit') {
+    const unitId = arg;
+    const ids = unitItems(unitId);
+    const keys = ids.flatMap(startedKeys);
+    if (!keys.length) { showToast('You have not started this unit yet.'); return; }
+    const u = UNIT_BY_ID[unitId];
+    title = (u ? u.id + ' · ' + (u.title || '') : unitId).slice(0, 42);
+    shuffle(keys);
+    keys.slice(0, 18).forEach(key => steps.push({ t: 'card', key }));
   }
 
   else if (kind === 'one' && arguments.length > 1) { /* handled by drillOne */ }
