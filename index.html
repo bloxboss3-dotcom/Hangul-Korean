@@ -11615,9 +11615,23 @@ function renderSettings() {
 /* ---------------------------------------------------------------
    10. EVENTS
    --------------------------------------------------------------- */
+/* Which exercise the answer box was last focused for.
+   ------------------------------------------------------------
+   render() replaces the whole screen, so the input is a NEW element every
+   time and the old focused one is destroyed. Focusing unconditionally then
+   meant the soft keyboard closed and reopened on every render — and each
+   render also stacked another keydown listener on the box. Focus once when
+   the card changes; Enter is handled by the global keydown listener. */
+let focusedFor = null;
+
 function afterRender() {
   const box = document.getElementById('ansbox');
-  if (box) { box.focus(); box.addEventListener('keydown', e => { if (e.key === 'Enter') submitAnswer(); }); }
+  if (box && !box.disabled) {
+    const k = liveEx ? liveEx.key + '#' + liveEx._pos : 'box';
+    if (focusedFor !== k) { focusedFor = k; box.focus(); }
+  } else if (!box) {
+    focusedFor = null;
+  }
 
   Mascot.show(view === 'session' || view === 'done');
 
@@ -11708,6 +11722,26 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.remove(), 4200);
 }
+
+/* Why the first tap used to do nothing.
+   ------------------------------------------------------------
+   With the answer box focused the phone's keyboard is up. Tapping a button
+   blurs the box, the keyboard starts to close, the viewport grows back by a
+   couple of hundred pixels and the button slides out from under the finger
+   before the tap finishes — so no click is ever dispatched and you press it
+   again. Korean never hit this because its answers are composed on the
+   in-page jamo keypad, which raises no keyboard; Spanish and chess type into
+   a real input, so they did.
+
+   Preventing the default on pointerdown keeps focus in the box. Nothing
+   blurs, nothing reflows, and the first tap lands. */
+document.addEventListener('pointerdown', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const box = document.getElementById('ansbox');
+  if (!box || document.activeElement !== box) return;
+  e.preventDefault();
+}, { passive: false });
 
 document.addEventListener('click', e => {
   // Chunk highlighting is the one interaction that must not re-render —
@@ -11913,6 +11947,12 @@ document.addEventListener('keydown', e => {
       if (sayRec.phase === 'rec') sayStop(); else sayStart(liveEx.answer);
     }
     return;
+  }
+
+  // The typed answer box used to carry its own Enter listener, re-added on
+  // every render. One listener here does the same job and cannot stack up.
+  if (liveEx && liveEx.romInput && !sess.reveal && e.key === 'Enter') {
+    e.preventDefault(); submitAnswer(); return;
   }
 
   if (sess.reveal) {
