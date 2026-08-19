@@ -6976,6 +6976,54 @@ const SKILL_LABEL = Object.assign({
 
 const NEAR_MISS_COST = 25;
 
+/* Day streak, counting a generous two rest days per rolling week. Lives out
+   here rather than inside stats() because the coin payout needs it and has no
+   use for the other forty numbers stats() computes. */
+function dayStreak() {
+  let streak = 0, misses = 0;
+  for (let d = 0; d < 400; d++) {
+    const k = dayKeyBack(d);
+    const rec = S.days[k];
+    const studied = rec && rec.reviews > 0;
+    if (studied) { streak++; misses = 0; }
+    else if (d === 0) { /* today is not over yet */ }
+    else { misses++; if (misses > 2) break; }
+  }
+  return streak;
+}
+
+/* Paying for consistency.
+   ------------------------------------------------------------
+   Frequency is what actually buys retention — three short sessions beat one
+   long one — so a run of days is the one behaviour worth paying extra for.
+
+   Three things keep this on the right side of the no-punishment rule:
+
+     · It is paid once a day, on the first session you finish. Per session it
+       would reward opening the app five times rather than studying.
+     · It plateaus. There is no ever-growing number to be afraid of losing.
+     · Nothing anywhere warns you that a run is about to end, and the streak
+       itself already forgives two rest days a rolling week. A shorter run
+       simply pays what a shorter run is worth; no coins are ever taken back,
+       because coins can never be taken back.
+
+   Printed on screen in the shop, for the same reason the egg odds are. */
+const STREAK_BONUS = [
+  { days: 30, coins: 25 },
+  { days: 14, coins: 20 },
+  { days: 7, coins: 15 },
+  { days: 4, coins: 10 },
+  { days: 2, coins: 5 },
+  { days: 0, coins: 0 }
+];
+
+const streakBonus = days => (STREAK_BONUS.find(t => days >= t.days) || { coins: 0 }).coins;
+
+/* The next rung up, for a line that says what the run is worth rather than
+   what it would cost to break. Null once it plateaus. */
+const nextStreakTier = days =>
+  STREAK_BONUS.filter(t => t.days > days).sort((a, b) => a.days - b.days)[0] || null;
+
 /* Palettes recolour the accent only. --good and --bad stay put in every
    theme, because "correct" and "wrong" must never change colour. */
 /* The palettes are shared across courses, but their names were not: every
@@ -8032,6 +8080,18 @@ function finishSession(reason) {
     if (sess.bestCombo >= 10) n += 5;
     sess.coinBreakdown = { base: 10, accuracy: acc >= 0.9 ? 8 : 0, perfect: sess.perfect ? 12 : 0, combo: sess.bestCombo >= 10 ? 5 : 0 };
     if (sess.blitzWon) sess.coinBreakdown.blitz = 'already paid';
+
+    /* Once a day, on whichever session you finish first. Today already counts
+       toward the run by now — gradeCard bumped the day's review count during
+       the session — so a first day pays its own first rung. */
+    const today = dayRec(todayKey());
+    if (!today.streakPaid) {
+      const days = dayStreak();
+      const bonus = streakBonus(days);
+      today.streakPaid = true;
+      sess.streakDays = days;                     // recorded even when it pays nothing
+      if (bonus) { n += bonus; sess.coinBreakdown.streak = bonus; }
+    }
     S.coins += n; S.coinsEarned += n;
     sess.earned = (sess.earned || 0) + n;
   }
@@ -9058,16 +9118,7 @@ function stats() {
     forecast.push(n);
   }
 
-  // Streak, counting a generous two rest days per rolling week.
-  let streak = 0, misses = 0;
-  for (let d = 0; d < 400; d++) {
-    const k = dayKeyBack(d);
-    const rec = S.days[k];
-    const studied = rec && rec.reviews > 0;
-    if (studied) { streak++; misses = 0; }
-    else if (d === 0) { /* today is not over yet */ }
-    else { misses++; if (misses > 2) break; }
-  }
+  const streak = dayStreak();
 
   const timeToday = (S.days[todayKey()] || {}).ms || 0;
   let totalMs = 0; Object.keys(S.days).forEach(k => totalMs += S.days[k].ms || 0);
@@ -9271,7 +9322,8 @@ function renderToday() {
       <span class="chip good">New <b>${p.newIds.length}</b></span>
       <span class="chip">Target <b>~${S.settings.sessionMinutes} min</b></span>
       ${doneToday ? `<span class="chip">Done today <b>${doneToday}</b> · ${fmtMin(rec.ms)}</span>` : ''}
-      ${st.streak ? `<span class="chip">Streak <b>${st.streak}</b> ${st.streak === 1 ? 'day' : 'days'}</span>` : ''}
+      ${st.streak ? `<span class="chip">Streak <b>${st.streak}</b> ${st.streak === 1 ? 'day' : 'days'}${
+        streakBonus(st.streak) ? ` · <b>+${streakBonus(st.streak)}</b> a day` : ''}</span>` : ''}
     </div>
     ${p.allow.throttle === 'minimal' || p.allow.throttle === 'reduced' ? `<div class="notice" style="margin-bottom:12px">
       <b>New material throttled back to ${p.newIds.length} today${p.allow.throttle === 'minimal' ? '' : ` instead of ${S.settings.dailyNew}`}.</b>
@@ -9915,6 +9967,7 @@ function renderDone() {
       if (k.accuracy) parts.push('accuracy above 90%');
       if (k.perfect) parts.push('a flawless round');
       if (k.combo) parts.push('a ten-answer streak');
+      if (k.streak) parts.push(`a ${sess.streakDays}-day run`);
       if (sess.blitzWon) parts.push(sess.blitzWon + (sess.blitzWon === 1 ? ' blitz cleared' : ' blitzes cleared'));
       return esc(parts.join(' · '));
     })()}</span>
@@ -10050,6 +10103,7 @@ function renderCollection() {
 /* The shop. Two things are for sale and neither makes the course easier:
    paint, and the right to keep your streak after a near miss. */
 function renderShop() {
+  const runDays = dayStreak();
   const owned = THEMES.filter(t => ownsTheme(t.id));
   const next = THEMES.filter(t => !ownsTheme(t.id)).sort((a, b) => a.cost - b.cost);
 
@@ -10067,6 +10121,22 @@ function renderShop() {
         You can never lose them, and nothing here makes the course easier.</p>
       </div>
       <div class="bigcoin"><span class="coin lg"></span><b>${S.coins || 0}</b></div>
+    </div>
+
+    <h3>Turning up</h3>
+    <div class="prose" style="font-size:13.5px;margin-bottom:10px">
+      <p style="margin:0 0 8px">A finished session pays <b>10</b>, plus a little for accuracy, a flawless round or a
+      ten-answer combo. On top of that, the first session you finish each day pays for the run you are on — three short
+      sessions across three days buy more retention than one long one, so that is what gets paid.</p>
+      <ul style="margin:0;padding-left:18px;line-height:1.8">
+        ${STREAK_BONUS.slice().reverse().map(t => {
+      const here = streakBonus(runDays) === t.coins && runDays >= t.days;
+      return `<li${here ? ' style="color:var(--accent)"' : ''}>${t.days === 0 ? 'First day' : `Day ${t.days} onward`}
+          — ${t.coins ? '<b>+' + t.coins + '</b> a day' : 'no bonus yet'}${here ? ' <span class="faint">· where you are</span>' : ''}</li>`;
+    }).join('')}
+      </ul>
+      <p style="margin:8px 0 0">It stops climbing at thirty days, two rest days a week do not break a run, and nothing
+      here ever takes coins back — a shorter run simply pays what a shorter run is worth.</p>
     </div>
 
     <h3>Near-miss redemption</h3>
