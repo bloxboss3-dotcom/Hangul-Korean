@@ -327,6 +327,14 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .tile:hover { border-color: var(--tx-faint); }
 .tile.used { opacity: .25; pointer-events: none; }
 .build-pool { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+/* The sound of a tile, under it. Small and faint on purpose: the Hangul is
+   the thing being read, the romanisation is a crutch you can glance at. */
+.tile .trom { display: block; font-family: var(--mono); font-size: 11px; line-height: 1.15;
+  color: var(--tx-faint); margin-top: 3px; text-align: center; }
+/* The model line on a speaking card, once you have asked to hear it first. */
+.say-model { padding: 11px 13px; border-radius: var(--radius-sm); background: var(--bg-raise);
+  border: 1px solid var(--line); margin-bottom: 12px; }
+.say-model .ko { font-family: var(--ko); font-size: 21px; }
 
 /* feedback */
 .fb { border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 12px;
@@ -7883,6 +7891,8 @@ function startSession() {
     plannedReviews: p.due.length,
     reveal: null,
     lastGradeKey: null,
+    romTiles: false,       // sounds under the build tiles, once asked for
+    sayHint: false,        // "hear it first" pressed on the current speaking card
     budgetMs: S.settings.sessionMinutes * 60000,
     overtime: false
   };
@@ -7913,6 +7923,7 @@ function advance() {
   sess.reveal = null;
   liveEx = null;
   sess.build = [];
+  sess.sayHint = false;
   composer.reset();
   kbShift = false;
   if (!currentStep()) { finishSession('complete'); return; }
@@ -8185,22 +8196,29 @@ function makeExercise(key, step) {
      sentence comes from. */
   if (skill === 'say') {
     ex.type = 'say';
+    let rom = '';
     if (item.kind === 'grammar') {
       const sample = item.examples[Math.floor(Math.random() * item.examples.length)];
       ex.answer = sample.ko;
       ex.target = sample.en;
+      rom = sample.rom;
       ex.why = item.name + ' — ' + item.pattern;
     } else if (item.ex && Math.random() < 0.5) {
       // Half the time say the whole example sentence rather than the bare
       // word: a word you can only produce in isolation is not usable yet.
       ex.answer = item.ex.ko;
       ex.target = item.ex.en;
+      rom = item.ex.rom;
     } else {
       ex.answer = item.ko;
       ex.target = item.en;
+      rom = item.rom;
     }
-    // No romanisation here on purpose — printing the sounds of the answer
-    // above the microphone would make this a reading exercise.
+    // No romanisation on screen by default, on purpose — printing the sounds
+    // of the answer above the microphone would make this a reading exercise.
+    // It sits behind "Hear it first" instead, which turns the card into
+    // repeat-after-me and caps the grade at "hard" so the scheduler knows.
+    ex.hintRom = rom || (COURSE.hangul ? romanizeHangul(ex.answer) : '');
     ex.prompt = COURSE.sayPrompt;
     ex.targetEn = true;
     ex.speakAfter = ex.answer;
@@ -8353,16 +8371,32 @@ function makeExercise(key, step) {
   }
 
   else if (item.kind === 'grammar') {
-    const pickIdx = Math.floor(Math.random() * item.examples.length);
-    const sample = item.examples[pickIdx];
+    const card = S.cards[key];
+    const fresh = !card || card.state === 'new';
+    // First contact with a pattern asks for its shortest example, with no
+    // decoys and the sounds under the tiles. Once the card is in progress
+    // one decoy joins; the full set waits until the pattern is holding.
+    let choices = item.examples;
+    if (fresh) {
+      const len = e => e.ko.trim().split(/\s+/).length;
+      const shortest = Math.min(...choices.map(len));
+      choices = choices.filter(e => len(e) === shortest);
+    }
+    const sample = choices[Math.floor(Math.random() * choices.length)];
     ex.type = 'build';
+    ex.scaffold = fresh;
     // "Build the line, move by move" over a one-move answer is a single tap
     // wearing the costume of a sentence builder. Ask what it actually is.
     ex.prompt = /\s/.test(sample.ko.trim()) ? COURSE.buildPrompt : (COURSE.buildOnePrompt || COURSE.buildPrompt);
     ex.target = sample.en;
     ex.targetEn = true;
     ex.answer = sample.ko;
-    ex.tiles = buildTiles(sample.ko, item);
+    ex.tiles = buildTiles(sample.ko, item, fresh ? 0 : isHolding(card) ? null : 1);
+    if (COURSE.hangul) {
+      const map = tileRomMap(item);
+      ex.tileRom = {};
+      ex.tiles.forEach(t => { ex.tileRom[t.w] = map[t.w] || romanizeHangul(t.w); });
+    }
     ex.why = item.name + ' — ' + item.pattern;
     ex.speakAfter = sample.ko;
   }
@@ -8400,24 +8434,49 @@ function pickGapWord(item) {
   return best;
 }
 
-function buildTiles(sentence, item) {
+/* `decoys` is how many wrong tiles to mix in: null for the full set, a
+   number to cap it. A new pattern gets none — putting the right words in
+   order is the whole task the first time, and decoys arrive as the card
+   starts to hold. Scaffolding that fades is what keeps a new pattern from
+   being a wall on first contact. */
+function buildTiles(sentence, item, decoys) {
   const real = sentence.replace(/[.!?]$/, '').split(/\s+/);
   const distractors = [];
   const collect = ex => ex.ko.replace(/[.!?]$/, '').split(/\s+/).forEach(w => {
     if (!real.includes(w) && !distractors.includes(w)) distractors.push(w);
   });
   (item.examples || []).filter(e => e.ko !== sentence).forEach(collect);
-  // Pull decoys from neighbouring grammar points too, so the tile set is
-  // never just the answer in scrambled order.
+  // Pull decoys from neighbouring grammar points too, so that once a card
+  // is holding the tile set is never just the answer in scrambled order.
   if (distractors.length < 3) {
     const unit = CORE_UNIT_BY_ID[item.unit];
     if (unit) unit.grammar.forEach(g => { if (g.id !== item.id) g.examples.forEach(collect); });
   }
   shuffle(distractors);
-  const extras = distractors.slice(0, Math.min(3, Math.max(2, Math.round(real.length / 3))));
+  const full = Math.min(3, Math.max(2, Math.round(real.length / 3)));
+  const extras = distractors.slice(0, decoys == null ? full : Math.min(decoys, full));
   const tiles = real.concat(extras).map((w, i) => ({ w, i }));
   shuffle(tiles);
   return tiles;
+}
+
+/* The sound of every word a build card could put on a tile, read off the
+   hand-written romanisation of the sentences the tiles come from. Every
+   grammar example romanises word for word (the build check enforces it),
+   so this is a lookup, and the jamo romaniser is only the net underneath. */
+function tileRomMap(item) {
+  const map = {};
+  const take = e => {
+    if (!e.rom) return;
+    const ks = e.ko.replace(/[.!?]$/, '').split(/\s+/);
+    const rs = e.rom.replace(/[.!?]$/, '').split(/\s+/);
+    if (ks.length !== rs.length) return;
+    ks.forEach((k, i) => { if (!map[k]) map[k] = rs[i].replace(/[.,!?]+$/, ''); });
+  };
+  (item.examples || []).forEach(take);
+  const unit = CORE_UNIT_BY_ID[item.unit];
+  if (unit) unit.grammar.forEach(g => g.examples.forEach(take));
+  return map;
 }
 
 /* ---------------------------------------------------------------
@@ -8995,6 +9054,42 @@ function toJamo(s) {
     else if (/\S/.test(ch)) out.push(ch);
   }
   return out.join('');
+}
+
+/* Revised Romanisation, syllable by syllable, for a sound hint on text the
+   data has no hand-written romanisation for (a tile borrowed from a
+   neighbouring pattern, mostly — everything in the curriculum carries its
+   own). It slides a final consonant onto a following vowel and doubles ㄹㄹ,
+   and leaves the other sound changes alone: right enough for a hint, wrong
+   for a dictionary. */
+const CHO_ROM = ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'];
+const JUNG_ROM = ['a', 'ae', 'ya', 'yae', 'eo', 'e', 'yeo', 'ye', 'o', 'wa', 'wae', 'oe', 'yo', 'u', 'wo', 'we', 'wi', 'yu', 'eu', 'ui', 'i'];
+const JONG_ROM = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ng', 't', 't', 'k', 't', 'p', 't'];
+// What a single final becomes when it slides onto the next syllable's vowel.
+const JONG_LIAISON = { 'ㄱ': 'g', 'ㄲ': 'kk', 'ㄴ': 'n', 'ㄷ': 'd', 'ㄹ': 'r', 'ㅁ': 'm', 'ㅂ': 'b', 'ㅅ': 's', 'ㅆ': 'ss', 'ㅈ': 'j', 'ㅊ': 'ch', 'ㅋ': 'k', 'ㅌ': 't', 'ㅍ': 'p', 'ㅎ': '' };
+
+function romanizeHangul(text) {
+  const syls = [];
+  for (const ch of String(text)) {
+    const code = ch.charCodeAt(0) - 0xAC00;
+    if (code < 0 || code > 11171) syls.push({ raw: ch });
+    else syls.push({ cho: Math.floor(code / 588), jung: Math.floor((code % 588) / 28), jong: code % 28 });
+  }
+  let out = '', carry = null, prevHangul = false;
+  for (let i = 0; i < syls.length; i++) {
+    const s = syls[i];
+    if (s.raw != null) { out += s.raw; carry = null; prevHangul = false; continue; }
+    const next = syls[i + 1] && syls[i + 1].raw == null ? syls[i + 1] : null;
+    let initial = carry != null ? carry : CHO_ROM[s.cho];
+    let fin = JONG_ROM[s.jong];
+    carry = null;
+    const jong = JONG[s.jong];
+    if (next && next.cho === 11 && JONG_LIAISON[jong] != null) { fin = ''; carry = JONG_LIAISON[jong]; }
+    else if (next && jong === 'ㄹ' && next.cho === 5) { carry = 'l'; }
+    out += (prevHangul ? '-' : '') + initial + JUNG_ROM[s.jung] + fin;
+    prevHangul = true;
+  }
+  return out;
 }
 
 const stripKo = s => String(s || '').replace(/[\s.,!?~…"'`·「」“”‘’()]/g, '');
@@ -9639,15 +9734,24 @@ function renderExercise(step) {
       </div>`;
   } else if (ex.type === 'build') {
     const chosen = (sess.build || []);
+    // Sounds under the tiles: shown by themselves while the pattern is new,
+    // a tap away after that. One tap keeps them for the rest of the session.
+    const auto = !!(ex.scaffold && S.settings.showRomanization);
+    const showRom = !!ex.tileRom && (auto || !!sess.romTiles);
+    const tile = (t, cls, attr) => `<button class="tile${cls}" ${attr}>${esc(t.w)}${
+      showRom ? `<span class="trom">${esc(ex.tileRom[t.w] || '')}</span>` : ''}</button>`;
+    const hearable = !COURSE.noListening;
     answerBlock = `<div class="build-target" id="buildtarget">${chosen.map((t, i) =>
-      `<button class="tile" data-unpick="${i}">${esc(t.w)}</button>`).join('') || '<span class="faint" style="font-size:13px;align-self:center">tap the words in order</span>'}</div>
+      tile(t, '', `data-unpick="${i}"`)).join('') || `<span class="faint" style="font-size:13px;align-self:center">tap the words in order${hearable ? ' — each one is read out' : ''}</span>`}</div>
       <div class="build-pool">${ex.tiles.map(t =>
-      `<button class="tile ${chosen.some(c => c.i === t.i) ? 'used' : ''}" data-pickt="${t.i}">${esc(t.w)}</button>`).join('')}</div>
+      tile(t, chosen.some(c => c.i === t.i) ? ' used' : '', `data-pickt="${t.i}"`)).join('')}</div>
       ${sess.reveal ? '' : `<div class="row" style="margin-top:12px">
         <button class="btn primary" data-act="submit" ${chosen.length ? '' : 'disabled'}>Check</button>
-        <button class="btn ghost" data-act="giveup">Show me</button></div>`}`;
+        <button class="btn ghost" data-act="giveup">Show me</button>
+        ${ex.tileRom && !auto ? `<button class="btn ghost" data-act="romtiles">${sess.romTiles ? 'Hide sounds' : 'Sounds'}</button>` : ''}</div>`}`;
   } else if (ex.type === 'say') {
-    answerBlock = renderSayPanel(ex.answer, { inSession: true, done: !!sess.reveal });
+    answerBlock = renderSayPanel(ex.answer, { inSession: true, done: !!sess.reveal,
+      hint: { rom: ex.hintRom || '', used: !!sess.sayHint } });
   }
 
   const fb = sess.reveal ? renderFeedback(ex) : '';
@@ -9674,11 +9778,30 @@ function renderSayPanel(target, opts) {
   const has = mine && sayRec.phase === 'done';
   const beats = syllableCount(target);
 
+  /* "Hear it first" is the gentle path through a speaking card: the line,
+     its sounds and a voice, then you say it after. It is repetition rather
+     than retrieval, so it is a button and not the default, and the grade
+     tops out at "hard" once it has been pressed. */
+  const open = opts.inSession && !opts.done;
+  const hinted = open && opts.hint && opts.hint.used;
+  const model = hinted ? `<div class="say-model">
+      <div class="row" style="gap:10px;align-items:flex-start">
+        <div style="flex:1"><div class="ko">${esc(target)}</div>
+          ${opts.hint.rom ? `<div class="q-rom">${esc(opts.hint.rom)}</div>` : ''}</div>
+        <button aria-label="Play audio" class="speak" data-speak="${esc(target)}">${SPEAKER_SVG}</button>
+      </div>
+      <div class="faint" style="font-size:12px;margin-top:6px">Say it after the voice. Because you heard it first this grades as hard at best, so it comes back sooner.</div>
+    </div>` : '';
+  const hintBtn = open && opts.hint && !opts.hint.used
+    ? `<button class="btn ghost" data-act="sayhint">${SPEAKER_SVG} Hear it first</button>` : '';
+
   if (!Voice.canRecord) {
     return `<div class="card" style="margin-top:14px">
+      ${model}
       <p class="sub" style="margin:0 0 12px">This browser will not give a web page microphone access, so Hanbit cannot listen.
       Say it out loud anyway — producing the sound is what builds the memory — then tell it honestly how that went.</p>
-      ${opts.inSession && !opts.done ? selfGradeRow() : ''}
+      ${open ? selfGradeRow() : ''}
+      ${hintBtn ? `<div class="row" style="margin-top:12px">${hintBtn}</div>` : ''}
     </div>`;
   }
 
@@ -9720,11 +9843,13 @@ function renderSayPanel(target, opts) {
   const showGiveUp = opts.inSession && !opts.done && !rec && !busy;
 
   return `<div class="card" style="margin-top:14px">
+    ${model}
     <div class="microw">${mic}${hint ? `<span class="faint" style="font-size:13px">${hint}</span>` : ''}</div>
     ${sayRec.err ? `<div class="notice" style="margin-top:12px">${esc(sayRec.err)}</div>` : ''}
     ${result}
     ${needsSelf ? `<div style="margin-top:14px">${selfGradeRow()}</div>` : ''}
-    ${showGiveUp ? `<div class="row" style="margin-top:14px;justify-content:center">
+    ${showGiveUp ? `<div class="row wrap" style="margin-top:14px;justify-content:center">
+      ${hintBtn}
       <button class="btn ghost" data-act="giveup">Show me</button>
     </div>` : ''}
   </div>`;
@@ -9873,6 +9998,7 @@ function renderFeedback(ex) {
   if (item.ex && ex.skill !== 'cloze') extra.push(`<div class="why ko" style="font-size:15px">${esc(item.ex.ko)} <span class="faint" style="font-family:inherit;font-size:12.5px">— ${esc(item.ex.en)}</span></div>`);
 
   const verdict = r.result === 'right' ? 'Correct'
+    : r.hinted && r.result === 'close' ? 'Said it after hearing it — counts as hard, so it comes back sooner'
     : r.result === 'close' ? 'The word, not the ending — that counts'
       : r.result === 'near' ? 'One character off, which is one whole sound off'
       : r.result === 'shown' ? 'Here it is' : 'Not quite';
@@ -11874,6 +12000,8 @@ document.addEventListener('click', e => {
   if (act === 'drill') { startDrill(t.dataset.kind, t.dataset.unit); return; }
   if (act === 'submit') { submitAnswer(); return; }
   if (act === 'giveup') { giveUp(); return; }
+  if (act === 'romtiles') { sess.romTiles = !sess.romTiles; render(); return; }
+  if (act === 'sayhint') { sess.sayHint = true; if (liveEx) speak(liveEx.answer); render(); return; }
   if (act === 'next') { advance(); return; }
   if (act === 'shift') { kbShift = !kbShift; render(); return; }
   if (act === 'space') { composer.insertRaw(' '); render(); return; }
@@ -12359,6 +12487,9 @@ function pickTile(i) {
   const tile = ex.tiles.find(t => t.i === i);
   if (!tile || sess.build.some(t => t.i === i)) return;
   sess.build.push(tile);
+  // A tile says its word as it lands, the way Duolingo's do. One word gives
+  // nothing about the order away, and hearing it is half of learning it.
+  if (!COURSE.noListening) speak(tile.w);
   render();
 }
 
@@ -12860,20 +12991,29 @@ function gradeSayIfScored() {
   const ex = liveEx;
   if (!ex || ex.type !== 'say' || sayRec.score == null) return;
   const s = sayRec.score;
-  const result = s >= 0.85 ? 'right' : s >= 0.6 ? 'close' : 'wrong';
-  const grade = s >= 0.85 ? 3 : s >= 0.6 ? 2 : 1;
+  const grade = sayGrade(s >= 0.85 ? 3 : s >= 0.6 ? 2 : 1);
+  const result = grade >= 3 ? 'right' : grade === 2 ? 'close' : 'wrong';
   const line = scoreAnswer(ex, result, Date.now() - exStart, grade);
-  sess.reveal = { result, raw: sayRec.heard || '', line };
+  sess.reveal = { result, raw: sayRec.heard || '', line, hinted: !!sess.sayHint };
   render();
+}
+
+/* Hearing the line first turns production into repetition. That is a fine
+   way to practise and a bad thing to tell the scheduler, so a hinted card
+   grades as "hard" at best and comes back sooner. Same rule as the near
+   miss: the help is real, and the forgetting curve is not lied to. */
+function sayGrade(g) {
+  return sess && sess.sayHint ? Math.min(g, 2) : g;
 }
 
 function saySelfGrade(g) {
   if (view !== 'session' || !sess || sess.reveal) return;
   const ex = liveEx;
   if (!ex || ex.type !== 'say') return;
+  g = sayGrade(g);
   const result = g >= 3 ? 'right' : g === 2 ? 'close' : 'wrong';
   const line = scoreAnswer(ex, result, Date.now() - exStart, g);
-  sess.reveal = { result, raw: '', line };
+  sess.reveal = { result, raw: '', line, hinted: !!sess.sayHint };
   speak(ex.answer);
   render();
 }

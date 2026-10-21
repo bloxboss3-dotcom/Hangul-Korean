@@ -93,6 +93,12 @@ bug: a Korean assumption left in shared code.
 - **The near-miss power-up must never lie to the scheduler.** It restores the
   streak and session credit; it grades the card a 2, not a 3, and the card still
   returns. A redemption that fooled FSRS would be selling worse Korean.
+- **Help on a card is allowed; help that fools the scheduler is not.** A
+  build card fades its scaffolding (shortest example, no decoys, sounds under
+  the tiles while the card is new; decoys arrive as it holds) and tapping a
+  tile reads it out — none of that gives the order away, so it costs nothing.
+  "Hear it first" on a speaking card does give the answer away, so it caps the
+  grade at 2 (`sayGrade`), same rule as the near miss.
 - **Abandoning a session is not finishing it.** No perfect, no celebration, no
   bonus — but the answers already given still count, because they were real
   retrievals and deleting them costs real memory.
