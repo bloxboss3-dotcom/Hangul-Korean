@@ -7779,10 +7779,13 @@ function nextNewItems(n) {
    fastest way to make a schedule collapse — and it is exactly what makes
    an app feel like an endless conveyor belt of new words. So new items
    throttle back automatically when too much is still shaky. */
-function newAllowance(rec) {
+function newAllowance(rec, away) {
   const base = Math.max(0, S.settings.dailyNew - rec.newItems);
   const shaky = shakyCount();
   const limit = S.settings.shakyLimit;
+  // Old cards look stable on paper after a break, so the shaky count would
+  // wave new material through onto a pile you have actually lost.
+  if (away && away.on) return { allowed: 0, shaky, limit, throttle: 'away' };
   if (!S.settings.consolidateFirst) return { allowed: base, shaky, limit, throttle: 'off' };
   if (shaky <= limit) return { allowed: base, shaky, limit, throttle: 'none' };
 
@@ -7796,18 +7799,92 @@ function newAllowance(rec) {
   return { allowed, shaky, limit, throttle: factor <= 0.3 ? 'minimal' : 'reduced', factor };
 }
 
+/* ---------------------------------------------------------------
+   Coming back after a break
+   ------------------------------------------------------------
+   Six months away and nothing here used to change. Every card was due,
+   the weakest came first, the ladder rungs that had opened before the
+   break stayed open — so the first thing a forgotten pattern asked for
+   was a sentence build or a bare microphone — and because the old cards
+   still looked stable on paper, eight new items landed on top. The
+   scheduler knew better the whole time: it predicts recall from the
+   elapsed time, and after months most predictions sit under 20%.
+
+   This is the part that listens to that prediction. When it has been a
+   long gap, or the due pile is one the model expects you to fail half
+   of, a session is built differently: anything you have probably lost
+   is shown again before it is tested, each item is asked at its lowest
+   due rung only (the higher rungs wait until the lower one is passed),
+   and new material pauses. Grading does not change. A miss is still a
+   miss and the card still comes back — the app just stops pretending
+   you remember.
+   --------------------------------------------------------------- */
+const AWAY_DAYS = 21;      // a gap this long is a break, not a long weekend
+const AWAY_PILE_R = 0.5;   // ...or a due pile you are expected to fail half of
+const RELEARN_R = 0.5;     // more likely lost than not: re-taught before it is tested
+
+/* currentR() with "no history" kept apart from "forgotten": a card never
+   reviewed has no prediction to make, and must not drag an average down. */
+function predictedRecall(card, now) {
+  if (!card || card.state === 'new' || !card.last || !(card.S > 0)) return null;
+  return currentR(card, now);
+}
+
+function daysSinceStudy() {
+  for (let d = 0; d < 400; d++) {
+    const rec = S.days[dayKeyBack(d)];
+    if (rec && rec.reviews > 0) return d;
+  }
+  return null;
+}
+
+function welcomeBack(due, now) {
+  const rs = due.map(k => predictedRecall(S.cards[k], now)).filter(r => r != null);
+  const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 1;
+  const gap = daysSinceStudy();
+  const on = (gap != null && gap >= AWAY_DAYS && rs.length > 0) || (rs.length >= 10 && avgR < AWAY_PILE_R);
+  return { on, gap, avgR, relearn: rs.filter(r => r < RELEARN_R).length, lost: Math.round((1 - avgR) * 100) };
+}
+
+function rungRank(key) {
+  const item = ITEMS[key.split('|')[0]];
+  return item ? Math.max(0, ladderFor(item).indexOf(cardSkill(key))) : 0;
+}
+
+/* A rung is served only once every rung below it on the same item has
+   been passed: not due, and not sitting in relearning after a miss. So a
+   missed recognition card keeps the production rungs out until it is
+   answered right, and a passed one lets them in next session. */
+function lowestRungOnly(due) {
+  const dueSet = new Set(due);
+  return due.filter(k => {
+    const id = k.split('|')[0];
+    const ladder = ladderFor(ITEMS[id]);
+    const rank = ladder.indexOf(cardSkill(k));
+    for (let i = 0; i < rank; i++) {
+      const lowerKey = ck(id, ladder[i]);
+      const lower = S.cards[lowerKey];
+      if (lower && (dueSet.has(lowerKey) || lower.state === 'relearning')) return false;
+    }
+    return true;
+  });
+}
+
 function plan() {
   unlockSkills();
   const now = Date.now();
   const due = dueCards(now);
+  const away = welcomeBack(due, now);
+  const served = away.on ? lowestRungOnly(due) : due;
   const rec = dayRec(todayKey());
-  const allow = newAllowance(rec);
+  const allow = newAllowance(rec, away);
   const newIds = nextNewItems(allow.allowed);
-  const capped = due.slice(0, S.settings.reviewCap);
+  const capped = served.slice(0, S.settings.reviewCap);
   const yesterday = dayKeyBack(1);
   return {
     due: capped,
     dueTotal: due.length,
+    away,
     fromYesterday: capped.filter(k => S.cards[k].last && dstr(S.cards[k].last) === yesterday).length,
     flaggedDue: capped.filter(k => S.cards[k].flagged).length,
     newIds,
@@ -7845,9 +7922,30 @@ function resetTransient() {
 
 function startSession() {
   const p = plan();
-  const steps = [];
+  let steps = [];
   p.due.forEach(k => steps.push({ t: 'card', key: k }));
   shuffle(steps);
+
+  if (p.away.on) {
+    // Easiest rung first: recognition before any production, shuffled
+    // within each rung so it is still not a single block of one skill.
+    const ranked = steps.map(st => ({ st, rank: rungRank(st.key) }));
+    ranked.sort((a, b) => a.rank - b.rank);
+    steps = ranked.map(x => x.st);
+    // Then a re-teach in front of anything the model expects you to have
+    // lost — once per item, however many of its cards are in the session.
+    const now = Date.now(), retaught = new Set(), withTeach = [];
+    steps.forEach(st => {
+      const id = st.key.split('|')[0];
+      const r = predictedRecall(S.cards[st.key], now);
+      if (r != null && r < RELEARN_R && !retaught.has(id)) {
+        retaught.add(id);
+        withTeach.push({ t: 'reteach', id, away: true });
+      }
+      withTeach.push(st);
+    });
+    steps = withTeach;
+  }
 
   // Spread the new items evenly through the review queue rather than
   // front-loading them: interleaving beats blocking for retention.
@@ -7893,6 +7991,7 @@ function startSession() {
     lastGradeKey: null,
     romTiles: false,       // sounds under the build tiles, once asked for
     sayHint: false,        // "hear it first" pressed on the current speaking card
+    away: p.away.on,       // built as a welcome-back session
     budgetMs: S.settings.sessionMinutes * 60000,
     overtime: false
   };
@@ -8372,8 +8471,10 @@ function makeExercise(key, step) {
 
   else if (item.kind === 'grammar') {
     const card = S.cards[key];
-    const fresh = !card || card.state === 'new';
-    // First contact with a pattern asks for its shortest example, with no
+    const r = predictedRecall(card, Date.now());
+    const fresh = !card || card.state === 'new' || (r != null && r < RELEARN_R);
+    // First contact with a pattern — or a pattern the model expects you to
+    // have lost, after a long gap — asks for its shortest example, with no
     // decoys and the sounds under the tiles. Once the card is in progress
     // one decoy joins; the full set waits until the pattern is holding.
     let choices = item.examples;
@@ -9420,6 +9521,11 @@ function renderToday() {
       ${st.streak ? `<span class="chip">Streak <b>${st.streak}</b> ${st.streak === 1 ? 'day' : 'days'}${
         streakBonus(st.streak) ? ` · <b>+${streakBonus(st.streak)}</b> a day` : ''}</span>` : ''}
     </div>
+    ${p.away.on ? `<div class="notice" style="margin-bottom:12px">
+      <b>Welcome back.</b> ${p.away.gap >= AWAY_DAYS ? `It has been ${p.away.gap} days, and the` : 'The'} model expects you to have lost about ${p.away.lost}% of what is due.
+      So this session is built differently: anything you have probably forgotten is shown again before it is tested, each item is asked at its easiest rung first,
+      and new material waits until the old is back. Misses still count — the schedule just stops pretending you remember.
+    </div>` : ''}
     ${p.allow.throttle === 'minimal' || p.allow.throttle === 'reduced' ? `<div class="notice" style="margin-bottom:12px">
       <b>New material throttled back to ${p.newIds.length} today${p.allow.throttle === 'minimal' ? '' : ` instead of ${S.settings.dailyNew}`}.</b>
       ${p.allow.shaky} items are still shaky — under three days of stability, or flagged as a weak spot — against a comfortable ceiling of ${p.allow.limit}.
@@ -9529,7 +9635,7 @@ function renderSession() {
   <div class="sess-head">
     <button class="iconbtn" data-act="quit" title="End session">✕</button>
     <div class="bar"><i style="width:${Math.round(done / Math.max(1, total) * 100)}%"></i></div>
-    ${sess.drill ? `<span class="chip" style="flex:none">${esc(sess.drillTitle)}</span>` : ''}
+    ${sess.drill ? `<span class="chip" style="flex:none">${esc(sess.drillTitle)}</span>` : sess.away ? '<span class="chip" style="flex:none">Welcome back</span>' : ''}
     ${sess.combo >= 2 ? `<span class="combo-chip t${tier}">${tier >= 3 ? '🔥' : ''} ${sess.combo} streak</span>` : ''}
     <span class="count">${done} / ${total}</span>
   </div>
@@ -9625,11 +9731,24 @@ function renderReteach(step) {
   if (!item) return '<div class="card">Missing item.</div>';
   const other = step.contrast ? ITEMS[step.contrast] : null;
   const key = firstRungKey(step.id);
-  const h = cardHistory(S.cards[key] || {});
+  const card = S.cards[key] || {};
+  const h = cardHistory(card);
   const ko = item.ko || item.ch || item.spelled || '';
+  const ago = card.last ? calendarDaysBetween(card.last, Date.now()) : 0;
+  const label = step.away
+    ? `Welcome back · last seen ${ago >= 2 ? ago + ' days ago' : 'recently'}`
+    : `Rebuilding · ${h.attempts ? `${h.correct} right out of ${h.attempts}` : 'a weak spot'}${h.lapses ? ` · missed ${h.lapses}×` : ''}`;
+
+  // A pattern has no single word to put up; its teach card already shows
+  // the explanation and every example, so reuse it with a re-teach footer.
+  if (item.kind === 'grammar' || item.kind === 'rule') {
+    return renderTeach(item)
+      .replace(/<div class="q-kind">[^<]*<\/div>/, `<div class="q-kind">${esc(label)}</div>`)
+      .replace(teachFooter(), reteachFooter());
+  }
 
   return `<div class="card teach">
-    <div class="q-kind">Rebuilding · ${h.attempts ? `${h.correct} right out of ${h.attempts}` : 'a weak spot'}${h.lapses ? ` · missed ${h.lapses}×` : ''}</div>
+    <div class="q-kind">${esc(label)}</div>
     <div class="row" style="align-items:center;gap:16px">
       <div style="flex:1">
         <div class="big-ko">${esc(ko)}</div>
@@ -9651,11 +9770,15 @@ function renderReteach(step) {
     ${item.ex ? `<div class="ex"><div class="row"><div class="exko">${esc(item.ex.ko)}</div>
       <button aria-label="Play audio" class="speak" style="width:30px;height:30px" data-speak="${esc(item.ex.ko)}">${SPEAKER_SVG}</button></div>
       <div class="exen">${esc(item.ex.en)}</div></div>` : ''}
-    <div style="margin-top:18px" class="row">
+    ${reteachFooter()}
+  </div>`;
+}
+
+function reteachFooter() {
+  return `<div style="margin-top:18px" class="row">
       <button class="btn primary" data-act="reteachdone">Ready — test me</button>
       <span class="faint" style="font-size:12px">No penalty here. This is a rebuild, not an exam.</span>
-    </div>
-  </div>`;
+    </div>`;
 }
 
 function teachFooter() {

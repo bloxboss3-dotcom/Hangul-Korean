@@ -99,6 +99,13 @@ bug: a Korean assumption left in shared code.
   tile reads it out — none of that gives the order away, so it costs nothing.
   "Hear it first" on a speaking card does give the answer away, so it caps the
   grade at 2 (`sayGrade`), same rule as the near miss.
+- **Coming back after a break changes the session, not the grading.** When
+  the gap is 21+ days or the due pile's predicted recall averages under 50%
+  (`welcomeBack`), a session re-teaches anything the model expects you to
+  have lost, serves only the lowest due rung per item (higher rungs wait
+  until the lower one is passed, `lowestRungOnly`), scaffolds lost build
+  cards again, and pauses new material. A miss is still a miss. The mode
+  switches itself off as the pile is relearned.
 - **Abandoning a session is not finishing it.** No perfect, no celebration, no
   bonus — but the answers already given still count, because they were real
   retrievals and deleting them costs real memory.
