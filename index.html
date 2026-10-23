@@ -7714,6 +7714,15 @@ function isFluent(card) {
   return isHolding(card) && (card.fast || 0) >= FLUENT_RUN;
 }
 
+/* Typing a word from its meaning, filling its gap, saying it cold: the
+   production rungs are the expensive ones, and they used to open three
+   days after the rung below first held. That put "Write this in Korean"
+   on words a learner had met twice. They now wait for a week of
+   stability on the rung below. Recognition rungs still open at three. */
+const PRODUCTION_RUNGS = new Set(['recall', 'cloze', 'say']);
+const HOLD_WELL_S = 7;
+function isHoldingWell(card) { return isHolding(card) && (card.S || 0) >= HOLD_WELL_S; }
+
 /* Open the next rung of an item's ladder once the current one holds. */
 function unlockSkills() {
   Object.keys(S.introduced).forEach(itemId => {
@@ -7724,7 +7733,8 @@ function unlockSkills() {
       const key = ck(itemId, ladder[i]);
       if (S.cards[key]) continue;
       const prev = i === 0 ? null : S.cards[ck(itemId, ladder[i - 1])];
-      if (i === 0 || isHolding(prev)) {
+      const ready = i === 0 || (PRODUCTION_RUNGS.has(ladder[i]) ? isHoldingWell(prev) : isHolding(prev));
+      if (ready) {
         S.cards[key] = newCard();
         if (i > 0) S.cards[key].freshSkill = true;
       }
@@ -7990,7 +8000,7 @@ function startSession() {
     reveal: null,
     lastGradeKey: null,
     romTiles: false,       // sounds under the build tiles, once asked for
-    sayHint: false,        // "hear it first" pressed on the current speaking card
+    hinted: false,        // "hear it first" or "sounds" pressed on the current card
     away: p.away.on,       // built as a welcome-back session
     budgetMs: S.settings.sessionMinutes * 60000,
     overtime: false
@@ -8022,7 +8032,7 @@ function advance() {
   sess.reveal = null;
   liveEx = null;
   sess.build = [];
-  sess.sayHint = false;
+  sess.hinted = false;
   composer.reset();
   kbShift = false;
   if (!currentStep()) { finishSession('complete'); return; }
@@ -8502,7 +8512,47 @@ function makeExercise(key, step) {
     ex.speakAfter = sample.ko;
   }
 
+  if (ex.type === 'text' && ex.koInput) scaffoldTyped(ex, S.cards[key]);
   return ex;
+}
+
+/* Composing Hangul from jamo, from the meaning alone, is the hardest
+   thing the app asks, and it used to arrive in full on a word met twice.
+   While a word is new — or the model expects you to have lost it — the
+   same card is built from syllable tiles instead: every syllable of the
+   answer plus a few decoys from the same unit, tapped in order. You still
+   have to know the syllables and their order, so it gives nothing away;
+   it just takes the keyboard out of the way until the word is holding.
+   The sounds of the answer are one tap away on every typed card, and
+   that one does give the answer away, so it caps the grade (hintedGrade). */
+function scaffoldTyped(ex, card) {
+  ex.hintRom = ex.skill === 'cloze' && ex.item.ex && ex.item.ex.rom
+    ? ex.item.ex.rom
+    : (ex.item.rom || romanizeHangul(ex.answer));
+  const r = predictedRecall(card, Date.now());
+  const fresh = !card || card.state === 'new' || (r != null && r < RELEARN_R);
+  if (!fresh) return;
+  const tiles = syllableTiles(ex.answer, ex.item);
+  if (tiles.length < 2) return;   // one syllable has no order to build
+  ex.tiles = tiles;
+  ex.sylTiles = true;
+  ex.scaffold = true;
+}
+
+function syllableTiles(answer, item) {
+  const real = [...normKo(answer)].filter(ch => /[가-힣]/.test(ch));
+  if (real.length < 2) return [];
+  const have = new Set(real);
+  const decoys = [];
+  pool(i => i.kind === item.kind && i.unit === item.unit, item.id, 12).forEach(i => {
+    [...normKo(i.ko || '')].forEach(ch => {
+      if (/[가-힣]/.test(ch) && !have.has(ch) && !decoys.includes(ch)) decoys.push(ch);
+    });
+  });
+  shuffle(decoys);
+  const tiles = real.concat(decoys.slice(0, real.length >= 5 ? 3 : 2)).map((w, i) => ({ w, i }));
+  shuffle(tiles);
+  return tiles;
 }
 
 /* Spanish stress is rule-governed, so a stress question can always say WHY
@@ -9838,22 +9888,33 @@ function renderExercise(step) {
       return `<button class="${cls}" data-pick="${esc(o)}" ${sess.reveal ? 'disabled' : ''}>${esc(o)}</button>`;
     }).join('')}</div>`;
   } else if (ex.type === 'text') {
-    if (ex.romInput) {
+    const hintShown = sess.hinted && ex.hintRom
+      ? `<div class="q-rom" style="margin:0 0 10px;padding-left:4px">${esc(ex.hintRom)}</div>` : '';
+    if (ex.sylTiles) {
+      const chosen = (sess.build || []);
+      const tile = (t, cls, attr) => `<button class="tile${cls}" ${attr}>${esc(t.w)}</button>`;
+      answerBlock = `${hintShown}<div class="build-target" id="buildtarget">${chosen.map((t, i) =>
+        tile(t, '', `data-unpick="${i}"`)).join('') || '<span class="faint" style="font-size:13px;align-self:center">tap the syllables in order</span>'}</div>
+        <div class="build-pool">${ex.tiles.map(t =>
+        tile(t, chosen.some(c => c.i === t.i) ? ' used' : '', `data-pickt="${t.i}"`)).join('')}</div>`;
+    } else if (ex.romInput) {
       answerBlock = `<input class="typebox rom" id="ansbox" autocomplete="off" autocapitalize="off"
         autocorrect="off" spellcheck="false" lang="${esc(COURSE.voice)}"
         placeholder="${esc(COURSE.typeHint || 'type your answer')}"
         ${sess.reveal ? 'disabled' : ''} value="${esc(sess.reveal ? sess.reveal.raw : '')}">${
         sess.reveal ? '' : renderAccentRow()}`;
     } else {
-      answerBlock = `<div class="typedisplay ko ${sess.reveal ? '' : 'focus'}" id="kodisplay">${
+      answerBlock = `${hintShown}<div class="typedisplay ko ${sess.reveal ? '' : 'focus'}" id="kodisplay">${
         composer.value ? esc(composer.value) + (sess.reveal ? '' : '<span class="caret"></span>')
           : '<span class="ph">use the keys below, or your own Korean keyboard</span>'}</div>
         ${sess.reveal ? '' : renderKeyboard()}`;
     }
-    if (!sess.reveal) answerBlock += `<div class="row" style="margin-top:10px">
-        <button class="btn primary" data-act="submit">Check</button>
+    if (!sess.reveal) answerBlock += `<div class="row wrap" style="margin-top:10px">
+        <button class="btn primary" data-act="submit" ${ex.sylTiles && !(sess.build || []).length ? 'disabled' : ''}>Check</button>
         <button class="btn ghost" data-act="giveup">Show me</button>
-        ${ex.hint ? `<span class="faint" style="font-size:12px">${esc(ex.hint)}</span>` : ''}
+        ${ex.koInput && ex.hintRom && !sess.hinted ? `<button class="btn ghost" data-act="typehint">Sounds</button>` : ''}
+        ${sess.hinted ? '<span class="faint" style="font-size:12px">sounds shown — grades as hard at best</span>'
+      : ex.hint ? `<span class="faint" style="font-size:12px">${esc(ex.hint)}</span>` : ''}
       </div>`;
   } else if (ex.type === 'build') {
     const chosen = (sess.build || []);
@@ -9874,7 +9935,7 @@ function renderExercise(step) {
         ${ex.tileRom && !auto ? `<button class="btn ghost" data-act="romtiles">${sess.romTiles ? 'Hide sounds' : 'Sounds'}</button>` : ''}</div>`}`;
   } else if (ex.type === 'say') {
     answerBlock = renderSayPanel(ex.answer, { inSession: true, done: !!sess.reveal,
-      hint: { rom: ex.hintRom || '', used: !!sess.sayHint } });
+      hint: { rom: ex.hintRom || '', used: !!sess.hinted } });
   }
 
   const fb = sess.reveal ? renderFeedback(ex) : '';
@@ -10121,7 +10182,7 @@ function renderFeedback(ex) {
   if (item.ex && ex.skill !== 'cloze') extra.push(`<div class="why ko" style="font-size:15px">${esc(item.ex.ko)} <span class="faint" style="font-family:inherit;font-size:12.5px">— ${esc(item.ex.en)}</span></div>`);
 
   const verdict = r.result === 'right' ? 'Correct'
-    : r.hinted && r.result === 'close' ? 'Said it after hearing it — counts as hard, so it comes back sooner'
+    : r.hinted && r.result === 'close' ? 'Right, with the help — counts as hard, so it comes back sooner'
     : r.result === 'close' ? 'The word, not the ending — that counts'
       : r.result === 'near' ? 'One character off, which is one whole sound off'
       : r.result === 'shown' ? 'Here it is' : 'Not quite';
@@ -10141,7 +10202,9 @@ function renderFeedback(ex) {
     </button>
   </div>` : '';
 
-  const adjust = good ? `<div class="gradebar">
+  // The manual regrade would let a hinted answer buy back the "fine" or
+  // "instant" the hint already gave up, so it stays off on a hinted card.
+  const adjust = good && !r.hinted ? `<div class="gradebar">
       <button data-grade="2">Felt hard<b>sooner</b></button>
       <button data-grade="3" class="keep">Fine<b>keep schedule</b></button>
       <button data-grade="4">Instant<b>later</b></button>
@@ -12124,7 +12187,8 @@ document.addEventListener('click', e => {
   if (act === 'submit') { submitAnswer(); return; }
   if (act === 'giveup') { giveUp(); return; }
   if (act === 'romtiles') { sess.romTiles = !sess.romTiles; render(); return; }
-  if (act === 'sayhint') { sess.sayHint = true; if (liveEx) speak(liveEx.answer); render(); return; }
+  if (act === 'sayhint') { sess.hinted = true; if (liveEx) speak(liveEx.answer); render(); return; }
+  if (act === 'typehint') { sess.hinted = true; if (liveEx) speak(liveEx.answer); render(); return; }
   if (act === 'next') { advance(); return; }
   if (act === 'shift') { kbShift = !kbShift; render(); return; }
   if (act === 'space') { composer.insertRaw(' '); render(); return; }
@@ -12621,7 +12685,10 @@ function submitAnswer() {
   if (!ex || sess.reveal) return;
   let result, raw;
 
-  if (ex.type === 'build') {
+  if (ex.sylTiles) {
+    raw = (sess.build || []).map(t => t.w).join('');
+    result = checkText(ex, raw);
+  } else if (ex.type === 'build') {
     raw = (sess.build || []).map(t => t.w).join(' ');
     result = normKo(raw) === normKo(ex.answer) ? 'right' : 'wrong';
   } else if (ex.romInput) {
@@ -12633,11 +12700,13 @@ function submitAnswer() {
   }
 
   const elapsed = Date.now() - exStart;
-  const grade = result === 'right' ? (elapsed < 5000 ? 4 : 3) : result === 'close' ? 2 : 1;
+  let grade = result === 'right' ? (elapsed < 5000 ? 4 : 3) : result === 'close' ? 2 : 1;
   // `near` deliberately falls through to 1: off by one character is off by
   // one sound, and the card has to come back.
+  grade = hintedGrade(grade);
+  if (sess.hinted && result === 'right') result = 'close';
   const line = scoreAnswer(ex, result, elapsed, grade);
-  sess.reveal = { result, raw, options: ex._opts, line };
+  sess.reveal = { result, raw, options: ex._opts, line, hinted: !!sess.hinted };
   if (ex.speakAfter) speak(ex.speakAfter);
   render();
 }
@@ -13114,29 +13183,30 @@ function gradeSayIfScored() {
   const ex = liveEx;
   if (!ex || ex.type !== 'say' || sayRec.score == null) return;
   const s = sayRec.score;
-  const grade = sayGrade(s >= 0.85 ? 3 : s >= 0.6 ? 2 : 1);
+  const grade = hintedGrade(s >= 0.85 ? 3 : s >= 0.6 ? 2 : 1);
   const result = grade >= 3 ? 'right' : grade === 2 ? 'close' : 'wrong';
   const line = scoreAnswer(ex, result, Date.now() - exStart, grade);
-  sess.reveal = { result, raw: sayRec.heard || '', line, hinted: !!sess.sayHint };
+  sess.reveal = { result, raw: sayRec.heard || '', line, hinted: !!sess.hinted };
   render();
 }
 
-/* Hearing the line first turns production into repetition. That is a fine
-   way to practise and a bad thing to tell the scheduler, so a hinted card
-   grades as "hard" at best and comes back sooner. Same rule as the near
-   miss: the help is real, and the forgetting curve is not lied to. */
-function sayGrade(g) {
-  return sess && sess.sayHint ? Math.min(g, 2) : g;
+/* Hearing the line first, or seeing the sounds of a word you were asked
+   to write, turns production into repetition. That is a fine way to
+   practise and a bad thing to tell the scheduler, so a hinted card grades
+   as "hard" at best and comes back sooner. Same rule as the near miss:
+   the help is real, and the forgetting curve is not lied to. */
+function hintedGrade(g) {
+  return sess && sess.hinted ? Math.min(g, 2) : g;
 }
 
 function saySelfGrade(g) {
   if (view !== 'session' || !sess || sess.reveal) return;
   const ex = liveEx;
   if (!ex || ex.type !== 'say') return;
-  g = sayGrade(g);
+  g = hintedGrade(g);
   const result = g >= 3 ? 'right' : g === 2 ? 'close' : 'wrong';
   const line = scoreAnswer(ex, result, Date.now() - exStart, g);
-  sess.reveal = { result, raw: '', line, hinted: !!sess.sayHint };
+  sess.reveal = { result, raw: '', line, hinted: !!sess.hinted };
   speak(ex.answer);
   render();
 }

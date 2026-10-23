@@ -97,8 +97,15 @@ bug: a Korean assumption left in shared code.
   build card fades its scaffolding (shortest example, no decoys, sounds under
   the tiles while the card is new; decoys arrive as it holds) and tapping a
   tile reads it out — none of that gives the order away, so it costs nothing.
-  "Hear it first" on a speaking card does give the answer away, so it caps the
-  grade at 2 (`sayGrade`), same rule as the near miss.
+  A typed Korean card is built from syllable tiles plus decoys while the word
+  is new or predicted lost (`scaffoldTyped`); the keyboard returns once it
+  holds. "Hear it first" on a speaking card and "Sounds" on a typed card do
+  give the answer away, so they cap the grade at 2 (`hintedGrade`), same rule
+  as the near miss.
+- **Production rungs wait for a week.** `recall`, `cloze` and `say` open when
+  the rung below has a week of stability (`isHoldingWell`), not three days.
+  Recognition rungs still open at three. Typing a word from its meaning on
+  the third day it was ever seen was the single biggest "too hard too fast".
 - **Coming back after a break changes the session, not the grading.** When
   the gap is 21+ days or the due pile's predicted recall averages under 50%
   (`welcomeBack`), a session re-teaches anything the model expects you to
