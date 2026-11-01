@@ -97,9 +97,11 @@ bug: a Korean assumption left in shared code.
   build card fades its scaffolding (shortest example, no decoys, sounds under
   the tiles while the card is new; decoys arrive as it holds) and tapping a
   tile reads it out — none of that gives the order away, so it costs nothing.
-  A typed Korean card is built from syllable tiles plus decoys while the word
-  is new or predicted lost (`scaffoldTyped`); the keyboard returns once it
-  holds. "Hear it first" on a speaking card and "Sounds" on a typed card do
+  A typed Korean card is built from syllable tiles plus decoys
+  (`scaffoldTyped`). The `typedInput` setting decides when: `tiles` always
+  (the default — the jamo keyboard is the hardest thing in the app and the
+  one most often called too advanced), `auto` (tiles while new or predicted
+  lost, keyboard once it holds) or `keyboard`. "Hear it first" on a speaking card and "Sounds" on a typed card do
   give the answer away, so they cap the grade at 2 (`hintedGrade`), same rule
   as the near miss.
 - **Production rungs wait for a week.** `recall`, `cloze` and `say` open when
