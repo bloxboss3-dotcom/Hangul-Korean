@@ -232,6 +232,89 @@ p.sub { color: var(--tx-dim); margin: 0 0 14px; font-size: 13.5px; }
 .stat .l { font-size: 11.5px; color: var(--tx-faint); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
 .stat .h { font-size: 11.5px; color: var(--tx-faint); margin-top: 6px; line-height: 1.4; }
 
+/* ---------- the path ----------
+   The course as a road. Every node is a real slice of the curriculum and
+   its ring is the share of that slice holding in memory — no stars that
+   can be farmed, nothing that is not already true in the scheduler. */
+.path { padding: 4px 0 30px; }
+.path h3 { margin: 18px 0 10px; }
+.pu { margin-bottom: 8px; }
+.pu-head {
+  display: flex; align-items: center; gap: 12px; padding: 13px 15px;
+  border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--line-soft);
+}
+.pu-head .pu-txt { flex: 1; min-width: 0; }
+.pu-head .pu-k { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--tx-faint); font-weight: 600; }
+.pu-head .pu-t { font-size: 15.5px; font-weight: 650; margin-top: 2px; letter-spacing: -.01em; }
+.pu-head .pu-s { font-size: 12px; color: var(--tx-dim); margin-top: 3px; }
+.pu-head.next {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: transparent;
+  color: #0b1220; box-shadow: 0 6px 22px -8px var(--accent);
+}
+.pu-head.next .pu-k, .pu-head.next .pu-s { color: rgba(11,18,32,.68); }
+:root.light .pu-head.next, :root.light .pu-head.next .pu-k, :root.light .pu-head.next .pu-s { color: #fff; }
+.pu-head.locked { opacity: .55; }
+.pu-head .iconbtn { flex: none; }
+.pu-head.next .iconbtn { color: inherit; border-color: rgba(11,18,32,.25); }
+.pu-mini { display: flex; gap: 6px; flex-wrap: wrap; }
+.pu-mini i { width: 10px; height: 10px; border-radius: 50%; background: var(--good); display: block; }
+
+.pu-nodes { position: relative; display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 22px 0 14px; }
+.pu-nodes::before {
+  /* the road itself */
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 0;
+  border-left: 3px dashed var(--line); transform: translateX(-50%);
+}
+.pn { position: relative; display: grid; justify-items: center; gap: 7px; width: 118px;
+      transform: translateX(calc(var(--x, 0) * 46px)); }
+.pn-b { position: relative; width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; }
+.pn-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 360deg), var(--bg-raise) 0);
+}
+.pn-ring::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); }
+.pn-face {
+  position: relative; width: 62px; height: 62px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--ko); font-size: 26px; font-weight: 700;
+  background: var(--accent); color: #0b1220;
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--accent) 60%, black);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.pn-face svg { width: 28px; height: 28px; stroke-width: 2; }
+.pn-b:active .pn-face { transform: translateY(4px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, black); }
+.pn.done .pn-ring { background: var(--good); }
+.pn.done .pn-face { background: var(--good); box-shadow: 0 5px 0 color-mix(in srgb, var(--good) 60%, black); }
+.pn.done .pn-b:active .pn-face { box-shadow: 0 1px 0 color-mix(in srgb, var(--good) 60%, black); }
+.pn.locked .pn-ring { background: var(--bg-raise); }
+.pn.locked .pn-face { background: var(--bg-raise); color: var(--tx-faint); box-shadow: 0 5px 0 var(--line); }
+.pn.locked .pn-b:active .pn-face { box-shadow: 0 1px 0 var(--line); }
+.pn.next { margin-top: 18px; }   /* room for the bubble above, clear of the stop before */
+.pn.next .pn-b::before {
+  content: ''; position: absolute; inset: -8px; border-radius: 50%;
+  border: 3px solid var(--accent); opacity: .6; animation: pnHalo 1.8s ease-out infinite;
+}
+@keyframes pnHalo { 0% { transform: scale(.92); opacity: .7; } 100% { transform: scale(1.25); opacity: 0; } }
+.pn-tip {
+  position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+  padding: 6px 11px; border-radius: 9px; background: var(--bg-card); border: 1px solid var(--accent-dim);
+  color: var(--accent); font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  white-space: nowrap; animation: pnBob 1.4s ease-in-out infinite;
+}
+.pn-tip::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px;
+  background: var(--bg-card); border-right: 1px solid var(--accent-dim); border-bottom: 1px solid var(--accent-dim);
+  transform: translateX(-50%) rotate(45deg); }
+@keyframes pnBob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -4px); } }
+.pn-l { font-size: 12px; color: var(--tx-dim); text-align: center; line-height: 1.25; max-width: 118px; }
+.pn.locked .pn-l { color: var(--tx-faint); }
+.pn-sub { font-size: 10.5px; color: var(--tx-faint); font-variant-numeric: tabular-nums; }
+.pn.done .pn-face::after {
+  content: ''; position: absolute; right: -2px; bottom: -2px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--bg-card); border: 2px solid var(--good);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234ec9a5' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+  background-size: 12px; background-repeat: no-repeat; background-position: center;
+}
+@media (prefers-reduced-motion: reduce) { .pn.next .pn-b::before, .pn-tip { animation: none; } }
+
 .bar { height: 7px; border-radius: 99px; background: var(--bg-raise); overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .35s ease; }
 .bar > i.good { background: var(--good); }
@@ -9434,6 +9517,7 @@ function render() {
   else if (view === 'weak') body = renderWeak();
   else if (view === 'progress') body = renderProgress();
   else if (view === 'browse') body = renderBrowse();
+  else if (view === 'path') body = renderPath();
   else if (view === 'method') body = renderMethod();
   else if (view === 'settings') body = renderSettings();
   app.innerHTML = shell(body);
@@ -9444,6 +9528,7 @@ function render() {
    more detailed turns to mush at that size. */
 const NAV_ICON = {
   today: '<path d="M4 5h16v15H4z"/><path d="M4 10h16"/><path d="M8 3v4M16 3v4"/>',
+  path: '<circle cx="6" cy="5" r="2.2"/><circle cx="18" cy="19" r="2.2"/><path d="M8.5 5H14a3.5 3.5 0 0 1 0 7h-4a3.5 3.5 0 0 0 0 7h5.5"/>',
   talk: '<path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/>',
   weak: '<path d="M12 3 3 20h18z"/><path d="M12 10v4M12 17h.01"/>',
   progress: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
@@ -9524,10 +9609,10 @@ function renderStorageWarning() {
 
 function shell(body) {
   const weakN = weakCards().length;
-  const tabs = [['today', 'Today'], ['talk', 'Talk'], ['weak', 'Weak spots' + (weakN ? ' · ' + weakN : '')],
+  const tabs = [['today', 'Today'], ['path', 'Path'], ['talk', 'Talk'], ['weak', 'Weak spots' + (weakN ? ' · ' + weakN : '')],
   ['collection', 'Collection'], ['progress', 'Progress'], ['browse', 'Course'], ['method', 'Method'], ['settings', 'Settings']];
   const navHere = view === 'convo' ? 'talk' : view;
-  const bottom = [['today', 'Today'], ['talk', 'Talk'], ['weak', 'Weak', weakN], ['progress', 'Progress'], ['settings', 'Settings']];
+  const bottom = [['today', 'Today'], ['path', 'Path'], ['talk', 'Talk'], ['weak', 'Weak', weakN], ['progress', 'Progress'], ['settings', 'Settings']];
   return `
   <header class="top">
     <button class="brand" data-act="courses" aria-haspopup="true" aria-expanded="false"
@@ -9626,7 +9711,10 @@ function renderToday() {
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h3 style="margin-top:0">Where you are</h3>
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <h3 style="margin-top:0">Where you are</h3>
+      <button class="btn ghost sm" data-view="path">Open the path ›</button>
+    </div>
     ${progressBars()}
   </div>
 
@@ -9663,6 +9751,172 @@ function progressBars() {
       <div class="bar"><i class="${p1 > .8 ? 'good' : ''}" style="width:${Math.round(p1 * 100)}%"></i></div>
     </div>`;
   }).join('');
+}
+
+/* ---------- The path ----------
+   The course drawn as a road: one section per unit, one node per real
+   slice of it — the letters, the words, each grammar pattern, the unit's
+   conversation, and a review stop. A node's ring is the share of its
+   items holding in memory, straight from the scheduler; the node the
+   schedule will introduce next pulses; anything past it is locked, and a
+   tap on a locked node shows you what is in it rather than letting you
+   skip ahead. Nothing here changes what is taught or when — it is a map
+   of the same road the Today button already drives down. */
+const PATH_ICON = {
+  words: '<path d="M4 7h16M4 12h10M4 17h13"/>',
+  rules: '<path d="M12 3v18"/><path d="M5 8c3-2 11-2 14 0"/><path d="M5 16c3 2 11 2 14 0"/>',
+  grammar: '<path d="M8 4H6a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-2"/>',
+  talk: '<path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/>',
+  review: '<path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/>'
+};
+
+function firstRungHolding(id) {
+  const c = S.cards[ck(id, ladderFor(ITEMS[id])[0])];
+  return !!(c && (c.S || 0) >= 3);
+}
+
+/* Every open rung of every item in the slice is holding: the honest
+   version of a gold crown, and the only one on offer. */
+function sliceMastered(ids) {
+  return ids.length > 0 && ids.every(id => S.introduced[id] && ladderFor(ITEMS[id]).every(skill => {
+    const c = S.cards[ck(id, skill)];
+    return c && isHolding(c);
+  }));
+}
+
+function pathSections() {
+  const frontier = eligibleSequence().find(id => !S.introduced[id]) || null;
+  const frontierUnit = frontier ? ITEMS[frontier].unit : null;
+  const unitOrder = HANGUL_UNITS.map(u => u.id).concat(ALL_CORE_UNITS.map(u => u.id));
+  const frontierIdx = frontierUnit ? unitOrder.indexOf(frontierUnit) : unitOrder.length;
+
+  const sections = [];
+  const build = (u, stage) => {
+    const all = SEQUENCE.filter(id => ITEMS[id].unit === u.id);
+    const nodes = [];
+    const slice = (kind, label, ids, glyph) => {
+      if (!ids.length) return;
+      nodes.push({ id: u.id + ':' + kind + (nodes.length), kind, label, ids, glyph });
+    };
+    if (stage === 'hangul') {
+      const letters = all.filter(id => ITEMS[id].kind === 'letter');
+      slice('letters', letters.length === 1 ? 'One letter' : letters.length + ' letters', letters, letters.length ? ITEMS[letters[0]].ch : '');
+      slice('rules', 'How it is said', all.filter(id => ITEMS[id].kind === 'rule'));
+      slice('words', 'Read the words', all.filter(id => ITEMS[id].kind === 'hword'));
+    } else {
+      slice('words', 'Words', all.filter(id => ITEMS[id].kind === 'word'));
+      (u.grammar || []).forEach(g => slice('grammar', g.name.split('(')[0].replace(/\s+$/, ''), ['G:' + g.id].filter(id => ITEMS[id])));
+    }
+    const convs = CONVERSATIONS.filter(c => c.unit === u.id);
+    convs.forEach(c => nodes.push({ id: u.id + ':talk:' + c.id, kind: 'talk', label: c.en || c.title, conv: c, ids: [] }));
+    if (all.length) nodes.push({ id: u.id + ':review', kind: 'review', label: 'Review the unit', ids: all, unit: u.id });
+
+    const seen = all.filter(id => S.introduced[id]).length;
+    const held = all.filter(firstRungHolding).length;
+    const idx = unitOrder.indexOf(u.id);
+    const state = u.id === frontierUnit ? 'next' : (all.length && held === all.length) ? 'done' : seen ? 'active' : idx > frontierIdx ? 'locked' : 'active';
+    nodes.forEach(n => {
+      if (n.kind === 'talk') {
+        n.state = convUnlocked(n.conv) ? ((convRec(n.conv.id).roleplayed || 0) > 0 ? 'done' : 'active') : 'locked';
+        n.sub = convUnlocked(n.conv) ? (convRec(n.conv.id).read ? 'read ' + convRec(n.conv.id).read + '×' : 'not read yet') : 'opens at 60%';
+        return;
+      }
+      const nSeen = n.ids.filter(id => S.introduced[id]).length;
+      const nHeld = n.ids.filter(firstRungHolding).length;
+      n.p = n.ids.length ? nHeld / n.ids.length : 0;
+      n.mastered = sliceMastered(n.ids);
+      n.sub = nSeen ? `${nHeld} / ${n.ids.length} holding` : `${n.ids.length} item${n.ids.length === 1 ? '' : 's'}`;
+      if (n.kind === 'review') { n.state = nSeen ? (n.mastered ? 'done' : 'active') : 'locked'; n.sub = nSeen ? n.sub : 'after you start'; return; }
+      n.state = n.ids.includes(frontier) ? 'next' : n.mastered ? 'done' : nSeen ? 'active' : 'locked';
+    });
+    const number = stage === 'hangul' ? idx + 1 : idx + 1 - HANGUL_UNITS.length;
+    sections.push({ unit: u, stage, nodes, state, seen, held, total: all.length, number });
+  };
+  HANGUL_UNITS.forEach(u => build(u, 'hangul'));
+  ALL_CORE_UNITS.forEach(u => build(u, 'core'));
+  return sections;
+}
+
+function pathNodeById(id) {
+  for (const sec of pathSections()) for (const n of sec.nodes) if (n.id === id) return n;
+  return null;
+}
+
+let pathScroll = false;
+
+function renderPath() {
+  const sections = pathSections();
+  let k = 0;                                   // winds the road across sections
+  const wave = [0, 1, 1.6, 1, 0, -1, -1.6, -1];
+  const stageTitle = st => st === 'hangul' ? `Stage 0 · ${esc(COURSE.stageTitle)}` : 'Stage 1 · Build sentences';
+  let lastStage = null, html = '';
+  const anyStarted = sections.some(sec => sec.seen > 0);
+
+  sections.forEach(sec => {
+    if (sec.stage !== lastStage) { html += `<h3>${stageTitle(sec.stage)}</h3>`; lastStage = sec.stage; }
+    const u = sec.unit;
+    const open = sec.state !== 'done' || expanded['p' + u.id];
+    const sub = sec.state === 'locked' ? `${sec.total} items · the schedule gets here on its own`
+      : sec.state === 'done' ? `all ${sec.total} holding${sec.nodes.some(n => n.kind !== 'review' && n.kind !== 'talk' && !n.mastered) ? ' · deeper rungs still settling' : ''}`
+        : `${sec.held} / ${sec.total} holding${sec.seen > sec.held ? ` · ${sec.seen - sec.held} in progress` : ''}${sec.seen < sec.total ? ` · ${sec.total - sec.seen} to come` : ''}`;
+    html += `<section class="pu" id="pu-${esc(u.id)}">
+      <div class="pu-head ${sec.state}" ${sec.state === 'done' ? `data-expand="p${esc(u.id)}" role="button"` : ''}>
+        <div class="pu-txt">
+          <div class="pu-k">${sec.stage === 'hangul' ? 'Reading' : 'Unit'} ${sec.number}${sec.state === 'next' ? ' · you are here' : ''}</div>
+          <div class="pu-t">${esc(u.title)}</div>
+          <div class="pu-s">${sub}</div>
+        </div>
+        ${sec.state === 'done' && !open ? `<div class="pu-mini">${sec.nodes.map(() => '<i></i>').join('')}</div>` : ''}
+        <button class="iconbtn" data-act="peek" data-unit="${esc(u.id)}" title="What is in this unit" aria-label="What is in this unit">≡</button>
+      </div>
+      ${open ? `<div class="pu-nodes">${sec.nodes.map(n => {
+      const x = wave[k++ % wave.length];
+      const face = n.kind === 'letters' && n.glyph ? `<span class="ko">${esc(n.glyph)}</span>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${PATH_ICON[n.kind] || PATH_ICON.words}</svg>`;
+      const tip = n.state === 'next' ? `<span class="pn-tip">${anyStarted ? 'Continue' : 'Start here'}</span>` : '';
+      return `<div class="pn ${n.state}" style="--x:${x}">
+          <button class="pn-b" data-node="${esc(n.id)}" aria-label="${esc(n.label)} — ${esc(n.sub || '')}">
+            <span class="pn-ring" style="--p:${(n.p || 0).toFixed(3)}"></span>
+            <span class="pn-face">${face}</span>${tip}
+          </button>
+          <span class="pn-l">${esc(n.label)}<br><span class="pn-sub">${esc(n.sub || '')}</span></span>
+        </div>`;
+    }).join('')}</div>` : ''}
+    </section>`;
+  });
+
+  return `<div class="path">
+    <div class="card"><h2>The path</h2>
+      <p class="sub" style="margin:0">Every stop is a real piece of the course, and its ring is how much of it is holding in memory right now — nothing here can be farmed.
+      Tap a stop you have started to practise just that; tap the pulsing one to carry on where the schedule is.</p></div>
+    ${html}
+  </div>`;
+}
+
+function pathTap(nodeId) {
+  const n = pathNodeById(nodeId);
+  if (!n) return;
+  if (n.kind === 'talk') {
+    if (n.state === 'locked') { showToast('This conversation opens once most of its unit has been introduced.'); return; }
+    openConvo(n.conv.id); return;
+  }
+  if (n.state === 'next') { startSession(); return; }
+  if (n.state === 'locked') {
+    const ahead = eligibleSequence().filter(id => !S.introduced[id]).findIndex(id => n.ids.includes(id));
+    showToast(ahead > 0 ? `${ahead} item${ahead === 1 ? '' : 's'} away on the schedule — here is what is in it.` : 'Not reached yet — here is what is in it.');
+    peekUnit(n.id.split(':')[0]); return;
+  }
+  if (n.kind === 'review') { startDrill('unit', n.unit); return; }
+  startDrill('node', n.id);
+}
+
+function peekUnit(unitId) {
+  const key = (HANGUL_UNIT_BY_ID[unitId] ? 'h' : 'c') + unitId;
+  expanded[key] = true;
+  view = 'browse';
+  render();
+  const el = document.querySelector(`[data-expand="${key}"]`);
+  if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
 /* ---------- Session ---------- */
@@ -12037,6 +12291,14 @@ function afterRender() {
 
   Mascot.show(view === 'session' || view === 'done');
 
+  // Opening the path lands you on the stop you are at, not at the top of
+  // a road you have already walked. Once per visit, so scrolling is yours.
+  if (view === 'path' && pathScroll) {
+    pathScroll = false;
+    const here = document.querySelector('.pn.next') || document.querySelector('.pu-head.next');
+    if (here) requestAnimationFrame(() => here.scrollIntoView({ block: 'center' }));
+  }
+
   if (view === 'done' && sess && sess.doneFx) {
     const kind = sess.doneFx;
     sess.doneFx = null;
@@ -12157,7 +12419,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-acc],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch],[data-course]');
+  const t = e.target.closest('[data-view],[data-act],[data-pick],[data-jamo],[data-acc],[data-speak],[data-expand],[data-pickt],[data-unpick],[data-toggle],[data-grade],[data-conv],[data-selfgrade],[data-sample],[data-settheme],[data-buytheme],[data-equip],[data-branch],[data-course],[data-node]');
   if (!t) return;
 
   Sfx.resume();
@@ -12175,8 +12437,9 @@ document.addEventListener('click', e => {
   else if (t.dataset.pickt != null || t.dataset.unpick != null) Sfx.play('pop');
   else if (t.dataset.view || t.dataset.act) Sfx.play('tap');
 
-  if (t.dataset.view) { cancelFx(); Voice.cancel(); LineAudio.stop(); clearTimeout(playTimer); view = t.dataset.view; sess = null; convo = null; render(); return; }
+  if (t.dataset.view) { cancelFx(); Voice.cancel(); LineAudio.stop(); clearTimeout(playTimer); view = t.dataset.view; sess = null; convo = null; if (view === 'path') pathScroll = true; render(); return; }
   if (t.dataset.conv) { openConvo(t.dataset.conv); return; }
+  if (t.dataset.node) { pathTap(t.dataset.node); return; }
   if (t.dataset.selfgrade) { saySelfGrade(parseInt(t.dataset.selfgrade, 10)); return; }
   if (t.dataset.course) { switchCourse(t.dataset.course); return; }
   if (t.dataset.settheme) { S.accent = t.dataset.settheme; save(); render(); return; }
@@ -12204,6 +12467,7 @@ document.addEventListener('click', e => {
   if (act === 'learned') { learnedStep(); return; }
   if (act === 'reteachdone') { advance(); return; }
   if (act === 'drill') { startDrill(t.dataset.kind, t.dataset.unit); return; }
+  if (act === 'peek') { peekUnit(t.dataset.unit); return; }
   if (act === 'submit') { submitAnswer(); return; }
   if (act === 'giveup') { giveUp(); return; }
   if (act === 'romtiles') { sess.romTiles = !sess.romTiles; render(); return; }
@@ -12555,6 +12819,16 @@ function startDrill(kind, arg) {
     title = (u ? u.id + ' · ' + (u.title || '') : unitId).slice(0, 42);
     shuffle(keys);
     keys.slice(0, 18).forEach(key => steps.push({ t: 'card', key }));
+  }
+
+  else if (kind === 'node') {
+    const node = pathNodeById(arg);
+    if (!node) return;
+    const keys = node.ids.filter(id => S.introduced[id]).flatMap(startedKeys);
+    if (!keys.length) { showToast('You have not started this yet — the schedule brings it to you.'); return; }
+    title = node.label.slice(0, 42);
+    shuffle(keys);
+    keys.slice(0, 14).forEach(key => steps.push({ t: 'card', key }));
   }
 
   else if (kind === 'one' && arguments.length > 1) { /* handled by drillOne */ }
