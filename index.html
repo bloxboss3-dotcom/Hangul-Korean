@@ -11973,7 +11973,7 @@ function renderSettings() {
     <div class="field" style="margin-top:6px"><div class="lab">Offline
       <small>${swReady ? 'Cached and ready — the app opens with no signal. Everything except pronunciation checking works exactly the same.' : 'Not cached yet. Reload once while online and Hanbit will keep a copy of itself.'}</small></div>
       <div class="ctl"><span class="faint">${swReady ? 'ready' : 'not cached'}</span></div></div>
-    ${swWaiting ? `<div class="notice" style="margin-top:12px">
+    ${swWaiting || shellUpdate ? `<div class="notice" style="margin-top:12px">
       <b>A newer version is downloaded and waiting.</b> Your progress is untouched by an update.
       <div class="row" style="margin-top:10px"><button class="btn" data-act="swupdate">Reload into it</button></div>
     </div>` : ''}
@@ -13237,6 +13237,7 @@ function saySelfGrade(g) {
 let installPrompt = null;
 let swReady = false;
 let swWaiting = null;
+let shellUpdate = false;   // index.html changed under an unchanged worker
 
 const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
@@ -13273,7 +13274,7 @@ function applyUpdate() {
    away the card you were halfway through — so a waiting update applies
    immediately when you are idle, and otherwise holds until you finish. */
 function maybeAutoUpdate() {
-  if (!swWaiting) return;
+  if (!swWaiting && !shellUpdate) return;
   const busy = view === 'session' || (view === 'convo' && convo && (convo.mode === 'role' || convo.mode === 'branch')) || sayRec.phase === 'rec';
   if (busy) return;
   showToast('Updating Hanbit…');
@@ -13288,9 +13289,19 @@ function checkForUpdate() {
   navigator.serviceWorker.getRegistration()
     .then(r => r && r.update())
     .catch(() => {});
+  // The worker rarely changes; the page it serves does. Ask it to look.
+  const ctl = navigator.serviceWorker.controller;
+  if (ctl) { try { ctl.postMessage('check-shell'); } catch (e) {} }
 }
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // The worker found a newer index.html than the one this page came from.
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data !== 'shell-updated') return;
+    shellUpdate = true;
+    maybeAutoUpdate();
+    if (view === 'settings') render();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
       swReady = !!navigator.serviceWorker.controller;
