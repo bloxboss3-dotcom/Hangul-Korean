@@ -13,7 +13,7 @@
    progress lives in localStorage and is never touched here.
    ============================================================ */
 
-const VERSION = 'hanbit-v9';
+const VERSION = 'hanbit-v10';
 const CORE = [
   './',
   './index.html',
@@ -56,7 +56,31 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('message', e => {
   if (e.data === 'skip-waiting') self.skipWaiting();
+  if (e.data === 'check-shell') e.waitUntil(refreshShell(null).catch(() => {}));
 });
+
+/* The app is one HTML file, and most deploys change only that file. The
+   worker itself stays byte-identical, so the browser never sees a "new
+   worker" and the waiting/skip-waiting path above never fires — an
+   installed phone could sit on an old build for weeks, and did. So the
+   background refresh does its own comparison: when the fresh index.html
+   differs from the cached one, every open page is told, and the page
+   reloads into it as soon as it is idle. */
+async function refreshShell(req) {
+  // A navigate Request cannot take a RequestInit, so the page-triggered
+  // check fetches by URL with the HTTP cache bypassed instead.
+  const res = await (req ? fetch(req) : fetch('./index.html', { cache: 'no-store' }));
+  if (!res || !res.ok) return res;
+  const cache = await caches.open(VERSION);
+  const old = await cache.match('./index.html');
+  const [before, after] = await Promise.all([old ? old.clone().text() : '', res.clone().text()]);
+  await cache.put('./index.html', res.clone());
+  if (old && before !== after) {
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach(c => c.postMessage('shell-updated'));
+  }
+  return res;
+}
 
 self.addEventListener('fetch', e => {
   const req = e.request;
@@ -70,10 +94,8 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate') {
     e.respondWith(
       caches.match('./index.html').then(hit => {
-        const net = fetch(req).then(res => {
-          if (res && res.ok) caches.open(VERSION).then(c => c.put('./index.html', res.clone()));
-          return res;
-        }).catch(() => hit);
+        const net = refreshShell(req).catch(() => hit);
+        e.waitUntil(net.catch(() => {}));
         return hit || net;
       })
     );
