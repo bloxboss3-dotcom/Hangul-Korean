@@ -265,6 +265,41 @@ if (sandbox.HANGUL_UNITS) {
   }
 }
 
+/* ---- 3c. the build tiles can say what they sound like ----
+   A build card prints the romanisation under each tile by lining the
+   hand-written romanisation of a sentence up with its words, so every
+   grammar example has to romanise word for word. The jamo romaniser is only
+   the fallback for a tile the lookup misses, and it is checked here too. */
+{
+  let examples = 0, misaligned = 0;
+  for (const name of ['KO_UNITS_A', 'KO_UNITS_B']) {
+    const m = body.match(new RegExp(`const ${name} = (\\[[\\s\\S]*?\\n\\];)`));
+    if (!m) continue;
+    let units;
+    try { units = vm.runInNewContext('(' + m[1].replace(/;$/, '') + ')', { ...sandbox }); } catch (e) { continue; }
+    for (const u of units) for (const g of (u.grammar || [])) for (const e of (g.examples || [])) {
+      examples++;
+      const ko = e.ko.replace(/[.!?]$/, '').split(/\s+/), rom = String(e.rom || '').replace(/[.!?]$/, '').split(/\s+/);
+      if (ko.length !== rom.length) { bad(`${g.id}: "${e.ko}" has ${ko.length} words but its romanisation has ${rom.length}`); misaligned++; }
+    }
+  }
+  if (!misaligned) ok(`build tiles — ${examples} grammar examples romanise word for word`);
+
+  const pieces = ['CHO', 'JUNG', 'JONG', 'CHO_ROM', 'JUNG_ROM', 'JONG_ROM', 'JONG_LIAISON']
+    .map(n => body.match(new RegExp(`const ${n} = [^\\n]*\\n`)));
+  const fn = body.match(/function romanizeHangul\([\s\S]*?\n\}\n/);
+  if (pieces.some(x => !x) || !fn) bad('romanizeHangul or its tables not found');
+  else {
+    const ctx = {};
+    vm.runInNewContext(pieces.map(x => x[0]).join('') + fn[0] + ';this.romanizeHangul = romanizeHangul;', ctx);
+    const cases = { '한국': 'han-guk', '사람이에요': 'sa-ra-mi-e-yo', '몰라요': 'mol-la-yo', '학생이에요': 'hak-saeng-i-e-yo',
+      '좋아요': 'jo-a-yo', '재미있어요': 'jae-mi-i-sseo-yo', '어느': 'eo-neu', '뭐예요?': 'mwo-ye-yo?' };
+    const wrong = Object.entries(cases).filter(([k, v]) => ctx.romanizeHangul(k) !== v);
+    if (wrong.length) wrong.forEach(([k, v]) => bad(`romanizeHangul("${k}") gave "${ctx.romanizeHangul(k)}", wanted "${v}"`));
+    else ok(`romaniser — ${Object.keys(cases).length} words, liaison and ㄹㄹ handled`);
+  }
+}
+
 /* ---- 3b. recorded audio, if any, matches the conversations ---- */
 if (existsSync(root + 'audio/manifest.json') && sandbox.CONVERSATIONS) {
   const man = JSON.parse(readFileSync(root + 'audio/manifest.json', 'utf8'));

@@ -93,6 +93,28 @@ bug: a Korean assumption left in shared code.
 - **The near-miss power-up must never lie to the scheduler.** It restores the
   streak and session credit; it grades the card a 2, not a 3, and the card still
   returns. A redemption that fooled FSRS would be selling worse Korean.
+- **Help on a card is allowed; help that fools the scheduler is not.** A
+  build card fades its scaffolding (shortest example, no decoys, sounds under
+  the tiles while the card is new; decoys arrive as it holds) and tapping a
+  tile reads it out — none of that gives the order away, so it costs nothing.
+  A typed Korean card is built from syllable tiles plus decoys
+  (`scaffoldTyped`). The `typedInput` setting decides when: `tiles` always
+  (the default — the jamo keyboard is the hardest thing in the app and the
+  one most often called too advanced), `auto` (tiles while new or predicted
+  lost, keyboard once it holds) or `keyboard`. "Hear it first" on a speaking card and "Sounds" on a typed card do
+  give the answer away, so they cap the grade at 2 (`hintedGrade`), same rule
+  as the near miss.
+- **Production rungs wait for a week.** `recall`, `cloze` and `say` open when
+  the rung below has a week of stability (`isHoldingWell`), not three days.
+  Recognition rungs still open at three. Typing a word from its meaning on
+  the third day it was ever seen was the single biggest "too hard too fast".
+- **Coming back after a break changes the session, not the grading.** When
+  the gap is 21+ days or the due pile's predicted recall averages under 50%
+  (`welcomeBack`), a session re-teaches anything the model expects you to
+  have lost, serves only the lowest due rung per item (higher rungs wait
+  until the lower one is passed, `lowestRungOnly`), scaffolds lost build
+  cards again, and pauses new material. A miss is still a miss. The mode
+  switches itself off as the pile is relearned.
 - **Abandoning a session is not finishing it.** No perfect, no celebration, no
   bonus — but the answers already given still count, because they were real
   retrievals and deleting them costs real memory.
