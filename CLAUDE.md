@@ -115,6 +115,13 @@ bug: a Korean assumption left in shared code.
   until the lower one is passed, `lowestRungOnly`), scaffolds lost build
   cards again, and pauses new material. A miss is still a miss. The mode
   switches itself off as the pile is relearned.
+- **The path is a map, not a second scheduler.** The Path tab draws the
+  course as a road (`pathSections`, `renderPath`): one stop per real slice
+  of a unit, its ring the share of that slice holding, the schedule's next
+  item pulsing. Tapping a started stop drills just that slice; tapping the
+  pulsing one starts the ordinary session; a locked stop opens the unit in
+  the Course browser instead of letting you skip ahead. No chests, no
+  crowns, no XP: the only "gold" is every rung of every item holding.
 - **Abandoning a session is not finishing it.** No perfect, no celebration, no
   bonus — but the answers already given still count, because they were real
   retrievals and deleting them costs real memory.
