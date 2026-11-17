@@ -4301,6 +4301,10 @@ const COURSES = {
        makes the exercise unanswerable. */
     hangul: true,
     stageDrill: 'Just Hangul',
+    /* "Written one way, said another" (sound-change rules) is real Korean
+       and the wrong thing to meet in week one of a course whose aim is
+       basic conversation. They are still taught — after everything else. */
+    rulesLast: true,
     langName: 'Korean',
     typeHint: 'type the sounds, e.g. go-gi',
     fxGlyphs: ['\u3131', '\u3134', '\u3137', '\u3139', '\u3141', '\u3142', '\u3145', '\u3147', '\u3148', '\u314e',
@@ -7044,7 +7048,7 @@ const SKILL_LABEL = Object.assign({
   rule: 'How is it pronounced',
   recog: 'Meaning', listen: 'Listening', recall: 'Write it in ' + (COURSE.langName || COURSE.label),
   cloze: 'Fill the gap',
-  build: 'Build the sentence', say: 'Say it out loud'
+  build: 'Build the sentence', say: 'Say it out loud', syl: 'Read the block'
 }, COURSE.skillLabels || {});
 
 /* ---------------------------------------------------------------
@@ -7506,6 +7510,7 @@ const DEFAULTS = {
     litDefault: false,      // open a conversation on the literal reading
     hideEnglish: false      // conversation lines start covered, for a listening pass
   },
+  jamoMiss: {},            // letter -> how often it has just been misread in a block drill
   coins: 0,                // spendable; earned only, never lost
   coinsEarned: 0,          // lifetime total, for the stat
   redeemed: 0,             // near misses bought back
@@ -7835,19 +7840,33 @@ function unlockSkills() {
 }
 
 function eligibleSequence() {
-  return SEQUENCE.filter(id => {
+  const seq = SEQUENCE.filter(id => {
     const it = ITEMS[id];
     if (S.settings.skipHangul && it.stage === 'hangul') return false;
     return true;
   });
+  if (!COURSE.rulesLast) return seq;
+  return seq.filter(id => ITEMS[id].kind !== 'rule').concat(seq.filter(id => ITEMS[id].kind === 'rule'));
+}
+
+/* While anything else in the course is still unmet, the sound-change
+   rules are out of the way entirely: not introduced, and any already
+   started are held back rather than reviewed. Nothing is deleted — the
+   cards and their history are there when the rest of the course is done. */
+function rulesDeferred() {
+  if (!COURSE.rulesLast) return false;
+  return SEQUENCE.some(id => ITEMS[id].kind !== 'rule' && !S.introduced[id]
+    && !(S.settings.skipHangul && ITEMS[id].stage === 'hangul'));
 }
 
 function dueCards(now) {
   const out = [];
+  const noRules = rulesDeferred();
   Object.keys(S.cards).forEach(k => {
     const c = S.cards[k];
     const item = ITEMS[k.split('|')[0]];
     if (!item) return;
+    if (noRules && item.kind === 'rule') return;
     // A card whose skill is no longer on the item's ladder (curriculum change,
     // older backup) can never generate an exercise — retire it rather than
     // letting it throw inside render() and wedge every future session.
@@ -8336,7 +8355,135 @@ function writePromptFor(item) {
   return COURSE.writePromptFor ? COURSE.writePromptFor(item) : COURSE.writePrompt;
 }
 
+/* ---------------------------------------------------------------
+   Just Hangul: one block at a time
+   ------------------------------------------------------------
+   Which shape makes which sound, and nothing else. A question is a
+   single letter or a single syllable block of two or three letters;
+   the answer is its sound. Every wrong option differs from the right
+   one by exactly one letter, so a miss says precisely which two
+   letters were confused — and that is what the next drill is built
+   from. Blocks are also cut out of the words you keep getting wrong,
+   so a long word that will not stick gets practised a piece at a time.
+
+   A block is not an item in the course, so there is no card to grade
+   and the scheduler is not told anything: this is practice. The single
+   letters in the drill are the real letter cards and do grade.
+   --------------------------------------------------------------- */
+const SIMPLE_JONG = [1, 4, 8, 16, 17, 21];          // ㄱ ㄴ ㄹ ㅁ ㅂ ㅇ — finals that sound like themselves
+const sylParts = ch => { const c = ch.charCodeAt(0) - 0xAC00; return { cho: Math.floor(c / 588), jung: Math.floor((c % 588) / 28), jong: c % 28 }; };
+const sylFrom = p => String.fromCharCode(0xAC00 + p.cho * 588 + p.jung * 28 + p.jong);
+const jamoMiss = j => ((S.jamoMiss || {})[j] || 0);
+
+function knownJamo() {
+  const cho = [], jung = []; let batchim = false;
+  Object.keys(S.introduced).forEach(id => {
+    const it = ITEMS[id];
+    if (!it || it.kind !== 'letter') return;
+    if (it.type === 'batchim') { batchim = true; return; }
+    const ci = CHO.indexOf(it.ch), vi = JUNG.indexOf(it.ch);
+    if (it.type === 'consonant' && ci >= 0) cho.push(ci);
+    if (it.type === 'vowel' && vi >= 0) jung.push(vi);
+  });
+  if (!cho.includes(11)) cho.push(11);              // the silent placeholder is always fair
+  return { cho, jung, batchim };
+}
+
+function makeSylExercise(step) {
+  const syl = step.syl, p = sylParts(syl), known = knownJamo();
+  const answer = romanizeHangul(syl);
+  const cands = [];
+  const tryOpt = (q, was, got) => {
+    const rom = romanizeHangul(sylFrom(q));
+    if (rom !== answer && !cands.some(c => c.rom === rom)) cands.push({ rom, was, got });
+  };
+  shuffle(known.cho.slice()).forEach(i => { if (i !== p.cho) tryOpt({ ...p, cho: i }, CHO[p.cho], CHO[i]); });
+  const twins = soundTwins(JUNG[p.jung]);
+  shuffle(known.jung.slice()).forEach(i => { if (i !== p.jung && !twins.includes(JUNG[i])) tryOpt({ ...p, jung: i }, JUNG[p.jung], JUNG[i]); });
+  if (p.jong) shuffle(SIMPLE_JONG.slice()).forEach(i => { if (i !== p.jong) tryOpt({ ...p, jong: i }, JONG[p.jong], JONG[i]); });
+  // Lead with the letters this one has actually been mistaken for.
+  shuffle(cands);
+  cands.sort((a, b) => jamoMiss(b.got) - jamoMiss(a.got));
+  const wrong = [];
+  [p.jung, p.cho, p.jong].forEach((_, slot) => {               // one per slot first, then fill
+    const was = [JUNG[p.jung], CHO[p.cho], p.jong ? JONG[p.jong] : null][slot];
+    const c = cands.find(x => x.was === was && !wrong.includes(x));
+    if (c && wrong.length < 3) wrong.push(c);
+  });
+  cands.forEach(c => { if (wrong.length < 3 && !wrong.includes(c)) wrong.push(c); });
+
+  const parts = [[CHO[p.cho], p.cho === 11 ? 'silent' : CHO_ROM[p.cho]], [JUNG[p.jung], JUNG_ROM[p.jung]]];
+  if (p.jong) parts.push([JONG[p.jong], JONG_ROM[p.jong]]);
+  return {
+    key: step.key, item: { id: 'syl', kind: 'syl' }, skill: 'syl', kind: 'syl', free: true,
+    type: 'mc', prompt: 'What sound is this?', target: syl, answer, mono: true,
+    options: [answer].concat(wrong.map(w => w.rom)),
+    sylWrong: Object.fromEntries(wrong.map(w => [w.rom, w])), sylJamo: parts.map(x => x[0]), syl,
+    why: parts.map(x => x[0] + ' ' + x[1]).join('  +  ') + '  =  ' + syl + ' ' + answer + (step.from ? '   ·   from ' + step.from : ''),
+    speakAfter: syl
+  };
+}
+
+/* What a block answer teaches the next drill. */
+function tallySyl(ex, picked) {
+  if (!S.jamoMiss) S.jamoMiss = {};
+  const bump = (j, d) => { const v = Math.max(0, (S.jamoMiss[j] || 0) + d); if (v) S.jamoMiss[j] = v; else delete S.jamoMiss[j]; };
+  const w = ex.sylWrong[picked];
+  if (w) { bump(w.was, 1); bump(w.got, 1); }
+  else ex.sylJamo.forEach(j => bump(j, -0.5));
+  save();
+}
+
+/* Twenty-odd questions: the single letters you are weakest on (real
+   cards), blocks cut from the words you keep missing, and blocks built
+   around the letters you have been misreading. */
+function sylDrillSteps() {
+  const known = knownJamo(), now = Date.now();
+  if (known.cho.length < 3 || known.jung.length < 2) return null;
+  const steps = [];
+  const cardWeak = k => { const c = S.cards[k]; if (!c) return 0; const r = predictedRecall(c, now); return (c.lapses || 0) * 1.5 + (c.flagged ? 2 : 0) + (r != null && r < 0.6 ? 1 : 0); };
+  const letterW = j => 1 + 2 * jamoMiss(j) + cardWeak(ck('L:' + j, 'sound'));
+  const weighted = (idxs, table) => {
+    const ws = idxs.map(i => letterW(table[i])); let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < idxs.length; i++) { r -= ws[i]; if (r <= 0) return idxs[i]; }
+    return idxs[idxs.length - 1];
+  };
+  const seen = new Set();
+  const add = (syl, from) => { if (seen.has(syl)) return false; seen.add(syl); steps.push({ t: 'syl', key: 'syl:' + steps.length + ':' + syl, syl, from }); return true; };
+
+  // 1. the single letters themselves
+  Object.keys(S.introduced).filter(id => ITEMS[id] && ITEMS[id].kind === 'letter' && S.cards[ck(id, 'sound')])
+    .map(id => ({ k: ck(id, 'sound'), w: cardWeak(ck(id, 'sound')) + 2 * jamoMiss(ITEMS[id].ch) + Math.random() * 0.5 }))
+    .sort((a, b) => b.w - a.w).slice(0, 5).forEach(x => steps.push({ t: 'card', key: x.k }));
+
+  // 2. pieces of the words that keep going wrong
+  const missed = {};
+  Object.keys(S.cards).forEach(k => {
+    const it = ITEMS[k.split('|')[0]], c = S.cards[k];
+    if (!it || !it.ko || !(it.kind === 'word' || it.kind === 'hword') || !(c.lapses > 0)) return;
+    missed[it.ko] = Math.max(missed[it.ko] || 0, c.lapses + (c.flagged ? 2 : 0));
+  });
+  Object.keys(missed).sort((a, b) => missed[b] - missed[a] || Math.random() - 0.5).slice(0, 6).forEach(word => {
+    [...word].forEach(ch => {
+      if (!/[가-힣]/.test(ch) || steps.length >= 15) return;
+      const p = sylParts(ch);
+      if (!known.cho.includes(p.cho) || !known.jung.includes(p.jung)) return;
+      if (p.jong && (JONG[p.jong].length !== 1 || !known.batchim)) return;
+      add(ch, word);
+    });
+  });
+
+  // 3. blocks built around the letters being misread
+  for (let tries = 0; steps.length < 22 && tries < 200; tries++) {
+    const p = { cho: weighted(known.cho, CHO), jung: weighted(known.jung, JUNG), jong: 0 };
+    if (known.batchim && Math.random() < 0.35) p.jong = SIMPLE_JONG[Math.floor(Math.random() * SIMPLE_JONG.length)];
+    add(sylFrom(p));
+  }
+  return shuffle(steps);
+}
+
 function makeExercise(key, step) {
+  if (step && step.t === 'syl') return makeSylExercise(step);
   const item = cardItem(key);
   const skill = cardSkill(key);
   const ex = { key, item, skill, kind: item.kind };
@@ -9793,8 +9940,9 @@ function pathSections() {
   const frontierIdx = frontierUnit ? unitOrder.indexOf(frontierUnit) : unitOrder.length;
 
   const sections = [];
+  const noRules = rulesDeferred();
   const build = (u, stage) => {
-    const all = SEQUENCE.filter(id => ITEMS[id].unit === u.id);
+    const all = SEQUENCE.filter(id => ITEMS[id].unit === u.id && !(noRules && ITEMS[id].kind === 'rule'));
     const nodes = [];
     const slice = (kind, label, ids, glyph) => {
       if (!ids.length) return;
@@ -9859,7 +10007,7 @@ function renderPath() {
       html += `<h3>${stageTitle(sec.stage)}</h3>`;
       if (sec.stage === 'hangul' && stage0Started()) html += `<div class="row" style="margin:0 0 12px">
         <button class="btn" data-act="drill" data-kind="stage0">${esc(stageDrillLabel())}</button>
-        <span class="faint" style="font-size:12px">20 cards from this stage only, shakiest first</span></div>`;
+        <span class="faint" style="font-size:12px">${COURSE.hangul ? 'one letter or one block at a time — the ones you misread come first' : '20 cards from this stage only, shakiest first'}</span></div>`;
       lastStage = sec.stage;
     }
     const u = sec.unit;
@@ -10478,7 +10626,7 @@ function renderFeedback(ex) {
 
   // The manual regrade would let a hinted answer buy back the "fine" or
   // "instant" the hint already gave up, so it stays off on a hinted card.
-  const adjust = good && !r.hinted ? `<div class="gradebar">
+  const adjust = good && !r.hinted && !ex.free ? `<div class="gradebar">
       <button data-grade="2">Felt hard<b>sooner</b></button>
       <button data-grade="3" class="keep">Fine<b>keep schedule</b></button>
       <button data-grade="4">Instant<b>later</b></button>
@@ -12777,25 +12925,27 @@ function startDrill(kind, arg) {
   }
 
   else if (kind === 'stage0') {
-    /* Only the first stage — the script, for Korean — and nothing else.
-       The schedule already brings these back, but mixed in with everything
-       after them; this is the way to sit down with the alphabet alone. It
-       leads with what the model thinks is closest to slipping, so a refresh
-       spends its cards where they buy the most, and it can be run as often
-       as you like because it grades like any other session. */
-    const now = Date.now();
-    const keys = Object.keys(S.introduced)
-      .filter(id => ITEMS[id] && ITEMS[id].stage === 'hangul')
-      .flatMap(startedKeys)
-      .filter(k => S.cards[k]);
-    if (!keys.length) { showToast('Nothing from this stage has been started yet.'); return; }
-    const r = k => { const v = predictedRecall(S.cards[k], now); return v == null ? 0 : v; };
-    shuffle(keys);                       // ties break at random, not by course order
-    keys.sort((a, b) => r(a) - r(b));
     title = stageDrillLabel();
-    const picked = keys.slice(0, 20);
-    shuffle(picked);
-    picked.forEach(key => steps.push({ t: 'card', key }));
+    if (COURSE.hangul) {
+      const built = sylDrillSteps();
+      if (!built) { showToast('Learn a few letters first — this drill is built from the ones you have met.'); return; }
+      built.forEach(st => steps.push(st));
+    } else {
+      /* Courses without syllable blocks get their first stage alone,
+         leading with what the model thinks is closest to slipping. */
+      const now = Date.now();
+      const keys = Object.keys(S.introduced)
+        .filter(id => ITEMS[id] && ITEMS[id].stage === 'hangul')
+        .flatMap(startedKeys)
+        .filter(k => S.cards[k]);
+      if (!keys.length) { showToast('Nothing from this stage has been started yet.'); return; }
+      const r = k => { const v = predictedRecall(S.cards[k], now); return v == null ? 0 : v; };
+      shuffle(keys);
+      keys.sort((a, b) => r(a) - r(b));
+      const picked = keys.slice(0, 20);
+      shuffle(picked);
+      picked.forEach(key => steps.push({ t: 'card', key }));
+    }
   }
 
   else if (kind === 'foundations') {
@@ -12846,7 +12996,8 @@ function startDrill(kind, arg) {
   else if (kind === 'unit') {
     const unitId = arg;
     const ids = unitItems(unitId);
-    const keys = ids.flatMap(startedKeys);
+    const noRules = rulesDeferred();
+    const keys = ids.filter(id => !(noRules && ITEMS[id].kind === 'rule')).flatMap(startedKeys);
     if (!keys.length) { showToast('You have not started this unit yet.'); return; }
     const u = UNIT_BY_ID[unitId];
     title = (u ? u.id + ' · ' + (u.title || '') : unitId).slice(0, 42);
@@ -12943,7 +13094,13 @@ function pickMC(picked) {
   const ex = liveEx;
   if (!ex || sess.reveal) return;
   const right = picked === ex.answer;
-  if (!right) { try { recordConfusion(ex.item.id, picked); } catch (e) {} }
+  if (ex.free) {
+    tallySyl(ex, picked);
+    // A misread block comes round once more a few questions later.
+    const step = currentStep();
+    if (!right && step && !step.retry) insertAt(4, { t: 'syl', key: step.key + ':again', syl: ex.syl, from: step.from, retry: true });
+  }
+  else if (!right) { try { recordConfusion(ex.item.id, picked); } catch (e) {} }
   // Telling the pair apart is what breaks it. Without this the count only
   // ever went up and no amount of getting it right could clear anything.
   else if (ex.discriminate && ex.other) { try { creditConfusion(ex.item.id, ex.other.id); } catch (e) {} }
@@ -12963,8 +13120,10 @@ function scoreAnswer(ex, result, elapsed, grade) {
   const comeback = !!sess.justMissed;
   const good = result === 'right' || result === 'close';
 
-  gradeCard(ex.key, grade, elapsed);
-  sess.lastGradeKey = ex.key;
+  // A block from the Hangul drill is practice, not a card: nothing to grade.
+  if (!ex.free) gradeCard(ex.key, grade, elapsed);
+  else { sess.answered++; if (good) sess.correct++; }
+  sess.lastGradeKey = ex.free ? null : ex.key;
 
   /* After the grade is already in, never before it. The blitz reads the
      outcome; it does not get a vote on it. */
