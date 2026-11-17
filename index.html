@@ -4300,6 +4300,7 @@ const COURSES = {
        learner a Hangul keypad \u2014 which is exactly what this used to do \u2014
        makes the exercise unanswerable. */
     hangul: true,
+    stageDrill: 'Just Hangul',
     langName: 'Korean',
     typeHint: 'type the sounds, e.g. go-gi',
     fxGlyphs: ['\u3131', '\u3134', '\u3137', '\u3139', '\u3141', '\u3142', '\u3145', '\u3147', '\u3148', '\u314e',
@@ -9688,12 +9689,13 @@ function renderToday() {
           one that was missing: the newest material is the least settled and
           is often not due yet, so without asking for it by name you could not
           reach it at all. */''}
-    ${recentItems(20).length >= 3 || flaggedN || pairsN ? `<div style="margin-top:12px">
+    ${recentItems(20).length >= 3 || flaggedN || pairsN || stage0Started() ? `<div style="margin-top:12px">
       <div class="faint" style="font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Practise something specific</div>
       <div class="row wrap">
         ${recentItems(20).length >= 3 ? `<button class="btn" data-act="drill" data-kind="recent">Recent — ${esc(spanLabel(recentItems(20)))}</button>` : ''}
         ${flaggedN ? `<button class="btn" data-act="drill" data-kind="weak">Drill ${Math.min(8, flaggedN)} weak spot${flaggedN === 1 ? '' : 's'}</button>` : ''}
         ${pairsN ? `<button class="btn ghost" data-act="drill" data-kind="confusions">Break ${pairsN} confusion${pairsN === 1 ? '' : 's'}</button>` : ''}
+        ${stage0Started() ? `<button class="btn" data-act="drill" data-kind="stage0">${esc(stageDrillLabel())}</button>` : ''}
         <button class="btn ghost" data-act="drill" data-kind="foundations">Foundations check</button>
         <button class="btn ghost" data-view="browse">Pick a unit ›</button>
       </div>
@@ -9853,7 +9855,13 @@ function renderPath() {
   const anyStarted = sections.some(sec => sec.seen > 0);
 
   sections.forEach(sec => {
-    if (sec.stage !== lastStage) { html += `<h3>${stageTitle(sec.stage)}</h3>`; lastStage = sec.stage; }
+    if (sec.stage !== lastStage) {
+      html += `<h3>${stageTitle(sec.stage)}</h3>`;
+      if (sec.stage === 'hangul' && stage0Started()) html += `<div class="row" style="margin:0 0 12px">
+        <button class="btn" data-act="drill" data-kind="stage0">${esc(stageDrillLabel())}</button>
+        <span class="faint" style="font-size:12px">20 cards from this stage only, shakiest first</span></div>`;
+      lastStage = sec.stage;
+    }
     const u = sec.unit;
     const open = sec.state !== 'done' || expanded['p' + u.id];
     const sub = sec.state === 'locked' ? `${sec.total} items · the schedule gets here on its own`
@@ -12678,6 +12686,9 @@ const firstRungKey = id => ITEMS[id] ? ck(id, ladderFor(ITEMS[id])[0]) : null;
    creates the next rung once the previous one is holding, so this is "the
    parts of this item you have really started", which is what a drill over a
    chosen slice of the course wants — not just the bottom rung. */
+const stageDrillLabel = () => COURSE.stageDrill || 'Just the basics';
+const stage0Started = () => Object.keys(S.introduced).some(id => ITEMS[id] && ITEMS[id].stage === 'hangul');
+
 const startedKeys = id => ITEMS[id]
   ? ladderFor(ITEMS[id]).map(sk => ck(id, sk)).filter(k => S.cards[k])
   : [];
@@ -12763,6 +12774,28 @@ function startDrill(kind, arg) {
     });
     shuffle(second);
     steps.push(...second);
+  }
+
+  else if (kind === 'stage0') {
+    /* Only the first stage — the script, for Korean — and nothing else.
+       The schedule already brings these back, but mixed in with everything
+       after them; this is the way to sit down with the alphabet alone. It
+       leads with what the model thinks is closest to slipping, so a refresh
+       spends its cards where they buy the most, and it can be run as often
+       as you like because it grades like any other session. */
+    const now = Date.now();
+    const keys = Object.keys(S.introduced)
+      .filter(id => ITEMS[id] && ITEMS[id].stage === 'hangul')
+      .flatMap(startedKeys)
+      .filter(k => S.cards[k]);
+    if (!keys.length) { showToast('Nothing from this stage has been started yet.'); return; }
+    const r = k => { const v = predictedRecall(S.cards[k], now); return v == null ? 0 : v; };
+    shuffle(keys);                       // ties break at random, not by course order
+    keys.sort((a, b) => r(a) - r(b));
+    title = stageDrillLabel();
+    const picked = keys.slice(0, 20);
+    shuffle(picked);
+    picked.forEach(key => steps.push({ t: 'card', key }));
   }
 
   else if (kind === 'foundations') {
