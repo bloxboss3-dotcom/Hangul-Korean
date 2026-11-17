@@ -122,6 +122,10 @@ bug: a Korean assumption left in shared code.
   pulsing one starts the ordinary session; a locked stop opens the unit in
   the Course browser instead of letting you skip ahead. No chests, no
   crowns, no XP: the only "gold" is every rung of every item holding.
+- **"Just Hangul" is a drill, not a second course.** The `stage0` drill
+  serves 20 started cards from the first stage only, lowest predicted recall
+  first, graded like any session. Its label comes from `COURSE.stageDrill`
+  ("Just the basics" for courses that do not name one).
 - **Abandoning a session is not finishing it.** No perfect, no celebration, no
   bonus — but the answers already given still count, because they were real
   retrievals and deleting them costs real memory.
