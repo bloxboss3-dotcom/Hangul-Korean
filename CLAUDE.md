@@ -122,10 +122,18 @@ bug: a Korean assumption left in shared code.
   pulsing one starts the ordinary session; a locked stop opens the unit in
   the Course browser instead of letting you skip ahead. No chests, no
   crowns, no XP: the only "gold" is every rung of every item holding.
-- **"Just Hangul" is a drill, not a second course.** The `stage0` drill
-  serves 20 started cards from the first stage only, lowest predicted recall
-  first, graded like any session. Its label comes from `COURSE.stageDrill`
-  ("Just the basics" for courses that do not name one).
+- **"Just Hangul" is one block at a time.** For Korean the `stage0` drill
+  (`sylDrillSteps`) asks only "what sound is this": the weakest single
+  letters (real cards, graded) plus single syllable blocks of two or three
+  letters, cut from words that keep being missed and built around letters
+  recently misread. Every wrong option differs by one letter, so a miss
+  names the confused pair (`S.jamoMiss`). Blocks are practice: no card, no
+  grade, nothing told to the scheduler. Other courses get their first
+  stage's cards instead, labelled by `COURSE.stageDrill`.
+- **Sound-change rules come last in Korean** (`COURSE.rulesLast`). "Written
+  one way, said another" is held back until everything else is introduced:
+  not taught, not reviewed, not on the path. The app is for basic
+  conversation first. Cards already started are kept, not deleted.
 - **Abandoning a session is not finishing it.** No perfect, no celebration, no
   bonus — but the answers already given still count, because they were real
   retrievals and deleting them costs real memory.
